@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-ro
 import { AuthContext } from './context/authContext';
 import './App.css';
 import Login from './components/Login';
+import Register from './components/Register';
 
 // Componente de loading inicial
 const InitialLoading = () => (
@@ -220,11 +221,9 @@ function App() {
       <div className="App">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/principal" element={<PrincipalPage />} />
-          {/* Ruta catch-all para páginas no encontradas */}
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
