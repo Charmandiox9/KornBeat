@@ -7,6 +7,8 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Library from './components/Library';
 import Information from './components/Information';
+import ForgotPassword from './components/Forgot-password';
+
 
 // Componente de loading inicial
 const InitialLoading = () => (
@@ -228,6 +230,7 @@ function App() {
           <Route path="/principal" element={<PrincipalPage />} />
           <Route path="/library" element={<Library />} />
           <Route path="/information" element={<Information />} />
+          <Route path="/Forgot-password" element={<ForgotPassword/>} />
         </Routes>
       </div>
     </Router>
