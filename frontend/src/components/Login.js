@@ -47,6 +47,9 @@ const Login = () => {
 
   return (
     <div className="login-container">
+      <Link to="/" className="back-button">
+        &larr; Volver
+      </Link>
       <div className="login-card">
         <h2>Iniciar Sesión</h2>
 

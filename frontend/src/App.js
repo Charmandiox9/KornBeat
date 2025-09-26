@@ -5,6 +5,8 @@ import { AuthContext } from './context/authContext';
 import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
+import Library from './components/Library';
+import Information from './components/Information';
 
 // Componente de loading inicial
 const InitialLoading = () => (
@@ -87,9 +89,9 @@ const HomePage = () => {
                 <Link to="/login" className="cta-primary">
                   Comenzar
                 </Link>
-                <button className="cta-secondary">
+                <Link to="/information" className="cta-secondary">
                   Más información
-                </button>
+                </Link>
               </div>
             </>
           )}
@@ -224,6 +226,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/principal" element={<PrincipalPage />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/information" element={<Information />} />
         </Routes>
       </div>
     </Router>
