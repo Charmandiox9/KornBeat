@@ -10,40 +10,41 @@ db.createUser({
 
 print('✅ Usuario music_user creado exitosamente');
 
+// USUARIOS - Corregidos los nombres de campos requeridos
 db.createCollection("usuarios", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["username", "nombre", "email", "password", "pais"],
+      required: ["username", "name", "email", "password", "country"], // Corregido: nombre->name, pais->country
       properties: {
         username: {
           bsonType: "string",
           maxLength: 30,
           description: "Username único del usuario"
         },
-        nombre: {
+        name: {
           bsonType: "string",
           maxLength: 50,
           description: "Nombre completo del usuario"
         },
         email: {
           bsonType: "string",
-          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", // Corregido: escape de punto
           description: "Email válido"
         },
         password: {
           bsonType: "string",
-          minLength: 60,
+          minLength: 6,
           maxLength: 255,
           description: "Hash de contraseña"
         },
-        pais: {
+        country: {
           bsonType: "string",
           minLength: 2,
           maxLength: 3,
           description: "Código ISO del país"
         },
-        fecha_nacimiento: {
+        date_of_birth: {
           bsonType: "date",
           description: "Fecha de nacimiento"
         },
@@ -51,23 +52,23 @@ db.createCollection("usuarios", {
           bsonType: "string",
           description: "URL del avatar"
         },
-        es_premium: {
+        is_premium: {
           bsonType: "bool",
           description: "Estado premium del usuario"
         },
-        es_artista: {
+        es_artist: {
           bsonType: "bool",
           description: "Si el usuario es artista"
         },
-        fecha_registro: {
+        date_of_register: {
           bsonType: "date",
           description: "Fecha de registro"
         },
-        ultimo_acceso: {
+        last_access: { // Corregido: last_acces -> last_access
           bsonType: "date",
           description: "Último acceso"
         },
-        activo: {
+        active: {
           bsonType: "bool",
           description: "Si el usuario está activo"
         }
@@ -76,12 +77,12 @@ db.createCollection("usuarios", {
   }
 });
 
-// Artistas
+// ARTISTAS - Corregidos los nombres de campos
 db.createCollection("artistas", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["nombre_artistico", "pais"],
+      required: ["nombre_artistico", "country"], // Corregido: pais -> country
       properties: {
         usuario_id: {
           bsonType: "objectId",
@@ -92,7 +93,7 @@ db.createCollection("artistas", {
           maxLength: 100,
           description: "Nombre artístico"
         },
-        pais: {
+        country: { // Corregido: pais -> country
           bsonType: "string",
           minLength: 2,
           maxLength: 3,
@@ -120,6 +121,14 @@ db.createCollection("artistas", {
           minimum: 0,
           description: "Reproducciones totales"
         },
+        fecha_creacion: {
+          bsonType: "date",
+          description: "Fecha de creación"
+        },
+        activo: {
+          bsonType: "bool",
+          description: "Si el artista está activo"
+        },
         redes_sociales: {
           bsonType: "object",
           properties: {
@@ -134,7 +143,7 @@ db.createCollection("artistas", {
   }
 });
 
-// Categorías/Géneros
+// CATEGORÍAS/GÉNEROS
 db.createCollection("categorias", {
   validator: {
     $jsonSchema: {
@@ -173,7 +182,7 @@ db.createCollection("categorias", {
   }
 });
 
-// Discográficas
+// DISCOGRÁFICAS - Corregido campo país
 db.createCollection("discograficas", {
   validator: {
     $jsonSchema: {
@@ -185,7 +194,7 @@ db.createCollection("discograficas", {
           maxLength: 100,
           description: "Nombre de la discográfica"
         },
-        pais: {
+        country: { // Corregido: pais -> country
           bsonType: "string",
           minLength: 2,
           maxLength: 3,
@@ -212,7 +221,7 @@ db.createCollection("discograficas", {
   }
 });
 
-// Álbumes
+// ÁLBUMES
 db.createCollection("albumes", {
   validator: {
     $jsonSchema: {
@@ -282,13 +291,21 @@ db.createCollection("albumes", {
         precio: {
           bsonType: "decimal",
           description: "Precio para compra"
+        },
+        disponible: {
+          bsonType: "bool",
+          description: "Si el álbum está disponible"
+        },
+        fecha_creacion: {
+          bsonType: "date",
+          description: "Fecha de creación del registro"
         }
       }
     }
   }
 });
 
-// Canciones
+// CANCIONES
 db.createCollection("canciones", {
   validator: {
     $jsonSchema: {
@@ -377,13 +394,21 @@ db.createCollection("canciones", {
         precio: {
           bsonType: "decimal",
           description: "Precio para compra individual"
+        },
+        disponible: {
+          bsonType: "bool",
+          description: "Si la canción está disponible"
+        },
+        fecha_creacion: {
+          bsonType: "date",
+          description: "Fecha de creación del registro"
         }
       }
     }
   }
 });
 
-// Playlists
+// PLAYLISTS
 db.createCollection("playlists", {
   validator: {
     $jsonSchema: {
@@ -450,12 +475,21 @@ db.createCollection("playlists", {
           bsonType: "long",
           minimum: 0,
           description: "Total de reproducciones"
+        },
+        fecha_creacion: {
+          bsonType: "date",
+          description: "Fecha de creación"
+        },
+        fecha_actualizacion: {
+          bsonType: "date",
+          description: "Fecha de última actualización"
         }
       }
     }
   }
 });
 
+// HISTORIAL DE REPRODUCCIONES (Time Series Collection)
 db.createCollection("historial_reproducciones", {
   timeseries: {
     timeField: "fecha_reproduccion",
@@ -464,7 +498,7 @@ db.createCollection("historial_reproducciones", {
   }
 });
 
-// Likes de canciones
+// LIKES DE CANCIONES
 db.createCollection("likes_canciones", {
   validator: {
     $jsonSchema: {
@@ -479,7 +513,7 @@ db.createCollection("likes_canciones", {
   }
 });
 
-// Likes de álbumes
+// LIKES DE ÁLBUMES
 db.createCollection("likes_albumes", {
   validator: {
     $jsonSchema: {
@@ -494,7 +528,7 @@ db.createCollection("likes_albumes", {
   }
 });
 
-// Seguimiento de artistas
+// SEGUIMIENTO DE ARTISTAS
 db.createCollection("seguimiento_artistas", {
   validator: {
     $jsonSchema: {
@@ -510,7 +544,7 @@ db.createCollection("seguimiento_artistas", {
   }
 });
 
-// Seguimiento de playlists
+// SEGUIMIENTO DE PLAYLISTS
 db.createCollection("seguimiento_playlists", {
   validator: {
     $jsonSchema: {
@@ -525,7 +559,7 @@ db.createCollection("seguimiento_playlists", {
   }
 });
 
-// Cola de reproducción
+// COLA DE REPRODUCCIÓN
 db.createCollection("cola_reproduccion", {
   validator: {
     $jsonSchema: {
@@ -550,7 +584,7 @@ db.createCollection("cola_reproduccion", {
   }
 });
 
-// Preferencias de usuario (para recomendaciones)
+// PREFERENCIAS DE USUARIO
 db.createCollection("preferencias_usuario", {
   validator: {
     $jsonSchema: {
@@ -578,15 +612,18 @@ db.createCollection("preferencias_usuario", {
   }
 });
 
+// ==================== ÍNDICES ====================
+
+// Índices para usuarios
 db.usuarios.createIndex({ "username": 1 }, { unique: true });
 db.usuarios.createIndex({ "email": 1 }, { unique: true });
-db.usuarios.createIndex({ "pais": 1 });
-db.usuarios.createIndex({ "es_premium": 1 });
-db.usuarios.createIndex({ "fecha_registro": 1 });
+db.usuarios.createIndex({ "country": 1 }); // Corregido: pais -> country
+db.usuarios.createIndex({ "is_premium": 1 });
+db.usuarios.createIndex({ "date_of_register": 1 }); // Corregido: fecha_registro -> date_of_register
 
 // Índices para artistas
 db.artistas.createIndex({ "nombre_artistico": "text" });
-db.artistas.createIndex({ "pais": 1 });
+db.artistas.createIndex({ "country": 1 }); // Corregido: pais -> country
 db.artistas.createIndex({ "verificado": 1 });
 db.artistas.createIndex({ "oyentes_mensuales": -1 });
 db.artistas.createIndex({ "usuario_id": 1 }, { sparse: true });
@@ -640,38 +677,38 @@ db.cola_reproduccion.createIndex({ "usuario_id": 1 }, { unique: true });
 db.historial_reproducciones.createIndex({ "metadata.usuario_id": 1, "fecha_reproduccion": -1 });
 db.historial_reproducciones.createIndex({ "metadata.cancion_id": 1, "fecha_reproduccion": -1 });
 
+// Índices para preferencias
+db.preferencias_usuario.createIndex({ "usuario_id": 1 }, { unique: true });
 
+// ==================== DATOS DE EJEMPLO ====================
+
+// Insertar categorías
 db.categorias.insertMany([
   {
-    _id: ObjectId(),
     nombre: "Pop",
     descripcion: "Música popular contemporánea",
     color_hex: "#FF6B6B",
     activa: true
   },
   {
-    _id: ObjectId(),
     nombre: "Rock",
     descripcion: "Rock y sus variantes",
     color_hex: "#4ECDC4",
     activa: true
   },
   {
-    _id: ObjectId(),
     nombre: "Hip Hop",
     descripcion: "Hip hop y rap",
     color_hex: "#45B7D1",
     activa: true
   },
   {
-    _id: ObjectId(),
     nombre: "Electrónica",
     descripcion: "Música electrónica",
     color_hex: "#96CEB4",
     activa: true
   },
   {
-    _id: ObjectId(),
     nombre: "Reggaeton",
     descripcion: "Reggaeton y música urbana latina",
     color_hex: "#FECA57",
@@ -684,16 +721,16 @@ const usuarioId = ObjectId();
 db.usuarios.insertOne({
   _id: usuarioId,
   username: "usuario_demo",
-  nombre: "Usuario Demo",
+  name: "Usuario Demo",
   email: "demo@musicplatform.com",
-  password: "$2b$12$ejemplo.hash.password.muy.largo.para.seguridad.bcrypt",
-  pais: "ES",
-  fecha_nacimiento: new Date("1995-06-15"),
-  es_premium: false,
-  es_artista: false,
-  fecha_registro: new Date(),
-  ultimo_acceso: new Date(),
-  activo: true
+  password: "$2a$12$8eelYB5njGoKSbaZgxJFhervqyNn9.WiUpok2lxhZlFZwfC2tNi06",
+  country: "ES",
+  date_of_birth: new Date("1995-06-15"),
+  is_premium: false,
+  es_artist: false,
+  date_of_register: new Date(),
+  last_access: new Date(), // Corregido
+  active: true
 });
 
 // Artista de ejemplo
@@ -701,7 +738,7 @@ const artistaId = ObjectId();
 db.artistas.insertOne({
   _id: artistaId,
   nombre_artistico: "Artista Demo",
-  pais: "ES",
+  country: "ES", // Corregido
   biografia: "Artista emergente de música pop",
   verificado: false,
   oyentes_mensuales: 15000,
@@ -765,7 +802,6 @@ db.canciones.insertOne({
 
 // Playlist de ejemplo
 db.playlists.insertOne({
-  _id: ObjectId(),
   titulo: "Mi Primera Playlist",
   descripcion: "Una colección de mis canciones favoritas",
   usuario_creador_id: usuarioId,
@@ -777,7 +813,8 @@ db.playlists.insertOne({
     artistas: ["Artista Demo"],
     duracion: 240,
     orden: 1,
-    fecha_agregada: new Date()
+    fecha_agregada: new Date(),
+    agregada_por_usuario_id: usuarioId
   }],
   total_canciones: 1,
   duracion_total: 240,
@@ -787,7 +824,7 @@ db.playlists.insertOne({
   fecha_actualizacion: new Date()
 });
 
-// Al final del script, agregar confirmación:
+// Confirmación final
 print('🎵 Base de datos music_app inicializada correctamente');
 print('📊 Colecciones creadas: ' + db.getCollectionNames().length);
 print('🔍 Índices creados exitosamente');
