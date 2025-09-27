@@ -15,9 +15,6 @@ const LoginPage = () => {
 
   return (
     <div className="login-wrapper">
-      <Link to="/" className="back-button">
-        ← Volver al inicio
-      </Link>
       <Login />
     </div>
   );

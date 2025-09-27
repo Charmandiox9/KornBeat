@@ -16,7 +16,7 @@ const RegisterPage = () => {
   return (
     <div className="register-wrapper">
       <Link to="/" className="back-button">
-        ← Volver al inicio
+        ← Volver
       </Link><Register/>
       <div className="register-placeholder">
         <h2>Página de Registro</h2>
