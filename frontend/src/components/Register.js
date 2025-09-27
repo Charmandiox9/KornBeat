@@ -50,9 +50,6 @@ const Register = () => {
 
   return (
     <div className="register-container">
-      <Link to="/" className="back-button">
-        ← Volver
-      </Link>
       <div className="register-card">
         <h2>Crear cuenta</h2>
         {error && <div className="error-message">{error}</div>}
