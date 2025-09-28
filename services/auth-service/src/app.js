@@ -34,8 +34,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  name: { type: String, required: true }, // Cambiado de 'name' a 'nombre'
-  username: { type: String },
+  name: { type: String, required: true },
+  username: { type: String, unique: true },
   country: { type: String },
   date_of_birth: { type: Date },
   is_premium: { type: Boolean, default: false },
@@ -43,18 +43,11 @@ const userSchema = new mongoose.Schema({
   date_of_register: { type: Date, default: Date.now },
   last_acces: { type: Date },
   active: { type: Boolean, default: true },
-  refreshTokens: [{ type: String }], // AGREGAR ESTA LÍNEA
-  lastLogin: { type: Date } // También usado en el código
+  refreshTokens: [{ type: String }],
+  lastLogin: { type: Date }
 });
 
-// Hash automático de la contraseña antes de guardar
-/*userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});*/
-
-// CORREGIDO: Método comparePassword
+// Método comparePassword
 userSchema.methods.comparePassword = async function(password) {
   return bcrypt.compare(password, this.password);
 };
@@ -89,45 +82,191 @@ const authenticateToken = (req, res, next) => {
 
 // Rutas
 
-// Registro
+// Registro - AJUSTADO para coincidir exactamente con el esquema MongoDB
 app.post('/auth/register', [
   body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('name').trim().isLength({ min: 2 })
+  body('password').isLength({ min: 6, max: 255 }),
+  body('name').trim().isLength({ min: 2, max: 50 }),
+  body('username').optional().trim().isLength({ min: 3, max: 30 }),
+  body('country').isLength({ min: 2, max: 3 }),
+  body('date_of_birth').optional().isISO8601()
 ], async (req, res) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  if (!errors.isEmpty()) {
+    console.log('Errores de validación:', errors.array());
+    return res.status(400).json({ 
+      message: 'Datos de registro inválidos',
+      errors: errors.array() 
+    });
+  }
 
-  const { email, password, name } = req.body;
+  const { email, password, name, username, country, date_of_birth } = req.body;
 
   try {
-    const existingUser = await User.findOne({ email });
-    
-    // CORREGIDO: Verificar si existe antes de acceder a propiedades
-    if (existingUser) {
-      console.log('Usuario existente encontrado:', existingUser.email);
-      return res.status(400).json({ message: 'Usuario ya existe' });
+    console.log('=== REGISTRO DE NUEVO USUARIO ===');
+    console.log('Datos recibidos:', { email, name, username, country, date_of_birth });
+    console.log('Estado de conexión MongoDB:', mongoose.connection.readyState);
+
+    // Verificar si el usuario ya existe (email)
+    const existingUserByEmail = await User.findOne({ email });
+    if (existingUserByEmail) {
+      console.log('Email ya existe:', existingUserByEmail.email);
+      return res.status(400).json({ message: 'El email ya está registrado' });
     }
 
-    const user = new User({ email, password, name });
-    await user.save();
-    console.log('Nuevo usuario creado:', user.email);
+    // Generar un username único si no se proporcionó
+    let finalUsername = username || email.split('@')[0].toLowerCase();
+    
+    // Verificar que el username sea único
+    let usernameExists = await User.findOne({ username: finalUsername });
+    let counter = 1;
+    
+    while (usernameExists) {
+      finalUsername = `${username || email.split('@')[0].toLowerCase()}_${counter}`;
+      usernameExists = await User.findOne({ username: finalUsername });
+      counter++;
+      console.log('Username alternativo generado:', finalUsername);
+    }
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    console.log('Username final:', finalUsername);
 
-    user.refreshTokens.push(refreshToken);
-    await user.save();
+    // Hash de la contraseña
+    console.log('Generando hash de contraseña...');
+    const hashedPassword = await bcrypt.hash(password, 12);
+    console.log('Contraseña hasheada correctamente');
 
-    res.status(201).json({ user, accessToken, refreshToken });
+    // Crear usuario con TODOS los campos requeridos según MongoDB
+    console.log('Creando nuevo usuario...');
+    const newUser = new User({
+      // Campos requeridos por MongoDB
+      username: finalUsername,
+      name: name,
+      email: email,
+      password: hashedPassword,
+      country: country,
+      
+      // Campos opcionales
+      date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
+      
+      // Campos con valores por defecto
+      is_premium: false,
+      es_artist: false,
+      date_of_register: new Date(),
+      last_acces: new Date(),
+      active: true,
+      refreshTokens: []
+    });
+
+    console.log('Usuario a guardar:', {
+      username: newUser.username,
+      name: newUser.name,
+      email: newUser.email,
+      country: newUser.country,
+      date_of_birth: newUser.date_of_birth,
+      is_premium: newUser.is_premium,
+      es_artist: newUser.es_artist,
+      active: newUser.active
+    });
+
+    // Guardar usuario
+    await newUser.save();
+    console.log('✅ Usuario guardado exitosamente en MongoDB');
+
+    // Generar tokens JWT
+    console.log('Generando tokens JWT...');
+    const accessToken = generateAccessToken(newUser);
+    const refreshToken = generateRefreshToken(newUser);
+
+    // Agregar refresh token al usuario
+    newUser.refreshTokens.push(refreshToken);
+    await newUser.save();
+    console.log('Tokens agregados y usuario actualizado');
+
+    // Respuesta sin contraseña
+    const userResponse = {
+      _id: newUser._id,
+      username: newUser.username,
+      name: newUser.name,
+      email: newUser.email,
+      country: newUser.country,
+      date_of_birth: newUser.date_of_birth,
+      is_premium: newUser.is_premium,
+      es_artist: newUser.es_artist,
+      date_of_register: newUser.date_of_register,
+      active: newUser.active
+    };
+
+    console.log('🎉 Registro completado exitosamente para:', newUser.email);
+
+    res.status(201).json({
+      message: 'Usuario registrado exitosamente',
+      user: userResponse,
+      accessToken,
+      refreshToken
+    });
+
   } catch (error) {
-    console.error('Error en registro:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
+    console.error('=== ERROR EN REGISTRO ===');
+    console.error('Tipo de error:', error.name);
+    console.error('Mensaje:', error.message);
+    console.error('Código:', error.code);
+    
+    // AGREGAR DETALLES DE VALIDACIÓN
+    if (error.errInfo && error.errInfo.details) {
+      console.error('Detalles de validación:', JSON.stringify(error.errInfo.details, null, 2));
+    }
+    
+    console.error('Error completo:', error);
+    
+    // Manejar errores específicos de MongoDB
+    if (error.code === 11000) {
+      console.log('Error de duplicado detectado:', error.keyPattern);
+      const field = Object.keys(error.keyPattern)[0];
+      const fieldNames = {
+        email: 'email',
+        username: 'nombre de usuario'
+      };
+      return res.status(400).json({ 
+        message: `El ${fieldNames[field] || field} ya está registrado` 
+      });
+    }
+
+    if (error.name === 'ValidationError') {
+      console.log('Error de validación de Mongoose:', error.errors);
+      const validationErrors = Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      return res.status(400).json({ 
+        message: 'Error de validación en los datos',
+        errors: validationErrors 
+      });
+    }
+
+    if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
+      console.log('Error de conexión a MongoDB');
+      return res.status(500).json({ 
+        message: 'Error de conexión con la base de datos. Intenta de nuevo.' 
+      });
+    }
+
+    if (error.name === 'MongoServerError' && error.code === 121) {
+      console.log('Error de validación del esquema JSON de MongoDB');
+      return res.status(400).json({ 
+        message: 'Los datos no cumplen con el formato requerido. Verifica todos los campos.' 
+      });
+    }
+
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      message: 'Error interno del servidor durante el registro',
+      error: error.message
+    });
   }
 });
 
-// CORREGIDO: Login
-// CORREGIDO: Login con debug mejorado
+// Login con debug mejorado
 app.post('/auth/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').exists()
@@ -149,7 +288,7 @@ app.post('/auth/login', [
     
     // Búsqueda exacta
     console.log('Buscando usuario con email:', email);
-    const user = await User.findOne({ email: email });
+    let user = await User.findOne({ email: email });
     console.log('Usuario encontrado:', user);
     
     if (!user) {
@@ -205,7 +344,21 @@ app.post('/auth/login', [
       await user.save();
     }
 
-    res.json({ user, accessToken, refreshToken });
+    // Responder sin incluir la contraseña
+    const userResponse = {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      username: user.username,
+      country: user.country,
+      date_of_birth: user.date_of_birth,
+      is_premium: user.is_premium,
+      es_artist: user.es_artist,
+      date_of_register: user.date_of_register,
+      active: user.active
+    };
+
+    res.json({ user: userResponse, accessToken, refreshToken });
   } catch (error) {
     console.error('=== ERROR EN LOGIN ===');
     console.error('Error completo:', error);
@@ -266,7 +419,37 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// AÑADIDO: Ruta para verificar base de datos
+// Debug de conexión
+app.get('/auth/debug/connection', async (req, res) => {
+  try {
+    const dbState = mongoose.connection.readyState;
+    const states = {
+      0: 'Desconectado',
+      1: 'Conectado', 
+      2: 'Conectando',
+      3: 'Desconectando'
+    };
+    
+    res.json({
+      status: 'OK',
+      mongodb: {
+        state: dbState,
+        stateText: states[dbState],
+        host: mongoose.connection.host,
+        name: mongoose.connection.name,
+        port: mongoose.connection.port
+      },
+      env: {
+        MONGODB_URI: process.env.MONGODB_URI ? 'Configurado' : 'No configurado',
+        JWT_SECRET: process.env.JWT_SECRET ? 'Configurado' : 'No configurado'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Ruta para verificar base de datos
 app.get('/auth/debug/users', async (req, res) => {
   try {
     console.log('=== DEBUG: Verificando usuarios en BD ===');
@@ -276,7 +459,7 @@ app.get('/auth/debug/users', async (req, res) => {
     console.log('Colecciones disponibles:', collections.map(c => c.name));
     
     // Buscar en la colección 'usuarios' específicamente
-    const usersFromUsuarios = await User.find({}).select('email name password date_of_register');
+    const usersFromUsuarios = await User.find({}).select('email name username password date_of_register country');
     console.log('Usuarios encontrados en colección "usuarios":', usersFromUsuarios.length);
     
     // También verificar si hay usuarios en otras posibles colecciones
@@ -295,6 +478,8 @@ app.get('/auth/debug/users', async (req, res) => {
         users: usersFromUsuarios.map(u => ({
           email: u.email,
           name: u.name,
+          username: u.username,
+          country: u.country,
           tienePassword: !!u.password,
           longitudPassword: u.password ? u.password.length : 0,
           fechaRegistro: u.date_of_register

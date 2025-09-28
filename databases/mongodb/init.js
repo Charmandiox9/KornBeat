@@ -15,21 +15,21 @@ db.createCollection("usuarios", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["username", "name", "email", "password", "country"], // Corregido: nombre->name, pais->country
+      required: ["username", "name", "email", "password", "country"], // ✅ CORREGIDO: name y country
       properties: {
         username: {
           bsonType: "string",
           maxLength: 30,
           description: "Username único del usuario"
         },
-        name: {
+        name: { // ✅ CORREGIDO: nombre -> name
           bsonType: "string",
           maxLength: 50,
           description: "Nombre completo del usuario"
         },
         email: {
           bsonType: "string",
-          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", // Corregido: escape de punto
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
           description: "Email válido"
         },
         password: {
@@ -38,7 +38,7 @@ db.createCollection("usuarios", {
           maxLength: 255,
           description: "Hash de contraseña"
         },
-        country: {
+        country: { // ✅ CORREGIDO: pais -> country
           bsonType: "string",
           minLength: 2,
           maxLength: 3,
@@ -64,13 +64,22 @@ db.createCollection("usuarios", {
           bsonType: "date",
           description: "Fecha de registro"
         },
-        last_access: { // Corregido: last_acces -> last_access
+        last_acces: { // Mantener como está en tu esquema de Mongoose
           bsonType: "date",
           description: "Último acceso"
         },
         active: {
           bsonType: "bool",
           description: "Si el usuario está activo"
+        },
+        refreshTokens: {
+          bsonType: "array",
+          items: { bsonType: "string" },
+          description: "Array de refresh tokens"
+        },
+        lastLogin: {
+          bsonType: "date",
+          description: "Último login"
         }
       }
     }
@@ -82,7 +91,7 @@ db.createCollection("artistas", {
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["nombre_artistico", "country"], // Corregido: pais -> country
+      required: ["nombre_artistico", "country"], // ✅ CORREGIDO: country
       properties: {
         usuario_id: {
           bsonType: "objectId",
@@ -93,7 +102,7 @@ db.createCollection("artistas", {
           maxLength: 100,
           description: "Nombre artístico"
         },
-        country: { // Corregido: pais -> country
+        country: { // ✅ CORREGIDO: pais -> country
           bsonType: "string",
           minLength: 2,
           maxLength: 3,
