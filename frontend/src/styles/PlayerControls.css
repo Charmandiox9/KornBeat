@@ -1,0 +1,145 @@
+/* PlayerControls.css */
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.player-controls.large {
+  gap: 16px;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary, #e0e0e0);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color, #1db954);
+  transform: scale(1.05);
+}
+
+.control-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.control-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.control-btn:focus-visible {
+  outline: 2px solid var(--primary-color, #1db954);
+  outline-offset: 2px;
+}
+
+/* Botón de play/pause principal */
+.control-btn.play-pause {
+  background: var(--primary-color, #1db954);
+  color: #000;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+}
+
+.control-btn.play-pause:hover:not(:disabled) {
+  background: var(--primary-hover, #1ed760);
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+}
+
+.player-controls.large .control-btn.play-pause {
+  width: 48px;
+  height: 48px;
+}
+
+/* Botones shuffle y repeat */
+.control-btn.shuffle,
+.control-btn.repeat {
+  opacity: 0.6;
+}
+
+.control-btn.shuffle:hover:not(:disabled),
+.control-btn.repeat:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.control-btn.shuffle.active,
+.control-btn.repeat.active {
+  opacity: 1;
+  color: var(--primary-color, #1db954);
+}
+
+.control-btn.shuffle.active::after,
+.control-btn.repeat.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--primary-color, #1db954);
+  border-radius: 50%;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.player-controls.large .loading-spinner {
+  width: 28px;
+  height: 28px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .player-controls {
+    gap: 8px;
+  }
+
+  .control-btn {
+    padding: 6px;
+  }
+
+  .control-btn.play-pause {
+    width: 36px;
+    height: 36px;
+  }
+
+  .control-btn.shuffle,
+  .control-btn.repeat {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-controls {
+    gap: 4px;
+  }
+}

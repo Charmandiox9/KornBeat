@@ -1,14 +1,16 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Music, Search, Loader2, Play, Heart, MoreVertical } from 'lucide-react';
+import { Music, Search, Loader2, Play, Heart, MoreVertical, ListPlus, PlayCircle } from 'lucide-react';
 import { useMusicSearch } from '../context/MusicSearchContext';
+import { useMusicPlayer } from '../context/MusicPlayerContext';
 import '../styles/SearchBarResults.css';
 
-const SearchBarResultsComponent = ({ onSongPlay }) => {
+const SearchBarResultsComponent = () => {
   const { searchResults, isLoading, error, searchQuery } = useMusicSearch();
+  const { playNow, addToQueue, playNextInQueue, currentSong } = useMusicPlayer();
   const [likedSongs, setLikedSongs] = useState(new Set());
   const [imageErrors, setImageErrors] = useState(new Set());
+  const [activeMenu, setActiveMenu] = useState(null);
 
-  // Memoizar función de formato
   const formatDuration = useCallback((seconds) => {
     if (!seconds || seconds < 0) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -16,7 +18,6 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
-  // Optimizar manejo de likes con useCallback
   const handleLike = useCallback((songId, e) => {
     e.stopPropagation();
     setLikedSongs(prev => {
@@ -30,33 +31,54 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
     });
   }, []);
 
-  // Manejar errores de carga de imágenes
   const handleImageError = useCallback((songId) => {
     setImageErrors(prev => new Set(prev).add(songId));
   }, []);
 
-  // Manejar reproducción con teclado
   const handleKeyPress = useCallback((e, song) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onSongPlay?.(song);
+      playNow(song);
     }
-  }, [onSongPlay]);
+  }, [playNow]);
 
-  // Manejar click en "Más opciones"
-  const handleMoreOptions = useCallback((e, song) => {
+  const handleMoreOptions = useCallback((e, songId) => {
     e.stopPropagation();
-    // TODO: Implementar menú de opciones
-    console.log('Opciones para:', song.titulo);
-  }, []);
+    setActiveMenu(activeMenu === songId ? null : songId);
+  }, [activeMenu]);
 
-  // Texto de resultados memoizado
+  const handlePlayNow = useCallback((e, song) => {
+    e.stopPropagation();
+    playNow(song);
+    setActiveMenu(null);
+  }, [playNow]);
+
+  const handleAddToQueue = useCallback((e, song) => {
+    e.stopPropagation();
+    addToQueue(song);
+    setActiveMenu(null);
+  }, [addToQueue]);
+
+  const handlePlayNext = useCallback((e, song) => {
+    e.stopPropagation();
+    playNextInQueue(song);
+    setActiveMenu(null);
+  }, [playNextInQueue]);
+
   const resultsText = useMemo(() => {
     const count = searchResults.length;
     return `${count} ${count === 1 ? 'canción encontrada' : 'canciones encontradas'}`;
   }, [searchResults.length]);
 
-  // Estados de carga
+  // Cerrar menú al hacer click fuera
+  React.useEffect(() => {
+    const handleClickOutside = () => setActiveMenu(null);
+    if (activeMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [activeMenu]);
+
   if (isLoading && searchResults.length === 0) {
     return (
       <div className="results-empty-state" role="status" aria-live="polite">
@@ -66,7 +88,6 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
     );
   }
 
-  // Estado de error
   if (error) {
     return (
       <div className="results-error" role="alert">
@@ -76,7 +97,6 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
     );
   }
 
-  // Estado inicial
   if (!searchQuery && searchResults.length === 0) {
     return (
       <div className="results-empty-state">
@@ -87,7 +107,6 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
     );
   }
 
-  // Sin resultados
   if (searchResults.length === 0) {
     return (
       <div className="results-empty-state">
@@ -98,7 +117,6 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
     );
   }
 
-  // Resultados
   return (
     <div className="search-results">
       <div className="results-header">
@@ -112,12 +130,13 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
           const artistName = song.artistas?.map(a => a.nombre).join(', ') || 'Artista desconocido';
           const hasImageError = imageErrors.has(song._id);
           const isLiked = likedSongs.has(song._id);
+          const isPlaying = currentSong?._id === song._id;
 
           return (
             <div
               key={song._id}
-              className="song-card"
-              onClick={() => onSongPlay?.(song)}
+              className={`song-card ${isPlaying ? 'playing' : ''}`}
+              onClick={() => playNow(song)}
               onKeyPress={(e) => handleKeyPress(e, song)}
               role="listitem button"
               tabIndex={0}
@@ -137,7 +156,15 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
                     <Music className="cover-icon" aria-hidden="true" />
                   )}
                   <div className="play-overlay" aria-hidden="true">
-                    <Play className="play-icon" />
+                    {isPlaying ? (
+                      <div className="playing-animation">
+                        <span className="bar"></span>
+                        <span className="bar"></span>
+                        <span className="bar"></span>
+                      </div>
+                    ) : (
+                      <Play className="play-icon" />
+                    )}
                   </div>
                 </div>
 
@@ -167,14 +194,43 @@ const SearchBarResultsComponent = ({ onSongPlay }) => {
                     />
                   </button>
 
-                  <button
-                    onClick={(e) => handleMoreOptions(e, song)}
-                    className="action-button"
-                    aria-label={`Más opciones para ${song.titulo}`}
-                    aria-haspopup="true"
-                  >
-                    <MoreVertical className="action-icon" aria-hidden="true" />
-                  </button>
+                  <div className="more-options-wrapper">
+                    <button
+                      onClick={(e) => handleMoreOptions(e, song._id)}
+                      className="action-button"
+                      aria-label={`Más opciones para ${song.titulo}`}
+                      aria-haspopup="true"
+                      aria-expanded={activeMenu === song._id}
+                    >
+                      <MoreVertical className="action-icon" aria-hidden="true" />
+                    </button>
+
+                    {activeMenu === song._id && (
+                      <div className="options-menu">
+                        <button
+                          onClick={(e) => handlePlayNow(e, song)}
+                          className="menu-option"
+                        >
+                          <PlayCircle size={16} />
+                          <span>Reproducir ahora</span>
+                        </button>
+                        <button
+                          onClick={(e) => handlePlayNext(e, song)}
+                          className="menu-option"
+                        >
+                          <Play size={16} />
+                          <span>Reproducir siguiente</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleAddToQueue(e, song)}
+                          className="menu-option"
+                        >
+                          <ListPlus size={16} />
+                          <span>Agregar a la cola</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
