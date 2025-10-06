@@ -5,32 +5,243 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const redis = require('redis');
 require('dotenv').config();
 
 const app = express();
 
-// Middlewares
+// ============= CONFIGURACIÓN DE REDIS =============
+let redisClient;
+
+(async () => {
+  try {
+    redisClient = redis.createClient({
+      url: process.env.REDIS_HOST || 'redis://localhost:6379',
+      socket: {
+        reconnectStrategy: (retries) => {
+          if (retries > 10) {
+            console.error('❌ Redis: Demasiados intentos de reconexión');
+            return new Error('Reintentos agotados');
+          }
+          return retries * 100;
+        }
+      }
+    });
+
+    redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
+    redisClient.on('connect', () => console.log('🔄 Redis: Conectando...'));
+    redisClient.on('ready', () => console.log('✅ Redis: Conectado y listo'));
+
+    await redisClient.connect();
+  } catch (error) {
+    console.error('❌ Error al conectar Redis:', error);
+  }
+})();
+
+// Helper para verificar si Redis está disponible
+const isRedisAvailable = () => {
+  return redisClient && redisClient.isOpen;
+};
+
+// ============= FUNCIONES DE REDIS =============
+
+// Cache de usuarios
+const cacheUser = async (userId, userData) => {
+  if (!isRedisAvailable()) return;
+  try {
+    const key = `cache:user:${userId}`;
+    await redisClient.setEx(key, 3600, JSON.stringify(userData)); // 1 hora
+  } catch (error) {
+    console.error('Error al cachear usuario:', error);
+  }
+};
+
+const getCachedUser = async (userId) => {
+  if (!isRedisAvailable()) return null;
+  try {
+    const key = `cache:user:${userId}`;
+    const cached = await redisClient.get(key);
+    return cached ? JSON.parse(cached) : null;
+  } catch (error) {
+    console.error('Error al obtener usuario cacheado:', error);
+    return null;
+  }
+};
+
+const invalidateUserCache = async (userId) => {
+  if (!isRedisAvailable()) return;
+  try {
+    await redisClient.del(`cache:user:${userId}`);
+  } catch (error) {
+    console.error('Error al invalidar cache de usuario:', error);
+  }
+};
+
+// Gestión de sesiones
+const createSession = async (sessionId, userId, userData) => {
+  if (!isRedisAvailable()) return;
+  try {
+    const sessionKey = `session:${sessionId}`;
+    const userSessionsKey = `user_sessions:${userId}`;
+    
+    // Guardar datos de sesión
+    await redisClient.hSet(sessionKey, {
+      user_id: userId.toString(),
+      email: userData.email,
+      name: userData.name,
+      role: userData.is_premium ? 'premium' : 'free',
+      created_at: Date.now().toString(),
+      last_activity: Date.now().toString()
+    });
+    
+    // TTL de 2 horas
+    await redisClient.expire(sessionKey, 7200);
+    
+    // Agregar a índice de sesiones del usuario
+    await redisClient.sAdd(userSessionsKey, sessionId);
+    await redisClient.expire(userSessionsKey, 7200);
+  } catch (error) {
+    console.error('Error al crear sesión:', error);
+  }
+};
+
+const getSession = async (sessionId) => {
+  if (!isRedisAvailable()) return null;
+  try {
+    const sessionKey = `session:${sessionId}`;
+    const sessionData = await redisClient.hGetAll(sessionKey);
+    
+    if (Object.keys(sessionData).length === 0) return null;
+    
+    // Actualizar última actividad
+    await redisClient.hSet(sessionKey, 'last_activity', Date.now().toString());
+    await redisClient.expire(sessionKey, 7200);
+    
+    return sessionData;
+  } catch (error) {
+    console.error('Error al obtener sesión:', error);
+    return null;
+  }
+};
+
+const deleteSession = async (sessionId, userId) => {
+  if (!isRedisAvailable()) return;
+  try {
+    const sessionKey = `session:${sessionId}`;
+    const userSessionsKey = `user_sessions:${userId}`;
+    
+    await redisClient.del(sessionKey);
+    await redisClient.sRem(userSessionsKey, sessionId);
+  } catch (error) {
+    console.error('Error al eliminar sesión:', error);
+  }
+};
+
+const deleteAllUserSessions = async (userId) => {
+  if (!isRedisAvailable()) return;
+  try {
+    const userSessionsKey = `user_sessions:${userId}`;
+    const sessions = await redisClient.sMembers(userSessionsKey);
+    
+    if (sessions.length > 0) {
+      const pipeline = redisClient.multi();
+      sessions.forEach(sessionId => {
+        pipeline.del(`session:${sessionId}`);
+      });
+      await pipeline.exec();
+    }
+    
+    await redisClient.del(userSessionsKey);
+  } catch (error) {
+    console.error('Error al eliminar todas las sesiones:', error);
+  }
+};
+
+// Gestión de refresh tokens en Redis
+const storeRefreshToken = async (userId, refreshToken) => {
+  if (!isRedisAvailable()) return;
+  try {
+    const key = `refresh_token:${refreshToken}`;
+    await redisClient.setEx(key, 604800, userId.toString()); // 7 días
+  } catch (error) {
+    console.error('Error al guardar refresh token:', error);
+  }
+};
+
+const validateRefreshToken = async (refreshToken) => {
+  if (!isRedisAvailable()) return null;
+  try {
+    const key = `refresh_token:${refreshToken}`;
+    const userId = await redisClient.get(key);
+    return userId;
+  } catch (error) {
+    console.error('Error al validar refresh token:', error);
+    return null;
+  }
+};
+
+const deleteRefreshToken = async (refreshToken) => {
+  if (!isRedisAvailable()) return;
+  try {
+    await redisClient.del(`refresh_token:${refreshToken}`);
+  } catch (error) {
+    console.error('Error al eliminar refresh token:', error);
+  }
+};
+
+// Rate limiting por IP
+const checkRateLimit = async (ip, limit = 5, windowSeconds = 300) => {
+  if (!isRedisAvailable()) return true; // Permitir si Redis no está disponible
+  try {
+    const key = `rate_limit:${ip}`;
+    const current = await redisClient.incr(key);
+    
+    if (current === 1) {
+      await redisClient.expire(key, windowSeconds);
+    }
+    
+    return current <= limit;
+  } catch (error) {
+    console.error('Error en rate limit:', error);
+    return true;
+  }
+};
+
+// ============= MIDDLEWARES =============
 app.use(express.json());
 app.use(cors({
-  origin: 
-    [
-      process.env.FRONTEND_URL,
-      'http://localhost:3000',
-      'http://localhost',
-      'https://localhost:80'
-    ],
+  origin: [
+    process.env.FRONTEND_URL,
+    'http://localhost:3000',
+    'http://localhost',
+    'https://localhost:80'
+  ],
   credentials: true
 }));
 
-// Conexión a MongoDB
+// Middleware de rate limiting
+const rateLimitMiddleware = async (req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const allowed = await checkRateLimit(ip, 100, 60); // 100 requests por minuto
+  
+  if (!allowed) {
+    return res.status(429).json({ message: 'Demasiadas solicitudes. Intenta más tarde.' });
+  }
+  
+  next();
+};
+
+app.use(rateLimitMiddleware);
+
+// ============= CONEXIÓN A MONGODB =============
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('Conectado a MongoDB'))
-.catch(err => console.error('Error al conectar MongoDB:', err));
+.then(() => console.log('✅ Conectado a MongoDB'))
+.catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
-// Esquema adaptado a tu estructura de BD existente
+// ============= ESQUEMA DE USUARIO =============
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -47,15 +258,13 @@ const userSchema = new mongoose.Schema({
   lastLogin: { type: Date }
 });
 
-// Método comparePassword
 userSchema.methods.comparePassword = async function(password) {
   return bcrypt.compare(password, this.password);
 };
 
-// Configurar para usar la colección 'usuarios'
 const User = mongoose.model('User', userSchema, 'usuarios');
 
-// Funciones JWT
+// ============= FUNCIONES JWT =============
 const generateAccessToken = (user) => jwt.sign(
   { id: user._id, email: user.email},
   process.env.JWT_SECRET,
@@ -68,21 +277,39 @@ const generateRefreshToken = (user) => jwt.sign(
   { expiresIn: '7d' }
 );
 
-// Middleware de autenticación
-const authenticateToken = (req, res, next) => {
+// ============= MIDDLEWARE DE AUTENTICACIÓN CON REDIS =============
+const authenticateToken = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'Token requerido' });
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Token inválido' });
-    req.user = user;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Intentar obtener usuario del cache
+    let user = await getCachedUser(decoded.id);
+    
+    if (!user) {
+      // Si no está en cache, buscar en MongoDB
+      const dbUser = await User.findById(decoded.id).select('-password -refreshTokens');
+      if (!dbUser) {
+        return res.status(403).json({ message: 'Usuario no encontrado' });
+      }
+      
+      user = dbUser.toObject();
+      // Cachear para próximas solicitudes
+      await cacheUser(decoded.id, user);
+    }
+    
+    req.user = { ...decoded, ...user };
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ message: 'Token inválido' });
+  }
 };
 
-// Rutas
+// ============= RUTAS =============
 
-// Registro - AJUSTADO para coincidir exactamente con el esquema MongoDB
+// Registro
 app.post('/auth/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6, max: 255 }),
@@ -93,7 +320,6 @@ app.post('/auth/register', [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.log('Errores de validación:', errors.array());
     return res.status(400).json({ 
       message: 'Datos de registro inválidos',
       errors: errors.array() 
@@ -101,23 +327,25 @@ app.post('/auth/register', [
   }
 
   const { email, password, name, username, country, date_of_birth } = req.body;
+  const ip = req.ip || req.connection.remoteAddress;
+
+  // Rate limiting específico para registro (más estricto)
+  const allowed = await checkRateLimit(`register:${ip}`, 3, 3600); // 3 registros por hora
+  if (!allowed) {
+    return res.status(429).json({ 
+      message: 'Has excedido el límite de registros. Intenta más tarde.' 
+    });
+  }
 
   try {
-    console.log('=== REGISTRO DE NUEVO USUARIO ===');
-    console.log('Datos recibidos:', { email, name, username, country, date_of_birth });
-    console.log('Estado de conexión MongoDB:', mongoose.connection.readyState);
-
-    // Verificar si el usuario ya existe (email)
+    // Verificar email existente
     const existingUserByEmail = await User.findOne({ email });
     if (existingUserByEmail) {
-      console.log('Email ya existe:', existingUserByEmail.email);
       return res.status(400).json({ message: 'El email ya está registrado' });
     }
 
-    // Generar un username único si no se proporcionó
+    // Generar username único
     let finalUsername = username || email.split('@')[0].toLowerCase();
-    
-    // Verificar que el username sea único
     let usernameExists = await User.findOne({ username: finalUsername });
     let counter = 1;
     
@@ -125,30 +353,19 @@ app.post('/auth/register', [
       finalUsername = `${username || email.split('@')[0].toLowerCase()}_${counter}`;
       usernameExists = await User.findOne({ username: finalUsername });
       counter++;
-      console.log('Username alternativo generado:', finalUsername);
     }
 
-    console.log('Username final:', finalUsername);
-
-    // Hash de la contraseña
-    console.log('Generando hash de contraseña...');
+    // Hash de contraseña
     const hashedPassword = await bcrypt.hash(password, 12);
-    console.log('Contraseña hasheada correctamente');
 
-    // Crear usuario con TODOS los campos requeridos según MongoDB
-    console.log('Creando nuevo usuario...');
+    // Crear usuario
     const newUser = new User({
-      // Campos requeridos por MongoDB
       username: finalUsername,
       name: name,
       email: email,
       password: hashedPassword,
       country: country,
-      
-      // Campos opcionales
       date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
-      
-      // Campos con valores por defecto
       is_premium: false,
       es_artist: false,
       date_of_register: new Date(),
@@ -157,32 +374,28 @@ app.post('/auth/register', [
       refreshTokens: []
     });
 
-    console.log('Usuario a guardar:', {
-      username: newUser.username,
-      name: newUser.name,
-      email: newUser.email,
-      country: newUser.country,
-      date_of_birth: newUser.date_of_birth,
-      is_premium: newUser.is_premium,
-      es_artist: newUser.es_artist,
-      active: newUser.active
-    });
-
-    // Guardar usuario
     await newUser.save();
-    console.log('✅ Usuario guardado exitosamente en MongoDB');
 
-    // Generar tokens JWT
-    console.log('Generando tokens JWT...');
+    // Generar tokens
     const accessToken = generateAccessToken(newUser);
     const refreshToken = generateRefreshToken(newUser);
 
-    // Agregar refresh token al usuario
+    // Guardar refresh token en MongoDB
     newUser.refreshTokens.push(refreshToken);
     await newUser.save();
-    console.log('Tokens agregados y usuario actualizado');
 
-    // Respuesta sin contraseña
+    // Guardar refresh token en Redis
+    await storeRefreshToken(newUser._id, refreshToken);
+
+    // Crear sesión en Redis
+    const sessionId = `${newUser._id}_${Date.now()}`;
+    await createSession(sessionId, newUser._id, {
+      email: newUser.email,
+      name: newUser.name,
+      is_premium: newUser.is_premium
+    });
+
+    // Cachear usuario
     const userResponse = {
       _id: newUser._id,
       username: newUser.username,
@@ -196,69 +409,26 @@ app.post('/auth/register', [
       active: newUser.active
     };
 
-    console.log('🎉 Registro completado exitosamente para:', newUser.email);
+    await cacheUser(newUser._id, userResponse);
 
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
       user: userResponse,
       accessToken,
-      refreshToken
+      refreshToken,
+      sessionId
     });
 
   } catch (error) {
-    console.error('=== ERROR EN REGISTRO ===');
-    console.error('Tipo de error:', error.name);
-    console.error('Mensaje:', error.message);
-    console.error('Código:', error.code);
+    console.error('Error en registro:', error);
     
-    // AGREGAR DETALLES DE VALIDACIÓN
-    if (error.errInfo && error.errInfo.details) {
-      console.error('Detalles de validación:', JSON.stringify(error.errInfo.details, null, 2));
-    }
-    
-    console.error('Error completo:', error);
-    
-    // Manejar errores específicos de MongoDB
     if (error.code === 11000) {
-      console.log('Error de duplicado detectado:', error.keyPattern);
       const field = Object.keys(error.keyPattern)[0];
-      const fieldNames = {
-        email: 'email',
-        username: 'nombre de usuario'
-      };
       return res.status(400).json({ 
-        message: `El ${fieldNames[field] || field} ya está registrado` 
+        message: `El ${field === 'email' ? 'email' : 'nombre de usuario'} ya está registrado` 
       });
     }
 
-    if (error.name === 'ValidationError') {
-      console.log('Error de validación de Mongoose:', error.errors);
-      const validationErrors = Object.values(error.errors).map(err => ({
-        field: err.path,
-        message: err.message,
-        value: err.value
-      }));
-      return res.status(400).json({ 
-        message: 'Error de validación en los datos',
-        errors: validationErrors 
-      });
-    }
-
-    if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
-      console.log('Error de conexión a MongoDB');
-      return res.status(500).json({ 
-        message: 'Error de conexión con la base de datos. Intenta de nuevo.' 
-      });
-    }
-
-    if (error.name === 'MongoServerError' && error.code === 121) {
-      console.log('Error de validación del esquema JSON de MongoDB');
-      return res.status(400).json({ 
-        message: 'Los datos no cumplen con el formato requerido. Verifica todos los campos.' 
-      });
-    }
-
-    console.error('Stack trace:', error.stack);
     res.status(500).json({ 
       message: 'Error interno del servidor durante el registro',
       error: error.message
@@ -266,7 +436,7 @@ app.post('/auth/register', [
   }
 });
 
-// Login con debug mejorado
+// Login
 app.post('/auth/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').exists()
@@ -275,76 +445,60 @@ app.post('/auth/login', [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   const { email, password } = req.body;
+  const ip = req.ip || req.connection.remoteAddress;
+
+  // Rate limiting para login
+  const allowed = await checkRateLimit(`login:${ip}`, 10, 300); // 10 intentos cada 5 min
+  if (!allowed) {
+    return res.status(429).json({ 
+      message: 'Demasiados intentos de login. Intenta más tarde.' 
+    });
+  }
 
   try {
-    console.log('=== DEBUG LOGIN ===');
-    console.log('Email recibido:', email);
-    console.log('Email después de normalizeEmail():', email);
-    
-    // Debug: Ver todos los usuarios en la base de datos
-    const allUsers = await User.find({}).select('email name');
-    console.log('Todos los usuarios en BD:', allUsers);
-    console.log('Total usuarios:', allUsers.length);
-    
-    // Búsqueda exacta
-    console.log('Buscando usuario con email:', email);
+    // Buscar usuario
     let user = await User.findOne({ email: email });
-    console.log('Usuario encontrado:', user);
     
     if (!user) {
-      console.log('=== USUARIO NO ENCONTRADO ===');
-      console.log('Intentando búsqueda case-insensitive...');
-      
-      // Búsqueda case-insensitive
-      const userCaseInsensitive = await User.findOne({ 
+      user = await User.findOne({ 
         email: { $regex: new RegExp(`^${email}$`, 'i') } 
       });
-      console.log('Usuario con búsqueda case-insensitive:', userCaseInsensitive);
-      
-      if (!userCaseInsensitive) {
-        return res.status(401).json({ 
-          message: 'Credenciales inválidas',
-          debug: {
-            emailBuscado: email,
-            usuariosEnBD: allUsers.map(u => u.email)
-          }
-        });
-      } else {
-        console.log('¡Usuario encontrado con búsqueda case-insensitive!');
-        // Usar el usuario encontrado
-        user = userCaseInsensitive;
-      }
+    }
+
+    if (!user) {
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
     
-    console.log('=== VERIFICANDO CONTRASEÑA ===');
-    console.log('Usuario final para comparar:', user.email);
-    console.log('¿Tiene método comparePassword?', typeof user.comparePassword === 'function');
-    
+    // Verificar contraseña
     const passwordMatch = await user.comparePassword(password);
-    console.log('¿Contraseña coincide?', passwordMatch);
     
     if (!passwordMatch) {
-      console.log('Contraseña incorrecta');
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    console.log('=== LOGIN EXITOSO ===');
-    console.log('Login exitoso para:', user.email);
-    
     // Actualizar último acceso
     user.last_acces = new Date();
+    user.lastLogin = new Date();
     await user.save();
 
+    // Generar tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Solo agregar refreshToken si el campo existe en el schema
-    if (user.refreshTokens) {
-      user.refreshTokens.push(refreshToken);
-      await user.save();
-    }
+    // Guardar refresh token
+    user.refreshTokens.push(refreshToken);
+    await user.save();
+    await storeRefreshToken(user._id, refreshToken);
 
-    // Responder sin incluir la contraseña
+    // Crear sesión
+    const sessionId = `${user._id}_${Date.now()}`;
+    await createSession(sessionId, user._id, {
+      email: user.email,
+      name: user.name,
+      is_premium: user.is_premium
+    });
+
+    // Cachear usuario
     const userResponse = {
       _id: user._id,
       email: user.email,
@@ -358,11 +512,16 @@ app.post('/auth/login', [
       active: user.active
     };
 
-    res.json({ user: userResponse, accessToken, refreshToken });
+    await cacheUser(user._id, userResponse);
+
+    res.json({ 
+      user: userResponse, 
+      accessToken, 
+      refreshToken,
+      sessionId 
+    });
   } catch (error) {
-    console.error('=== ERROR EN LOGIN ===');
-    console.error('Error completo:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('Error en login:', error);
     res.status(500).json({ message: 'Error del servidor', error: error.message });
   }
 });
@@ -373,6 +532,9 @@ app.post('/auth/refresh', async (req, res) => {
   if (!refreshToken) return res.status(401).json({ message: 'Refresh token requerido' });
 
   try {
+    // Verificar en Redis primero
+    const cachedUserId = await validateRefreshToken(refreshToken);
+    
     const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
@@ -380,13 +542,18 @@ app.post('/auth/refresh', async (req, res) => {
       return res.status(403).json({ message: 'Refresh token inválido' });
     }
 
+    // Generar nuevos tokens
     const newAccessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
 
-    // Reemplaza el refresh token antiguo
+    // Reemplazar tokens
     user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
     user.refreshTokens.push(newRefreshToken);
     await user.save();
+
+    // Actualizar en Redis
+    await deleteRefreshToken(refreshToken);
+    await storeRefreshToken(user._id, newRefreshToken);
 
     res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (error) {
@@ -396,115 +563,136 @@ app.post('/auth/refresh', async (req, res) => {
 
 // Logout
 app.post('/auth/logout', authenticateToken, async (req, res) => {
-  const { refreshToken } = req.body;
+  const { refreshToken, sessionId } = req.body;
+  
   try {
     const user = await User.findById(req.user.id);
+    
     if (refreshToken) {
+      // Eliminar de MongoDB
       user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
       await user.save();
+      
+      // Eliminar de Redis
+      await deleteRefreshToken(refreshToken);
     }
+
+    // Eliminar sesión de Redis
+    if (sessionId) {
+      await deleteSession(sessionId, req.user.id);
+    }
+
+    // Invalidar cache del usuario
+    await invalidateUserCache(req.user.id);
+
     res.json({ message: 'Logout exitoso' });
   } catch (error) {
     res.status(500).json({ message: 'Error del servidor', error: error.message });
   }
 });
 
-// Obtener perfil del usuario
-app.get('/auth/me', authenticateToken, async (req, res) => {
+// Logout de todas las sesiones
+app.post('/auth/logout-all', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password -refreshTokens');
-    res.json({ user });
+    const user = await User.findById(req.user.id);
+    
+    // Eliminar todos los refresh tokens de MongoDB
+    const oldTokens = [...user.refreshTokens];
+    user.refreshTokens = [];
+    await user.save();
+
+    // Eliminar todos los refresh tokens de Redis
+    for (const token of oldTokens) {
+      await deleteRefreshToken(token);
+    }
+
+    // Eliminar todas las sesiones de Redis
+    await deleteAllUserSessions(req.user.id);
+
+    // Invalidar cache
+    await invalidateUserCache(req.user.id);
+
+    res.json({ message: 'Todas las sesiones cerradas exitosamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error del servidor', error: error.message });
   }
 });
 
-// Debug de conexión
-app.get('/auth/debug/connection', async (req, res) => {
+// Obtener perfil
+app.get('/auth/me', authenticateToken, async (req, res) => {
   try {
-    const dbState = mongoose.connection.readyState;
-    const states = {
-      0: 'Desconectado',
-      1: 'Conectado', 
-      2: 'Conectando',
-      3: 'Desconectando'
-    };
+    // El usuario ya viene del cache gracias al middleware authenticateToken
+    res.json({ user: req.user });
+  } catch (error) {
+    res.status(500).json({ message: 'Error del servidor', error: error.message });
+  }
+});
+
+// Verificar sesión
+app.get('/auth/session/:sessionId', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await getSession(sessionId);
     
-    res.json({
-      status: 'OK',
-      mongodb: {
-        state: dbState,
-        stateText: states[dbState],
-        host: mongoose.connection.host,
-        name: mongoose.connection.name,
-        port: mongoose.connection.port
-      },
-      env: {
-        MONGODB_URI: process.env.MONGODB_URI ? 'Configurado' : 'No configurado',
-        JWT_SECRET: process.env.JWT_SECRET ? 'Configurado' : 'No configurado'
-      }
-    });
+    if (!session) {
+      return res.status(404).json({ message: 'Sesión no encontrada o expirada' });
+    }
+
+    res.json({ session });
+  } catch (error) {
+    res.status(500).json({ message: 'Error del servidor', error: error.message });
+  }
+});
+
+// Debug endpoints
+app.get('/auth/debug/redis', async (req, res) => {
+  try {
+    const info = {
+      connected: isRedisAvailable(),
+      status: redisClient?.isOpen ? 'Conectado' : 'Desconectado'
+    };
+
+    if (isRedisAvailable()) {
+      const dbSize = await redisClient.dbSize();
+      info.keys = dbSize;
+    }
+
+    res.json(info);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Ruta para verificar base de datos
-app.get('/auth/debug/users', async (req, res) => {
-  try {
-    console.log('=== DEBUG: Verificando usuarios en BD ===');
-    
-    // Verificar conexión a la colección
-    const collections = await mongoose.connection.db.listCollections().toArray();
-    console.log('Colecciones disponibles:', collections.map(c => c.name));
-    
-    // Buscar en la colección 'usuarios' específicamente
-    const usersFromUsuarios = await User.find({}).select('email name username password date_of_register country');
-    console.log('Usuarios encontrados en colección "usuarios":', usersFromUsuarios.length);
-    
-    // También verificar si hay usuarios en otras posibles colecciones
-    const db = mongoose.connection.db;
-    const usersCollection = db.collection('users'); // colección por defecto
-    const usersFromUsersCollection = await usersCollection.find({}).toArray();
-    console.log('Usuarios en colección "users":', usersFromUsersCollection.length);
-    
-    const response = {
-      message: 'Debug de usuarios en la base de datos',
-      conexion: mongoose.connection.readyState === 1 ? 'Conectado' : 'Desconectado',
-      baseDatos: mongoose.connection.name,
-      colecciones: collections.map(c => c.name),
-      usuariosEnColeccionUsuarios: {
-        count: usersFromUsuarios.length,
-        users: usersFromUsuarios.map(u => ({
-          email: u.email,
-          name: u.name,
-          username: u.username,
-          country: u.country,
-          tienePassword: !!u.password,
-          longitudPassword: u.password ? u.password.length : 0,
-          fechaRegistro: u.date_of_register
-        }))
-      },
-      usuariosEnColeccionUsers: {
-        count: usersFromUsersCollection.length,
-        users: usersFromUsersCollection.slice(0, 5) // Solo los primeros 5 para no saturar
-      }
-    };
-    
-    console.log('Respuesta debug:', JSON.stringify(response, null, 2));
-    res.json(response);
-  } catch (error) {
-    console.error('Error en debug:', error);
-    res.status(500).json({ message: 'Error en debug', error: error.message });
-  }
-});
-
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    services: {
+      mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      redis: isRedisAvailable() ? 'connected' : 'disconnected'
+    }
+  });
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Cerrando conexiones...');
+  
+  if (redisClient) {
+    await redisClient.quit();
+    console.log('✅ Redis desconectado');
+  }
+  
+  await mongoose.connection.close();
+  console.log('✅ MongoDB desconectado');
+  
+  process.exit(0);
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Microservicio de Auth ejecutándose en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Microservicio de Auth ejecutándose en puerto ${PORT}`);
+});
 
 module.exports = app;

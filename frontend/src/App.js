@@ -12,6 +12,8 @@ import Library from './components/Library';
 import Information from './components/Information';
 import ForgotPassword from './components/Forgot-password';
 import InitialLoading from './components/InitialLoading';
+import SearchBarComponent from './components/SearchBarComponent';
+import SearchBarResultsComponent from './components/SearchBarResultsComponent';
 
 function App() {
   const { initialLoading } = useContext(AuthContext);
@@ -28,6 +30,8 @@ function App() {
       <Route path="/library" element={<Library />} />
       <Route path="/information" element={<Information />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/search" element={<SearchBarComponent />} />
+      <Route path="/search-results" element={<SearchBarResultsComponent />} />
     </Routes>
   );
 }
