@@ -747,7 +747,7 @@ const artistaId = ObjectId();
 db.artistas.insertOne({
   _id: artistaId,
   nombre_artistico: "QUEEN",
-  country: "UK", // Corregido
+  country: "UK",
   biografia: "Queen es una banda de rock británica formada en Londres en 1970. Su formación clásica consistía en el vocalista Freddie Mercury, el guitarrista Brian May, el baterista Roger Taylor y el bajista John Deacon. Son conocidos por su estilo musical ecléctico, sus armonías vocales y sus actuaciones en vivo.",
   imagen_url: "/uploads/covers/artists/queen-loge.png",
   verificado: true,
@@ -796,7 +796,7 @@ db.canciones.insertOne({
     orden: 1
   }],
   numero_pista: 1,
-  duracion_segundos: 217, // 4 minutos
+  duracion_segundos: 217,
   fecha_lanzamiento: new Date("2024-01-15"),
   archivo_url: "/uploads/music/Queen_Love-Of-My-Life.mp3",
   letra: "Esta es una canción de ejemplo...",
