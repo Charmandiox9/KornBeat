@@ -11,6 +11,11 @@ const songSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  composers: { // ← NUEVO CAMPO
+    type: [String],
+    default: [],
+    trim: true
+  },
   album: {
     type: String,
     trim: true
@@ -42,6 +47,12 @@ const songSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Índices para búsqueda optimizada
+songSchema.index({ title: 'text', artist: 'text', composers: 'text' });
+songSchema.index({ artist: 1 });
+songSchema.index({ composers: 1 });
+songSchema.index({ title: 1 });
 
 module.exports = mongoose.model('Song', songSchema);
 

@@ -20,6 +20,111 @@ router.get('/songs', async (req, res) => {
   }
 });
 
+// ========== NUEVOS ENDPOINTS DE BÚSQUEDA ==========
+
+// Buscar por artista
+router.get('/search/artist/:artistName', async (req, res) => {
+  try {
+    const { artistName } = req.params;
+    const songs = await Song.find({
+      $or: [
+        { artist: { $regex: artistName, $options: 'i' } },
+        { composers: { $regex: artistName, $options: 'i' } }
+      ]
+    }).sort({ playCount: -1 });
+
+    res.json({
+      success: true,
+      data: songs,
+      searchType: 'artist',
+      query: artistName,
+      count: songs.length
+    });
+  } catch (error) {
+    console.error('Error searching by artist:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar por artista'
+    });
+  }
+});
+
+// Buscar por canción
+router.get('/search/song/:songTitle', async (req, res) => {
+  try {
+    const { songTitle } = req.params;
+    const songs = await Song.find({
+      title: { $regex: songTitle, $options: 'i' }
+    }).sort({ playCount: -1 });
+
+    res.json({
+      success: true,
+      data: songs,
+      searchType: 'song',
+      query: songTitle,
+      count: songs.length
+    });
+  } catch (error) {
+    console.error('Error searching by song:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar por canción'
+    });
+  }
+});
+
+// Búsqueda general (artista, canción, compositor)
+router.get('/search/:query', async (req, res) => {
+  try {
+    const { query } = req.params;
+    const songs = await Song.find({
+      $or: [
+        { title: { $regex: query, $options: 'i' } },
+        { artist: { $regex: query, $options: 'i' } },
+        { composers: { $regex: query, $options: 'i' } },
+        { album: { $regex: query, $options: 'i' } },
+        { genre: { $regex: query, $options: 'i' } }
+      ]
+    }).sort({ playCount: -1 });
+
+    // Separar resultados por tipo
+    const results = {
+      byTitle: songs.filter(song => 
+        song.title.toLowerCase().includes(query.toLowerCase())
+      ),
+      byArtist: songs.filter(song => 
+        song.artist.toLowerCase().includes(query.toLowerCase()) ||
+        song.composers.some(composer => 
+          composer.toLowerCase().includes(query.toLowerCase())
+        )
+      ),
+      byAlbum: songs.filter(song => 
+        song.album && song.album.toLowerCase().includes(query.toLowerCase())
+      ),
+      byGenre: songs.filter(song => 
+        song.genre && song.genre.toLowerCase().includes(query.toLowerCase())
+      )
+    };
+
+    res.json({
+      success: true,
+      data: songs,
+      results: results,
+      searchType: 'general',
+      query: query,
+      count: songs.length
+    });
+  } catch (error) {
+    console.error('Error in general search:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error en la búsqueda'
+    });
+  }
+});
+
+// ========== ENDPOINTS EXISTENTES ==========
+
 // Obtener una canción específica
 router.get('/songs/:id', async (req, res) => {
   try {
