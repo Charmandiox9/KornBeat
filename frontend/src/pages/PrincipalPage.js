@@ -52,17 +52,22 @@ const PrincipalPage = () => {
             <div className="principal-card">
               <h3>Mi Perfil</h3>
               <p>Gestiona tu información personal</p>
-              <button className="card-btn">Ver perfil</button>
+              <Link to="/perfil" className="card-btn">Ver perfil</Link>
             </div>
             <div className="principal-card">
               <h3>Configuración</h3>
               <p>Ajusta las preferencias de tu cuenta</p>
-              <button className="card-btn">Configurar</button>
+              <Link to="/configuracion" className="card-btn">Configurar</Link>
             </div>
             <div className="principal-card">
               <h3>Estadísticas</h3>
               <p>Revisa tu actividad y estadísticas</p>
-              <button className="card-btn">Ver estadísticas</button>
+              <Link to="/estadisticas" className="card-btn">Ver estadísticas</Link>
+            </div>
+            <div className="principal-card">
+              <h3>🎵 Mi Música</h3>
+              <p>Escucha y gestiona tu biblioteca musical</p>
+              <Link to="/music" className="card-btn">Abrir reproductor</Link>
             </div>
           </div>
         </div>

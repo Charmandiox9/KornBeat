@@ -1,7 +1,7 @@
 {
   "name": "music-service",
   "version": "1.0.0",
-  "description": "Microservicio de música con Node.js, Express, JWT y MongoDB",
+  "description": "Servicio de gestión de música para KornBeat",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
