@@ -1,7 +1,7 @@
 import React from 'react';
 import '../styles/SongList.css';
 
-const SongList = ({ songs, onSongSelect, currentSong }) => {
+const SongList = ({ songs, onSongSelect, currentSong, searchQuery, searchType }) => {
   
   const formatDuration = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -14,17 +14,51 @@ const SongList = ({ songs, onSongSelect, currentSong }) => {
     return `${mb.toFixed(1)} MB`;
   };
 
+  // Función para resaltar texto de búsqueda
+  const highlightText = (text, query) => {
+    if (!query || !text) return text;
+    
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) => 
+      part.toLowerCase() === query.toLowerCase() ? 
+        <mark key={index} className="search-highlight">{part}</mark> : part
+    );
+  };
+
   if (!songs || songs.length === 0) {
     return (
       <div className="song-list-empty">
-        <p>No hay canciones disponibles</p>
+        {searchQuery ? (
+          <div>
+            <p>No se encontraron canciones para: <strong>"{searchQuery}"</strong></p>
+            <p>Intenta con otro término de búsqueda</p>
+          </div>
+        ) : (
+          <p>No hay canciones disponibles</p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="song-list-container">
-      <h2>🎶 Canciones ({songs.length})</h2>
+      <div className="song-list-header">
+        <h2>🎶 
+          {searchQuery ? (
+            <span>
+              Resultados para: "<span className="search-term">{searchQuery}</span>" ({songs.length})
+            </span>
+          ) : (
+            <span>Canciones ({songs.length})</span>
+          )}
+        </h2>
+        
+        {searchType && (
+          <div className="search-info">
+            <span className="search-type">Búsqueda por: {searchType === 'artist' ? 'Artista' : searchType === 'song' ? 'Canción' : 'General'}</span>
+          </div>
+        )}
+      </div>
       
       <div className="song-list">
         {songs.map((song) => (
@@ -35,16 +69,37 @@ const SongList = ({ songs, onSongSelect, currentSong }) => {
           >
             <div className="song-info">
               <div className="song-main-info">
-                <h4 className="song-title">{song.title}</h4>
-                <p className="song-artist">{song.artist}</p>
+                <h4 className="song-title">
+                  {searchQuery ? highlightText(song.title, searchQuery) : song.title}
+                </h4>
+                <p className="song-artist">
+                  {searchQuery ? highlightText(song.artist, searchQuery) : song.artist}
+                </p>
+                
+                {/* Mostrar compositores si existen y son diferentes del artista */}
+                {song.composers && song.composers.length > 0 && (
+                  <div className="song-composers">
+                    <span className="composers-label">✍️ Compositores: </span>
+                    {song.composers.map((composer, index) => (
+                      <span key={index} className="composer-name">
+                        {searchQuery ? highlightText(composer, searchQuery) : composer}
+                        {index < song.composers.length - 1 && ', '}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div className="song-details">
                 {song.album && (
-                  <span className="song-album">📀 {song.album}</span>
+                  <span className="song-album">
+                    📀 {searchQuery ? highlightText(song.album, searchQuery) : song.album}
+                  </span>
                 )}
                 {song.genre && (
-                  <span className="song-genre">🎭 {song.genre}</span>
+                  <span className="song-genre">
+                    🎭 {searchQuery ? highlightText(song.genre, searchQuery) : song.genre}
+                  </span>
                 )}
               </div>
             </div>
