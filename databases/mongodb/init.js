@@ -746,17 +746,18 @@ db.usuarios.insertOne({
 const artistaId = ObjectId();
 db.artistas.insertOne({
   _id: artistaId,
-  nombre_artistico: "Artista Demo",
-  country: "ES", // Corregido
-  biografia: "Artista emergente de música pop",
-  verificado: false,
-  oyentes_mensuales: 15000,
+  nombre_artistico: "QUEEN",
+  country: "UK",
+  biografia: "Queen es una banda de rock británica formada en Londres en 1970. Su formación clásica consistía en el vocalista Freddie Mercury, el guitarrista Brian May, el baterista Roger Taylor y el bajista John Deacon. Son conocidos por su estilo musical ecléctico, sus armonías vocales y sus actuaciones en vivo.",
+  imagen_url: "/uploads/covers/artists/queen-loge.png",
+  verificado: true,
+  oyentes_mensuales: 10000000,
   reproducciones_totales: NumberLong(250000),
   fecha_creacion: new Date(),
   activo: true,
   redes_sociales: {
-    instagram: "@artistademo",
-    spotify: "spotify:artist:ejemplo"
+    instagram: "@queen",
+    spotify: "spotify:artist:queen"
   }
 });
 
@@ -764,15 +765,15 @@ db.artistas.insertOne({
 const albumId = ObjectId();
 db.albumes.insertOne({
   _id: albumId,
-  titulo: "Primer Álbum",
+  titulo: "A Night at the Opera",
   artista_principal_id: artistaId,
   tipo_album: "album",
   fecha_lanzamiento: new Date("2024-01-15"),
-  portada_url: "https://example.com/album-cover.jpg",
-  descripcion: "El debut del artista con 10 canciones originales",
-  categorias: ["Pop", "Electrónica"],
-  total_canciones: 10,
-  duracion_total: 2400, // 40 minutos
+  portada_url: "/uploads/covers/albums/a-night-at-the-opera.png",
+  descripcion: "A Night at the Opera es el cuarto álbum de estudio de la banda británica Queen, lanzado en 1975. Es conocido por su producción elaborada y su diversidad musical, incluyendo el icónico sencillo 'Bohemian Rhapsody'.",
+  categorias: ["Pop", "Rock", "Clásica", "Ópera", "Teatro Musical", "Progressive Rock"],
+  total_canciones: 12,
+  duracion_total: 2585, // 40 minutos
   reproducciones_totales: NumberLong(50000),
   disponible: true,
   fecha_creacion: new Date()
@@ -782,26 +783,26 @@ db.albumes.insertOne({
 const cancionId = ObjectId();
 db.canciones.insertOne({
   _id: cancionId,
-  titulo: "Canción Demo",
+  titulo: "Love of My Life",
   album_id: albumId,
   album_info: {
-    titulo: "Primer Álbum",
-    portada_url: "https://example.com/album-cover.jpg"
+    titulo: "A Night at the Opera",
+    portada_url: "/uploads/covers/song/love-of-my-life.png"
   },
   artistas: [{
     artista_id: artistaId,
-    nombre: "Artista Demo",
+    nombre: "QUEEN",
     tipo: "principal",
     orden: 1
   }],
   numero_pista: 1,
-  duracion_segundos: 240, // 4 minutos
+  duracion_segundos: 217,
   fecha_lanzamiento: new Date("2024-01-15"),
-  archivo_url: "https://example.com/audio/cancion-demo.mp3",
+  archivo_url: "/uploads/music/Queen_Love-Of-My-Life.mp3",
   letra: "Esta es una canción de ejemplo...",
   es_explicito: false,
   es_instrumental: false,
-  idioma: "es",
+  idioma: "en",
   categorias: ["Pop"],
   reproducciones: NumberLong(12500),
   likes: NumberLong(890),
