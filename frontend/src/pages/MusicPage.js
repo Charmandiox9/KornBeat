@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import SongList from '../components/SongList';
 import MusicPlayer from '../components/MusicPlayer';
+import '../styles/MusicPage.css';
 
 const MusicPage = () => {
   const { user, logout } = useContext(AuthContext);

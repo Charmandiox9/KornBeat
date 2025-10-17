@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import '../styles/MusicPlayer.css';
 
 const MusicPlayer = ({ song, songs, onSongChange }) => {
   const audioRef = useRef(null);
