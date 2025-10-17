@@ -1,4 +1,5 @@
 import React from 'react';
+import '../styles/SongList.css';
 
 const SongList = ({ songs, onSongSelect, currentSong }) => {
   
