@@ -8,21 +8,11 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-      MONGO_INITDB_DATABASE: mydatabase
+      MONGO_INITDB_DATABASE: music_app
     volumes:
       - mongo-data:/data/db
-      - mongodb_config:/data/configdb
-      - ./databases/mongodb/init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
       - app-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -30,69 +20,63 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server /usr/local/etc/redis/redis.conf --requirepass redis_password
+    command: redis-server --requirepass redis_password
     volumes:
       - redis-data:/data
-      - ./databases/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis_password", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
-  auth-service:
-    build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
-    container_name: auth-service
+  minio:
+    image: minio/minio:latest
+    container_name: minio
     restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - app-network
+
+  music-service:
+    build: ./services/music-service
+    container_name: music-service
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
     environment:
       - NODE_ENV=production
-      - PORT=3001
-      # CAMBIO AQUÍ: mydatabase → music_app
-      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/music_app?authSource=admin
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=redis_password
-      - JWT_SECRET=demo123
-      - JWT_EXPIRES_IN=15m
-      - REFRESH_TOKEN_EXPIRES_IN=7d
+      - MONGODB_URI=mongodb://mongodb:27017/music_app
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    depends_on:
+      - mongodb
+      - minio
+    networks:
+      - app-network
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: auth-service
+    restart: unless-stopped
     ports:
       - "3001:3001"
     depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  nginx:
-    build:
-      context: .
-      dockerfile: nginx/Dockerfile  # Nuevo Dockerfile para nginx con frontend integrado
-    container_name: auth_nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    depends_on:
-      - auth-service
+      - mongodb
+      - redis
     networks:
       - app-network
 
 volumes:
   mongo-data:
-  mongodb_config:
   redis-data:
+  minio-data:
 
 networks:
   app-network:

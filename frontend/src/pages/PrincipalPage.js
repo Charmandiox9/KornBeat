@@ -64,6 +64,11 @@ const PrincipalPage = () => {
               <p>Revisa tu actividad y estadísticas</p>
               <Link to="/estadisticas" className="card-btn">Ver estadísticas</Link>
             </div>
+            <div className="principal-card">
+              <h3>🎵 Mi Música</h3>
+              <p>Escucha y gestiona tu biblioteca musical</p>
+              <Link to="/music" className="card-btn">Abrir reproductor</Link>
+            </div>
           </div>
         </div>
       </main>
