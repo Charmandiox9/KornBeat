@@ -13,6 +13,8 @@ import Library from './components/Library';
 import Information from './components/Information';
 import ForgotPassword from './components/Forgot-password';
 import InitialLoading from './components/InitialLoading';
+import SearchBarComponent from './components/SearchBarComponent';
+import SearchBarResultsComponent from './components/SearchBarResultsComponent';
 
 import PerfilPage from './pages/settings/Perfil';
 import ConfiguracionPage from './pages/settings/Configuracion';
@@ -34,6 +36,8 @@ function App() {
       <Route path="/library" element={<Library />} />
       <Route path="/information" element={<Information />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/search" element={<SearchBarComponent />} />
+      <Route path="/search-results" element={<SearchBarResultsComponent />} />
       
       {/* RUTAS CORREGIDAS con componentes importados */}
       <Route path="/perfil" element={<PerfilPage />} />
