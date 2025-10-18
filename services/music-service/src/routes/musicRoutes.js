@@ -217,13 +217,50 @@ router.get('/songs/:id/stream', async (req, res) => {
     song.playCount += 1;
     await song.save();
 
-    // Stream desde MinIO
-    const audioStream = await minioClient.getObject(bucketName, song.fileName);
-    
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-    
-    audioStream.pipe(res);
+    // Ruta al archivo de música en el sistema de archivos
+    const fs = require('fs');
+    const path = require('path');
+    const musicPath = path.join(__dirname, '..', '..', 'uploads', 'music', song.fileName);
+
+    // Verificar que el archivo existe
+    if (!fs.existsSync(musicPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Archivo de audio no encontrado'
+      });
+    }
+
+    // Obtener información del archivo
+    const stat = fs.statSync(musicPath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      // Streaming parcial (para seek/skip)
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(musicPath, { start, end });
+      
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'audio/mpeg',
+      });
+      
+      file.pipe(res);
+    } else {
+      // Streaming completo
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': 'audio/mpeg',
+        'Accept-Ranges': 'bytes',
+      });
+      
+      fs.createReadStream(musicPath).pipe(res);
+    }
   } catch (error) {
     console.error('Error streaming song:', error);
     res.status(500).json({

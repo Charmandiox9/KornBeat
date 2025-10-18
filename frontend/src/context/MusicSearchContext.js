@@ -45,15 +45,14 @@ export const MusicSearchProvider = ({ children }) => {
     try {
       let endpoint = '';
       
-      // Si es búsqueda por categoría, usar endpoint específico
+      // Si es búsqueda por categoría solamente
       if (categoria && !query) {
         endpoint = `${API_BASE}/search/category/${encodeURIComponent(categoria)}`;
-      } else {
-        const params = new URLSearchParams();
-        if (query) params.append('q', query);
-        if (categoria) params.append('categoria', categoria);
-        params.append('limit', '20');
-        endpoint = `${API_BASE}/songs/search?${params}`;
+      } 
+      // Si hay query (búsqueda general)
+      else if (query) {
+        // Búsqueda general que busca en título, artista, álbum y género
+        endpoint = `${API_BASE}/search/${encodeURIComponent(query)}`;
       }
 
       console.log('🔍 Fetching:', endpoint);

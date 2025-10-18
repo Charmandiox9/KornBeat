@@ -169,6 +169,202 @@
   opacity: 0.9;
 }
 
+/* ============================================ */
+/* BARRA DE BÚSQUEDA MEJORADA */
+/* ============================================ */
+
+.search-section {
+  margin: 2.5rem 0;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-container {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.search-container:hover {
+  box-shadow: 
+    0 25px 70px rgba(0, 0, 0, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+}
+
+.search-input {
+  width: 100%;
+  padding: 1.5rem 2rem;
+  font-size: 1.25rem;
+  border: 3px solid transparent;
+  border-radius: 16px;
+  outline: none;
+  background: linear-gradient(145deg, #f8f9fa, #ffffff);
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #2d3748;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5rem;
+}
+
+.search-input::placeholder {
+  color: #a0aec0;
+  font-weight: 400;
+}
+
+.search-input:focus {
+  border-color: #667eea;
+  background: white;
+  box-shadow: 
+    0 0 0 5px rgba(102, 126, 234, 0.1),
+    inset 0 2px 8px rgba(102, 126, 234, 0.1),
+    0 4px 12px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
+}
+
+.search-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.search-btn {
+  padding: 1rem 1.5rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.03em;
+}
+
+.search-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.search-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.search-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.search-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Botón principal de búsqueda */
+.search-btn:not(.artist):not(.song):not(.clear) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.search-btn:not(.artist):not(.song):not(.clear):hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* Botón de artista */
+.search-btn.artist {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.search-btn.artist:hover {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+}
+
+/* Botón de canción */
+.search-btn.song {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.search-btn.song:hover {
+  background: linear-gradient(135deg, #38f9d7 0%, #43e97b 100%);
+}
+
+/* Botón de limpiar */
+.search-btn.clear {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+.search-btn.clear:hover {
+  background: linear-gradient(135deg, #ee5a6f 0%, #ff6b6b 100%);
+  transform: translateY(-4px) rotate(-2deg);
+}
+
+@media (max-width: 768px) {
+  .search-container {
+    padding: 1.5rem;
+  }
+
+  .search-input {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.125rem;
+  }
+
+  .search-buttons {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .search-btn {
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================ */
+/* FIN BARRA DE BÚSQUEDA */
+/* ============================================ */
+
 /* Responsive */
 @media (max-width: 1024px) {
   .music-layout {
