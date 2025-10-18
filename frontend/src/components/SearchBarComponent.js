@@ -39,7 +39,18 @@ const SearchBarComponent = () => {
     const newCategory = category === selectedCategory ? '' : category;
     setSelectedCategory(newCategory);
     setShowCategories(false);
-    searchSongs(localQuery, newCategory);
+    
+    // Si hay categoría seleccionada, buscar solo por categoría
+    if (newCategory) {
+      searchSongs('', newCategory);
+    } else {
+      // Si se deselecciona, buscar con el query actual o limpiar
+      if (localQuery) {
+        searchSongs(localQuery, '');
+      } else {
+        clearSearch();
+      }
+    }
   };
 
   const handleClear = () => {

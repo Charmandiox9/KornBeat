@@ -227,3 +227,107 @@
   font-size: 0.875rem;
   margin: 0;
 }
+
+/* Menu de opciones (tres puntos) */
+.more-options-wrapper {
+  position: relative;
+}
+
+.options-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  padding: 0.5rem 0;
+  border: 1px solid #e5e7eb;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+  color: #374151;
+  text-align: left;
+}
+
+.menu-option:hover {
+  background: #f3f4f6;
+}
+
+.menu-option svg {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.menu-option span {
+  flex: 1;
+}
+
+/* Ajustes para las song-actions */
+.song-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Más espacio entre elementos */
+  flex-shrink: 0;
+  margin-left: auto; /* Empujar a la derecha */
+}
+
+/* Mejorar card de canción */
+.song-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem; /* Más espacio entre cards */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.song-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.song-card.playing {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.song-card.playing .song-title,
+.song-card.playing .song-artist,
+.song-card.playing .song-album,
+.song-card.playing .song-duration {
+  color: white;
+}
+
+.song-card.playing .action-icon {
+  color: white;
+}
+
+.song-card.playing .category-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}

@@ -17,8 +17,16 @@ const MiniPlayer = () => {
 
   if (!currentSong) return null;
 
-  const artistName = currentSong.artistas?.map(a => a.nombre).join(', ') || 'Artista desconocido';
-  const albumCover = `http://localhost:3002${currentSong.album_info?.portada_url}`;
+  // Compatibilidad con ambos formatos (español e inglés)
+  const songTitle = currentSong.titulo || currentSong.title || 'Sin título';
+  const artistName = currentSong.artistas?.map(a => a.nombre).join(', ') || 
+                     currentSong.artist || 
+                     'Artista desconocido';
+  const albumCover = currentSong.album_info?.portada_url 
+    ? `http://localhost:3002${currentSong.album_info.portada_url}` 
+    : currentSong.coverUrl 
+    ? `http://localhost:3002${currentSong.coverUrl}` 
+    : null;
 
   return (
     <div className={`mini-player ${isExpanded ? 'expanded' : ''}`}>
@@ -34,7 +42,7 @@ const MiniPlayer = () => {
             {albumCover ? (
               <img 
                 src={albumCover} 
-                alt={currentSong.titulo}
+                alt={songTitle}
                 className="cover-image-mini"
               />
             ) : (
@@ -43,8 +51,8 @@ const MiniPlayer = () => {
           </div>
 
           <div className="song-details-mini">
-            <h4 className="song-title-mini" title={currentSong.titulo}>
-              {currentSong.titulo}
+            <h4 className="song-title-mini" title={songTitle}>
+              {songTitle}
             </h4>
             <p className="song-artist-mini" title={artistName}>
               {artistName}
@@ -111,19 +119,25 @@ const MiniPlayer = () => {
       {/* Información adicional cuando está expandido */}
       {isExpanded && (
         <div className="mini-player-expanded-info">
-          {currentSong.album_info?.titulo && (
+          {(currentSong.album_info?.titulo || currentSong.album) && (
             <p className="album-name">
               <Music size={14} />
-              {currentSong.album_info.titulo}
+              {currentSong.album_info?.titulo || currentSong.album}
             </p>
           )}
-          {currentSong.categorias && currentSong.categorias.length > 0 && (
+          {((currentSong.categorias && currentSong.categorias.length > 0) || currentSong.genre) && (
             <div className="song-categories-mini">
-              {currentSong.categorias.slice(0, 5).map((cat, idx) => (
-                <span key={idx} className="category-badge-mini">
-                  {cat}
+              {currentSong.categorias && currentSong.categorias.length > 0 ? (
+                currentSong.categorias.slice(0, 5).map((cat, idx) => (
+                  <span key={idx} className="category-badge-mini">
+                    {cat}
+                  </span>
+                ))
+              ) : currentSong.genre ? (
+                <span className="category-badge-mini">
+                  {currentSong.genre}
                 </span>
-              ))}
+              ) : null}
             </div>
           )}
         </div>

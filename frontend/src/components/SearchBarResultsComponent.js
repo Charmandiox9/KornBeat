@@ -127,7 +127,15 @@ const SearchBarResultsComponent = () => {
 
       <div className="results-list" role="list">
         {searchResults.map((song) => {
-          const artistName = song.artistas?.map(a => a.nombre).join(', ') || 'Artista desconocido';
+          // Compatibilidad con ambos formatos (español e inglés)
+          const songTitle = song.titulo || song.title || 'Sin título';
+          const artistName = song.artistas?.map(a => a.nombre).join(', ') || 
+                           song.artist || 
+                           'Artista desconocido';
+          const albumName = song.album_info?.titulo || song.album || '';
+          const songDuration = song.duracion_segundos || song.duration || 0;
+          const coverUrl = song.album_info?.portada_url || song.coverUrl || '';
+          
           const hasImageError = imageErrors.has(song._id);
           const isLiked = likedSongs.has(song._id);
           const isPlaying = currentSong?._id === song._id;
@@ -140,14 +148,14 @@ const SearchBarResultsComponent = () => {
               onKeyPress={(e) => handleKeyPress(e, song)}
               role="listitem button"
               tabIndex={0}
-              aria-label={`Reproducir ${song.titulo} de ${artistName}`}
+              aria-label={`Reproducir ${songTitle} de ${artistName}`}
             >
               <div className="song-content">
                 <div className="song-cover">
-                  {song.album_info?.portada_url && !hasImageError ? (
+                  {coverUrl && !hasImageError ? (
                     <img 
-                      src={`http://localhost:3002${song.album_info.portada_url}`} 
-                      alt={`Portada de ${song.album_info.titulo || song.titulo}`}
+                      src={`http://localhost:3002${coverUrl}`} 
+                      alt={`Portada de ${albumName || songTitle}`}
                       className="cover-image"
                       loading="lazy"
                       onError={() => handleImageError(song._id)}
@@ -169,16 +177,16 @@ const SearchBarResultsComponent = () => {
                 </div>
 
                 <div className="song-info">
-                  <h3 className="song-title">{song.titulo}</h3>
+                  <h3 className="song-title">{songTitle}</h3>
                   <p className="song-artist">{artistName}</p>
-                  {song.album_info?.titulo && (
-                    <p className="song-album">{song.album_info.titulo}</p>
+                  {albumName && (
+                    <p className="song-album">{albumName}</p>
                   )}
                 </div>
 
                 <div className="song-actions">
-                  <span className="song-duration" aria-label={`Duración: ${formatDuration(song.duracion_segundos)}`}>
-                    {formatDuration(song.duracion_segundos)}
+                  <span className="song-duration" aria-label={`Duración: ${formatDuration(songDuration)}`}>
+                    {formatDuration(songDuration)}
                   </span>
 
                   <button
@@ -234,20 +242,28 @@ const SearchBarResultsComponent = () => {
                 </div>
               </div>
 
-              {song.categorias && song.categorias.length > 0 && (
+              {(song.categorias && song.categorias.length > 0) || song.genre ? (
                 <div className="song-categories" aria-label="Categorías">
-                  {song.categorias.slice(0, 3).map((cat, idx) => (
-                    <span key={idx} className="category-badge">
-                      {cat}
+                  {song.categorias && song.categorias.length > 0 ? (
+                    <>
+                      {song.categorias.slice(0, 3).map((cat, idx) => (
+                        <span key={idx} className="category-badge">
+                          {cat}
+                        </span>
+                      ))}
+                      {song.categorias.length > 3 && (
+                        <span className="category-badge category-more" aria-label={`y ${song.categorias.length - 3} más`}>
+                          +{song.categorias.length - 3}
+                        </span>
+                      )}
+                    </>
+                  ) : song.genre ? (
+                    <span className="category-badge">
+                      {song.genre}
                     </span>
-                  ))}
-                  {song.categorias.length > 3 && (
-                    <span className="category-badge category-more" aria-label={`y ${song.categorias.length - 3} más`}>
-                      +{song.categorias.length - 3}
-                    </span>
-                  )}
+                  ) : null}
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}
