@@ -4,6 +4,16 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   flex-direction: column;
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .music-nav {
@@ -14,6 +24,18 @@
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .nav-brand h2 {
@@ -22,6 +44,11 @@
   font-size: 1.8rem;
   font-weight: 700;
   text-decoration: none;
+  transition: transform 0.3s ease;
+}
+
+.nav-brand h2:hover {
+  transform: scale(1.05);
 }
 
 .nav-brand a {
@@ -154,6 +181,87 @@
   }
 }
 
+/* Categories Section */
+.categories-section {
+  margin: 2rem 0;
+}
+
+.categories-section h3 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.category-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.category-btn {
+  padding: 1rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: white;
+}
+
+.category-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.category-btn:active {
+  transform: translateY(0);
+}
+
+/* Category Colors */
+.category-btn.pop {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.category-btn.rock {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.category-btn.hiphop {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.category-btn.jazz {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.category-btn.electronica {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+}
+
+.category-btn.reggaeton {
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+}
+
+.category-btn.clasica {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.category-btn.country {
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+}
+
+.category-btn.rnb {
+  background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+}
+
+.category-btn.metal {
+  background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
+}
+
 @media (max-width: 768px) {
   .music-nav {
     padding: 1rem;
@@ -176,5 +284,15 @@
   .songs-section,
   .player-section {
     padding: 1.5rem;
+  }
+
+  .category-buttons {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .category-btn {
+    padding: 0.75rem;
+    font-size: 0.9rem;
   }
 }

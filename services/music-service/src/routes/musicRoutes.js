@@ -80,6 +80,37 @@ router.get('/search/song/:songTitle', async (req, res) => {
   }
 });
 
+// Buscar por categoría/género
+router.get('/search/category/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    console.log('🔍 Buscando por categoría:', category);
+    
+    const songs = await Song.find({
+      genre: { $regex: category, $options: 'i' }
+    }).sort({ playCount: -1 });
+
+    console.log('✅ Canciones encontradas:', songs.length);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.json({
+      success: true,
+      data: songs,
+      searchType: 'category',
+      query: category,
+      count: songs.length
+    });
+  } catch (error) {
+    console.error('❌ Error searching by category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar por categoría',
+      error: error.message
+    });
+  }
+});
+
 // Búsqueda general (artista, canción, compositor)
 router.get('/search/:query', async (req, res) => {
   try {
