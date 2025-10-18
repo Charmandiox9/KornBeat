@@ -29,12 +29,18 @@ const MusicPage = () => {
   const fetchAllSongs = async () => {
     try {
       setIsLoading(true);
+      // CAMBIO: Ahora usa /api/music/songs
       const response = await fetch('http://localhost:3002/api/music/songs');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setAllSongs(data.data);
-        setDisplayedSongs(data.data); // Mostrar todas inicialmente
+        setDisplayedSongs(data.data);
       } else {
         console.error('Error fetching songs:', data.message);
       }
@@ -48,7 +54,6 @@ const MusicPage = () => {
   // Función de búsqueda
   const handleSearch = async (query, type = 'general') => {
     if (!query.trim()) {
-      // Si no hay query, mostrar todas las canciones
       setDisplayedSongs(allSongs);
       setSearchQuery('');
       setSearchType('');
@@ -62,6 +67,7 @@ const MusicPage = () => {
       
       switch (type) {
         case 'artist':
+          // CAMBIO: Agregado /api
           endpoint = `http://localhost:3002/api/music/search/artist/${encodeURIComponent(query)}`;
           break;
         case 'song':
@@ -72,6 +78,11 @@ const MusicPage = () => {
       }
 
       const response = await fetch(endpoint);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {

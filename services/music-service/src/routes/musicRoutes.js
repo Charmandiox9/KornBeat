@@ -7,15 +7,20 @@ const { minioClient, bucketName } = require('../../../../databases/minio/minio')
 router.get('/songs', async (req, res) => {
   try {
     const songs = await Song.find().sort({ createdAt: -1 });
+    
+    // Asegurar que siempre retorna JSON
+    res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
-      data: songs
+      data: songs,
+      count: songs.length
     });
   } catch (error) {
     console.error('Error getting songs:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener canciones'
+      message: 'Error al obtener canciones',
+      error: error.message
     });
   }
 });
@@ -33,6 +38,7 @@ router.get('/search/artist/:artistName', async (req, res) => {
       ]
     }).sort({ playCount: -1 });
 
+    res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
       data: songs,
@@ -44,7 +50,8 @@ router.get('/search/artist/:artistName', async (req, res) => {
     console.error('Error searching by artist:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al buscar por artista'
+      message: 'Error al buscar por artista',
+      error: error.message
     });
   }
 });
