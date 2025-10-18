@@ -44,6 +44,10 @@ const songSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  coverUrl: {
+    type: String,
+    default: null
+  },
   uploadDate: {
     type: Date,
     default: Date.now
