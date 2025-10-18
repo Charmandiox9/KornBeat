@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import { MusicSearchProvider } from '../context/MusicSearchContext';
@@ -7,15 +7,31 @@ import SearchBarComponent from '../components/SearchBarComponent';
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
 import MiniPlayer from '../components/MiniPlayer';
 import QueuePanel from '../components/QueuePanel';
+import toast, { Toaster } from 'react-hot-toast';
 import '../App.css';
 
 const HomePage = () => {
   const { user, logout } = useContext(AuthContext);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
+  // Mostrar mensaje de bienvenida para invitados
+  useEffect(() => {
+    if (!user) {
+      const hasShownWelcome = sessionStorage.getItem('guestWelcomeShown');
+      if (!hasShownWelcome) {
+        toast.success('🎵 ¡Bienvenido! Puedes buscar y reproducir música sin registrarte', {
+          duration: 5000,
+          icon: '👋',
+        });
+        sessionStorage.setItem('guestWelcomeShown', 'true');
+      }
+    }
+  }, [user]);
+
   const handleLogout = async () => {
     try {
       await logout();
+      sessionStorage.removeItem('guestWelcomeShown');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
@@ -25,6 +41,25 @@ const HomePage = () => {
     <MusicPlayerProvider>
       <MusicSearchProvider>
         <div className="home-container">
+          <Toaster 
+            position="top-center"
+            reverseOrder={false}
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+                borderRadius: '10px',
+                padding: '16px',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#4ade80',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
           <nav className="navbar">
             <div className="nav-brand">
               <Link to="/">

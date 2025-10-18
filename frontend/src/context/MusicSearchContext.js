@@ -11,12 +11,12 @@ export const MusicSearchProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // URL base del API
-  const API_BASE = '/api/music';
+  // URL base del API - Cambiado para funcionar con invitados
+  const API_BASE = 'http://localhost:3002/api/music';
 
   // Obtener token de autenticación
   const getAuthToken = () => {
-    return localStorage.getItem('authToken');
+    return localStorage.getItem('authToken') || localStorage.getItem('token');
   };
 
   // Headers base para las peticiones
@@ -28,6 +28,7 @@ export const MusicSearchProvider = ({ children }) => {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    // No incluir Authorization si no hay token (permite acceso de invitados)
     return headers;
   };
 
@@ -42,20 +43,39 @@ export const MusicSearchProvider = ({ children }) => {
     setError(null);
 
     try {
-      const params = new URLSearchParams();
-      if (query) params.append('q', query);
-      if (categoria) params.append('categoria', categoria);
-      params.append('limit', '20');
+      let endpoint = '';
+      
+      // Si es búsqueda por categoría, usar endpoint específico
+      if (categoria && !query) {
+        endpoint = `${API_BASE}/search/category/${encodeURIComponent(categoria)}`;
+      } else {
+        const params = new URLSearchParams();
+        if (query) params.append('q', query);
+        if (categoria) params.append('categoria', categoria);
+        params.append('limit', '20');
+        endpoint = `${API_BASE}/songs/search?${params}`;
+      }
 
-      const response = await fetch(`${API_BASE}/songs/search?${params}`, {
+      console.log('🔍 Fetching:', endpoint);
+
+      const response = await fetch(endpoint, {
         headers: getHeaders(),
       });
 
-      if (!response.ok) throw new Error('Error al buscar canciones');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`Error al buscar canciones: ${response.status}`);
+      }
 
       const data = await response.json();
-      setSearchResults(data.songs || []);
+      console.log('✅ Data received:', data);
+      
+      // Manejar diferentes formatos de respuesta
+      const songs = data.data || data.songs || [];
+      setSearchResults(songs);
     } catch (err) {
+      console.error('❌ Search error:', err);
       setError(err.message);
       setSearchResults([]);
     } finally {

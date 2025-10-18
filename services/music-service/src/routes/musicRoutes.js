@@ -87,11 +87,27 @@ router.get('/search/category/:category', async (req, res) => {
     
     console.log('🔍 Buscando por categoría:', category);
     
+    // Buscar en múltiples campos para ser más flexible
     const songs = await Song.find({
-      genre: { $regex: category, $options: 'i' }
+      $or: [
+        { genre: { $regex: category, $options: 'i' } },
+        { categorias: { $in: [new RegExp(category, 'i')] } },
+        { tags: { $in: [new RegExp(category, 'i')] } }
+      ]
     }).sort({ playCount: -1 });
 
     console.log('✅ Canciones encontradas:', songs.length);
+    
+    // Si no hay resultados, loguear todas las canciones para debug
+    if (songs.length === 0) {
+      const allSongs = await Song.find().limit(5);
+      console.log('📋 Muestra de canciones en DB:', allSongs.map(s => ({
+        title: s.title,
+        artist: s.artist,
+        genre: s.genre,
+        categorias: s.categorias
+      })));
+    }
 
     res.setHeader('Content-Type', 'application/json');
     res.json({

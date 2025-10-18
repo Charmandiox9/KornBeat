@@ -168,7 +168,9 @@ app.use(cors({
     'http://localhost',
     'http://localhost:80',
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Middleware de autenticación
