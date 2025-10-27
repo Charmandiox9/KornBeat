@@ -4,37 +4,32 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
 const redis = require('redis');
+const { body, validationResult } = require('express-validator');
 require('dotenv').config();
 
 const app = express();
 
-// ============= CONFIGURACIÓN DE REDIS =============
-let redisClient;
+// ============= REDIS CON CONTRASEÑA =============
+const redisClient = redis.createClient({
+  socket: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+  },
+  password: process.env.REDIS_PASSWORD || 'redis123', // 👈 AGREGAR ESTA LÍNEA
+  database: 0
+});
+
+redisClient.on('connect', () => console.log('🔄 Redis: Conectando...'));
+redisClient.on('ready', () => console.log('✅ Redis: Conectado y listo'));
+redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
+redisClient.on('reconnecting', () => console.log('🔄 Redis: Reconectando...'));
 
 (async () => {
   try {
-    redisClient = redis.createClient({
-      url: process.env.REDIS_HOST || 'redis://localhost:6379',
-      socket: {
-        reconnectStrategy: (retries) => {
-          if (retries > 10) {
-            console.error('❌ Redis: Demasiados intentos de reconexión');
-            return new Error('Reintentos agotados');
-          }
-          return retries * 100;
-        }
-      }
-    });
-
-    redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
-    redisClient.on('connect', () => console.log('🔄 Redis: Conectando...'));
-    redisClient.on('ready', () => console.log('✅ Redis: Conectado y listo'));
-
     await redisClient.connect();
-  } catch (error) {
-    console.error('❌ Error al conectar Redis:', error);
+  } catch (err) {
+    console.error('❌ Error al conectar Redis:', err);
   }
 })();
 

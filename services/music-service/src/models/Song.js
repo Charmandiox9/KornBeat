@@ -28,6 +28,14 @@ const songSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  categorias: {
+    type: [String],
+    default: []
+  },
+  tags: {
+    type: [String],
+    default: []
+  },
   fileName: {
     type: String,
     required: true
@@ -35,6 +43,10 @@ const songSchema = new mongoose.Schema({
   fileSize: {
     type: Number,
     required: true
+  },
+  coverUrl: {
+    type: String,
+    default: null
   },
   uploadDate: {
     type: Date,
@@ -53,6 +65,9 @@ songSchema.index({ title: 'text', artist: 'text', composers: 'text' });
 songSchema.index({ artist: 1 });
 songSchema.index({ composers: 1 });
 songSchema.index({ title: 1 });
+songSchema.index({ genre: 1 });
+songSchema.index({ categorias: 1 });
+songSchema.index({ tags: 1 });
 
 module.exports = mongoose.model('Song', songSchema);
 

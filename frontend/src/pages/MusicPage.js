@@ -3,23 +3,27 @@ import { Link, Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import SongList from '../components/SongList';
 import MusicPlayer from '../components/MusicPlayer';
+import SkeletonLoader from '../components/SkeletonLoader';
+import toast, { Toaster } from 'react-hot-toast';
 import '../styles/MusicPage.css';
 
 const MusicPage = () => {
   const { user, logout } = useContext(AuthContext);
+
+  // Si no hay usuario, retorna antes de renderizar cualquier provider o hijo
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Hooks después del return condicional
   const [allSongs, setAllSongs] = useState([]); // Todas las canciones
   const [displayedSongs, setDisplayedSongs] = useState([]); // Canciones mostradas
   const [currentSong, setCurrentSong] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
   // Estados de búsqueda
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
 
   // Cargar todas las canciones desde el music-service
   useEffect(() => {
@@ -29,17 +33,26 @@ const MusicPage = () => {
   const fetchAllSongs = async () => {
     try {
       setIsLoading(true);
+      // CAMBIO: Ahora usa /api/music/songs
       const response = await fetch('http://localhost:3002/api/music/songs');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setAllSongs(data.data);
-        setDisplayedSongs(data.data); // Mostrar todas inicialmente
+        setDisplayedSongs(data.data);
+        toast.success(`✅ ${data.data.length} canciones cargadas`);
       } else {
         console.error('Error fetching songs:', data.message);
+        toast.error('❌ Error al cargar las canciones');
       }
     } catch (error) {
       console.error('Error fetching songs:', error);
+      toast.error('❌ No se pudieron cargar las canciones');
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +61,6 @@ const MusicPage = () => {
   // Función de búsqueda
   const handleSearch = async (query, type = 'general') => {
     if (!query.trim()) {
-      // Si no hay query, mostrar todas las canciones
       setDisplayedSongs(allSongs);
       setSearchQuery('');
       setSearchType('');
@@ -58,33 +70,46 @@ const MusicPage = () => {
 
     try {
       setIsSearching(true);
+      toast.loading('🔍 Buscando...', { id: 'searching' });
       let endpoint = '';
       
       switch (type) {
         case 'artist':
+          // CAMBIO: Agregado /api
           endpoint = `http://localhost:3002/api/music/search/artist/${encodeURIComponent(query)}`;
           break;
         case 'song':
           endpoint = `http://localhost:3002/api/music/search/song/${encodeURIComponent(query)}`;
+          break;
+        case 'category':
+          endpoint = `http://localhost:3002/api/music/search/category/${encodeURIComponent(query)}`;
           break;
         default:
           endpoint = `http://localhost:3002/api/music/search/${encodeURIComponent(query)}`;
       }
 
       const response = await fetch(endpoint);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setDisplayedSongs(data.data);
         setSearchQuery(query);
         setSearchType(data.searchType || type);
+        toast.success(`✅ ${data.data.length} resultados encontrados`, { id: 'searching' });
       } else {
         console.error('Error searching:', data.message);
         setDisplayedSongs([]);
+        toast.error('❌ No se encontraron resultados', { id: 'searching' });
       }
     } catch (error) {
       console.error('Error searching:', error);
       setDisplayedSongs([]);
+      toast.error('❌ Error al buscar', { id: 'searching' });
     } finally {
       setIsSearching(false);
     }
@@ -96,6 +121,12 @@ const MusicPage = () => {
     setSearchType('');
     setDisplayedSongs(allSongs);
     setIsSearching(false);
+    toast.success('🔄 Búsqueda limpiada');
+  };
+
+  // Buscar por categoría
+  const handleCategorySearch = (category) => {
+    handleSearch(category, 'category');
   };
 
   const handleLogout = async () => {
@@ -108,10 +139,36 @@ const MusicPage = () => {
 
   const handleSongSelect = (song) => {
     setCurrentSong(song);
+    toast.success(`🎵 Reproduciendo: ${song.titulo}`);
   };
 
   return (
     <div className="music-page-container">
+      <Toaster 
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+            borderRadius: '10px',
+            padding: '16px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#4ade80',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <nav className="music-nav">
         <div className="nav-brand">
           <Link to="/principal">
@@ -177,11 +234,46 @@ const MusicPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Botones de Categorías */}
+          <div className="categories-section">
+            <h3>🎭 Explorar por Género</h3>
+            <div className="category-buttons">
+              <button onClick={() => handleCategorySearch('Pop')} className="category-btn pop">
+                🎤 Pop
+              </button>
+              <button onClick={() => handleCategorySearch('Rock')} className="category-btn rock">
+                🎸 Rock
+              </button>
+              <button onClick={() => handleCategorySearch('Hip-Hop')} className="category-btn hiphop">
+                🎧 Hip-Hop
+              </button>
+              <button onClick={() => handleCategorySearch('Jazz')} className="category-btn jazz">
+                🎷 Jazz
+              </button>
+              <button onClick={() => handleCategorySearch('Electrónica')} className="category-btn electronica">
+                🎹 Electrónica
+              </button>
+              <button onClick={() => handleCategorySearch('Reggaeton')} className="category-btn reggaeton">
+                🔥 Reggaeton
+              </button>
+              <button onClick={() => handleCategorySearch('Clásica')} className="category-btn clasica">
+                🎻 Clásica
+              </button>
+              <button onClick={() => handleCategorySearch('Country')} className="category-btn country">
+                🤠 Country
+              </button>
+              <button onClick={() => handleCategorySearch('R&B')} className="category-btn rnb">
+                🎵 R&B
+              </button>
+              <button onClick={() => handleCategorySearch('Metal')} className="category-btn metal">
+                🤘 Metal
+              </button>
+            </div>
+          </div>
           
           {isLoading ? (
-            <div className="loading">
-              <p>Cargando canciones...</p>
-            </div>
+            <SkeletonLoader count={8} />
           ) : (
             <div className="music-layout">
               <div className="songs-section">

@@ -43,6 +43,28 @@ services:
       retries: 3
       start_period: 10s
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"      # API
+      - "9001:9001"      # Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   auth-service:
     build:
       context: ./services/auth-service
@@ -60,12 +82,19 @@ services:
       - JWT_SECRET=your_jwt_secret
       - JWT_EXPIRES_IN=15m
       - REFRESH_TOKEN_EXPIRES_IN=7d
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     ports:
       - "3001:3001"
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - app-network
@@ -92,12 +121,19 @@ services:
       - REDIS_PASSWORD=redis_password
       - EXTERNAL_API_URL=https://api.example.com
       - EXTERNAL_API_KEY=your_api_key_here
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     ports:
       - "3002:3002"
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - app-network
@@ -125,6 +161,7 @@ volumes:
   mongo-data:
   mongodb_config:
   redis-data:
+  minio-data:
 
 networks:
   app-network:

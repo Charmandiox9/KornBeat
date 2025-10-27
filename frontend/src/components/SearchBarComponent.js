@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, X, Loader2, Filter } from 'lucide-react';
 import { useMusicSearch } from '../context/MusicSearchContext';
 import '../styles/SearchBar.css';
 
@@ -39,7 +39,18 @@ const SearchBarComponent = () => {
     const newCategory = category === selectedCategory ? '' : category;
     setSelectedCategory(newCategory);
     setShowCategories(false);
-    searchSongs(localQuery, newCategory);
+    
+    // Si hay categoría seleccionada, buscar solo por categoría
+    if (newCategory) {
+      searchSongs('', newCategory);
+    } else {
+      // Si se deselecciona, buscar con el query actual o limpiar
+      if (localQuery) {
+        searchSongs(localQuery, '');
+      } else {
+        clearSearch();
+      }
+    }
   };
 
   const handleClear = () => {
@@ -57,7 +68,7 @@ const SearchBarComponent = () => {
           
           <input
             type="text"
-            placeholder="Buscar canciones, artistas o álbumes..."
+            placeholder="🎵 Busca tu música favorita: canciones, artistas, álbumes..."
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             className="search-input"
@@ -79,6 +90,7 @@ const SearchBarComponent = () => {
             onClick={() => setShowCategories(!showCategories)}
             className="category-button"
           >
+            <Filter size={16} style={{ marginRight: '0.5rem', display: 'inline' }} />
             {selectedCategory || 'Categorías'}
           </button>
         </div>
@@ -104,7 +116,7 @@ const SearchBarComponent = () => {
 
       {(searchQuery || selectedCategory) && (
         <div className="active-filters">
-          <span>Buscando:</span>
+          <span>🔍 Buscando:</span>
           {searchQuery && (
             <span className="filter-tag filter-query">
               "{searchQuery}"
@@ -112,7 +124,7 @@ const SearchBarComponent = () => {
           )}
           {selectedCategory && (
             <span className="filter-tag filter-category">
-              {selectedCategory}
+              📂 {selectedCategory}
             </span>
           )}
         </div>
