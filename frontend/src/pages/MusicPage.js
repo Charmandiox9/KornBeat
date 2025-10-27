@@ -9,19 +9,21 @@ import '../styles/MusicPage.css';
 
 const MusicPage = () => {
   const { user, logout } = useContext(AuthContext);
+
+  // Si no hay usuario, retorna antes de renderizar cualquier provider o hijo
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Hooks después del return condicional
   const [allSongs, setAllSongs] = useState([]); // Todas las canciones
   const [displayedSongs, setDisplayedSongs] = useState([]); // Canciones mostradas
   const [currentSong, setCurrentSong] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
   // Estados de búsqueda
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
 
   // Cargar todas las canciones desde el music-service
   useEffect(() => {

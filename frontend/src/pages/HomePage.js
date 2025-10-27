@@ -5,6 +5,7 @@ import { MusicSearchProvider } from '../context/MusicSearchContext';
 import { MusicPlayerProvider } from '../context/MusicPlayerContext';
 import SearchBarComponent from '../components/SearchBarComponent';
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
+import SearchBarResultsGuest from '../components/SearchBarResultsGuest';
 import MiniPlayer from '../components/MiniPlayer';
 import QueuePanel from '../components/QueuePanel';
 import toast, { Toaster } from 'react-hot-toast';
@@ -98,14 +99,12 @@ const HomePage = () => {
                 <>
                   <h1>¡Bienvenido de vuelta, {user.name || 'Usuario'}!</h1>
                   <p>Descubre y reproduce tu música favorita</p>
-                  
                   <div className="music-search-section">
                     <SearchBarComponent />
                     <div className="search-results-wrapper">
                       <SearchBarResultsComponent />
                     </div>
                   </div>
-
                   <div className="hero-buttons">
                     <Link to="/principal" className="cta-primary">
                       Ir a Principal
@@ -119,14 +118,12 @@ const HomePage = () => {
                 <>
                   <h1>Bienvenido a KornBeat</h1>
                   <p>Descubre, reproduce y disfruta de millones de canciones</p>
-                  
                   <div className="music-search-section">
                     <SearchBarComponent />
                     <div className="search-results-wrapper">
-                      <SearchBarResultsComponent />
+                      <SearchBarResultsGuest />
                     </div>
                   </div>
-
                   <div className="hero-buttons">
                     <Link to="/login" className="cta-primary">
                       Comenzar
