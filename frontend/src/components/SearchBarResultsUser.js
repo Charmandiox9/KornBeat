@@ -25,12 +25,6 @@ const SearchBarResultsUser = () => {
     setActiveMenu(null);
   }, [playNow]);
 
-  // ...el resto del componente es igual al original, solo cambia la lógica de handlePlayNow
-  // Puedes copiar el renderizado de SearchBarResultsComponent.js aquí
-
-  // Para ahorrar espacio, solo muestro la función principal
-  // Si quieres el render completo, avísame
-
   return (
     <div className="search-results">
       {/* ...render igual al componente original... */}
