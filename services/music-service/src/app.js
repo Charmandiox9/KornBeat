@@ -201,6 +201,78 @@ const requireAuth = (req, res, next) => {
 };
 
 // ============= CONEXIÓN A MONGODB =============
+
+const { minioClient, bucketName } = require('../../../databases/minio/minio');
+const fs = require('fs').promises;
+const Song = require('./models/Song');
+const musicMetadata = require('music-metadata');
+const musicDir = path.join(__dirname, '../uploads/music');
+
+async function importMusicOnStartup() {
+  try {
+    await fs.access(musicDir);
+    const files = await fs.readdir(musicDir);
+    const mp3Files = files.filter(file => file.toLowerCase().endsWith('.mp3'));
+    for (const file of mp3Files) {
+      const filePath = path.join(musicDir, file);
+      // Evitar duplicados por nombre de archivo
+      const exists = await Song.findOne({ fileName: file });
+      if (exists) continue;
+
+      // Subir a MinIO si no existe
+      try {
+        const minioExists = await minioClient.statObject(bucketName, file).then(() => true).catch(() => false);
+        if (!minioExists) {
+          await minioClient.fPutObject(bucketName, file, filePath);
+          console.log(`🎵 Subido a MinIO: ${file}`);
+        }
+      } catch (err) {
+        console.error(`❌ Error subiendo a MinIO: ${file}`, err.message);
+      }
+
+      // Leer metadatos
+      let metadata;
+      let title = file.replace(/\.[^/.]+$/, '');
+      let artist = 'Desconocido';
+      let album = '';
+      let genre = '';
+      let duration = 0;
+      try {
+        metadata = await musicMetadata.parseFile(filePath);
+        title = metadata.common.title || title;
+        artist = metadata.common.artist || artist;
+        album = metadata.common.album || '';
+        genre = metadata.common.genre?.[0] || '';
+        duration = Math.round(metadata.format.duration || 0);
+      } catch {}
+
+      // Obtener tamaño del archivo
+      const fileStats = await fs.stat(filePath);
+      const fileSize = fileStats.size;
+
+      // Registrar en MongoDB
+      const song = new Song({
+        title,
+        artist,
+        album,
+        genre,
+        duration,
+        fileName: file,
+        fileSize,
+        playCount: 0
+      });
+      await song.save();
+      console.log(`✅ Registrada en MongoDB: ${title} - ${artist}`);
+    }
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.log('⚠️ La carpeta uploads/music no existe.');
+    } else {
+      console.error('❌ Error al importar música:', err.message);
+    }
+  }
+}
+
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -208,6 +280,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(async () => {
   console.log('✅ Conectado a MongoDB');
   await initializeBucket(); // Inicializar bucket de MinIO
+  await importMusicOnStartup(); // Importar música automáticamente
 })
 .catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
