@@ -95,18 +95,34 @@ export const MusicPlayerProvider = ({ children }) => {
   const playSong = useCallback((song, addToHistory = true) => {
     if (!song) return;
 
+    // Construir URL del stream basándose en el formato de la canción
+    let streamUrl;
+    
+    if (song.archivo_url) {
+      // Formato nuevo (español)
+      streamUrl = song.archivo_url.startsWith('http') 
+        ? song.archivo_url 
+        : `${API_BASE}${song.archivo_url}`;
+    } else if (song.fileName || song._id) {
+      // Formato antiguo (inglés) - usar endpoint de streaming
+      streamUrl = `${API_BASE}/api/music/songs/${song._id}/stream`;
+    } else {
+      console.error('No se encontró URL de audio en la canción');
+      setError('No se puede reproducir esta canción');
+      return;
+    }
+
     const songWithFullUrl = {
       ...song,
-      archivo_url: song.archivo_url?.startsWith('http') 
-        ? song.archivo_url 
-        : `${API_BASE}${song.archivo_url}`
+      archivo_url: streamUrl
     };
 
     setCurrentSong(songWithFullUrl);
     setError(null);
 
     if (audioRef.current) {
-      audioRef.current.src = songWithFullUrl.archivo_url;
+      audioRef.current.src = streamUrl;
+      audioRef.current.load(); // Importante: cargar el nuevo audio
       audioRef.current.play().catch(err => {
         console.error('Error al reproducir:', err);
         setError('No se pudo reproducir la canción');

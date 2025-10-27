@@ -1,12 +1,13 @@
+
 import React, { useState, useCallback, useMemo } from 'react';
 import { Music, Search, Loader2, Play, Heart, MoreVertical, ListPlus, PlayCircle } from 'lucide-react';
 import { useMusicSearch } from '../context/MusicSearchContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import '../styles/SearchBarResults.css';
 
-const SearchBarResultsComponent = () => {
+const SearchBarResultsGuest = () => {
   const { searchResults, isLoading, error, searchQuery } = useMusicSearch();
-  const { playNow, addToQueue, playNextInQueue, addMultipleToQueue, queue, clearQueue, playFromQueue, currentSong } = useMusicPlayer();
+  const { playNow, addMultipleToQueue, clearQueue, playFromQueue, addToQueue, playNextInQueue, currentSong } = useMusicPlayer();
   const [likedSongs, setLikedSongs] = useState(new Set());
   const [imageErrors, setImageErrors] = useState(new Set());
   const [activeMenu, setActiveMenu] = useState(null);
@@ -38,9 +39,9 @@ const SearchBarResultsComponent = () => {
   const handleKeyPress = useCallback((e, song) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      playNow(song);
+      handlePlayNow(e, song);
     }
-  }, [playNow]);
+  }, []);
 
   const handleMoreOptions = useCallback((e, songId) => {
     e.stopPropagation();
@@ -48,8 +49,6 @@ const SearchBarResultsComponent = () => {
   }, [activeMenu]);
 
   const handlePlayNow = useCallback((e, song) => {
-    e.stopPropagation();
-    // En la página de inicio, simular playlist: limpiar cola, agregar todos los resultados y reproducir la seleccionada
     e.stopPropagation();
     clearQueue();
     addMultipleToQueue(searchResults);
@@ -79,7 +78,6 @@ const SearchBarResultsComponent = () => {
     return `${count} ${count === 1 ? 'canción encontrada' : 'canciones encontradas'}`;
   }, [searchResults.length]);
 
-  // Cerrar menú al hacer click fuera
   React.useEffect(() => {
     const handleClickOutside = () => setActiveMenu(null);
     if (activeMenu) {
@@ -136,7 +134,6 @@ const SearchBarResultsComponent = () => {
 
       <div className="results-list" role="list">
         {searchResults.map((song) => {
-          // Compatibilidad con ambos formatos (español e inglés)
           const songTitle = song.titulo || song.title || 'Sin título';
           const artistName = song.artistas?.map(a => a.nombre).join(', ') || 
                            song.artist || 
@@ -144,7 +141,6 @@ const SearchBarResultsComponent = () => {
           const albumName = song.album_info?.titulo || song.album || '';
           const songDuration = song.duracion_segundos || song.duration || 0;
           const coverUrl = song.album_info?.portada_url || song.coverUrl || '';
-          
           const hasImageError = imageErrors.has(song._id);
           const isLiked = likedSongs.has(song._id);
           const isPlaying = currentSong?._id === song._id;
@@ -153,7 +149,7 @@ const SearchBarResultsComponent = () => {
             <div
               key={song._id}
               className={`song-card ${isPlaying ? 'playing' : ''}`}
-              onClick={() => playNow(song)}
+              onClick={(e) => handlePlayNow(e, song)}
               onKeyPress={(e) => handleKeyPress(e, song)}
               role="listitem button"
               tabIndex={0}
@@ -281,4 +277,4 @@ const SearchBarResultsComponent = () => {
   );
 };
 
-export default SearchBarResultsComponent;
+export default SearchBarResultsGuest;

@@ -7,15 +7,20 @@ const { minioClient, bucketName } = require('../../../../databases/minio/minio')
 router.get('/songs', async (req, res) => {
   try {
     const songs = await Song.find().sort({ createdAt: -1 });
+    
+    // Asegurar que siempre retorna JSON
+    res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
-      data: songs
+      data: songs,
+      count: songs.length
     });
   } catch (error) {
     console.error('Error getting songs:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener canciones'
+      message: 'Error al obtener canciones',
+      error: error.message
     });
   }
 });
@@ -33,6 +38,7 @@ router.get('/search/artist/:artistName', async (req, res) => {
       ]
     }).sort({ playCount: -1 });
 
+    res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
       data: songs,
@@ -44,7 +50,8 @@ router.get('/search/artist/:artistName', async (req, res) => {
     console.error('Error searching by artist:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al buscar por artista'
+      message: 'Error al buscar por artista',
+      error: error.message
     });
   }
 });
@@ -69,6 +76,53 @@ router.get('/search/song/:songTitle', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al buscar por canción'
+    });
+  }
+});
+
+// Buscar por categoría/género
+router.get('/search/category/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    console.log('🔍 Buscando por categoría:', category);
+    
+    // Buscar en múltiples campos para ser más flexible
+    const songs = await Song.find({
+      $or: [
+        { genre: { $regex: category, $options: 'i' } },
+        { categorias: { $in: [new RegExp(category, 'i')] } },
+        { tags: { $in: [new RegExp(category, 'i')] } }
+      ]
+    }).sort({ playCount: -1 });
+
+    console.log('✅ Canciones encontradas:', songs.length);
+    
+    // Si no hay resultados, loguear todas las canciones para debug
+    if (songs.length === 0) {
+      const allSongs = await Song.find().limit(5);
+      console.log('📋 Muestra de canciones en DB:', allSongs.map(s => ({
+        title: s.title,
+        artist: s.artist,
+        genre: s.genre,
+        categorias: s.categorias
+      })));
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.json({
+      success: true,
+      data: songs,
+      searchType: 'category',
+      query: category,
+      count: songs.length
+    });
+  } catch (error) {
+    console.error('❌ Error searching by category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar por categoría',
+      error: error.message
     });
   }
 });
@@ -163,13 +217,50 @@ router.get('/songs/:id/stream', async (req, res) => {
     song.playCount += 1;
     await song.save();
 
-    // Stream desde MinIO
-    const audioStream = await minioClient.getObject(bucketName, song.fileName);
-    
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-    
-    audioStream.pipe(res);
+    // Ruta al archivo de música en el sistema de archivos
+    const fs = require('fs');
+    const path = require('path');
+    const musicPath = path.join(__dirname, '..', '..', 'uploads', 'music', song.fileName);
+
+    // Verificar que el archivo existe
+    if (!fs.existsSync(musicPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Archivo de audio no encontrado'
+      });
+    }
+
+    // Obtener información del archivo
+    const stat = fs.statSync(musicPath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      // Streaming parcial (para seek/skip)
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(musicPath, { start, end });
+      
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'audio/mpeg',
+      });
+      
+      file.pipe(res);
+    } else {
+      // Streaming completo
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': 'audio/mpeg',
+        'Accept-Ranges': 'bytes',
+      });
+      
+      fs.createReadStream(musicPath).pipe(res);
+    }
   } catch (error) {
     console.error('Error streaming song:', error);
     res.status(500).json({

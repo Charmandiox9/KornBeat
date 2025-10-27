@@ -1,21 +1,38 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import { MusicSearchProvider } from '../context/MusicSearchContext';
 import { MusicPlayerProvider } from '../context/MusicPlayerContext';
 import SearchBarComponent from '../components/SearchBarComponent';
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
+import SearchBarResultsGuest from '../components/SearchBarResultsGuest';
 import MiniPlayer from '../components/MiniPlayer';
 import QueuePanel from '../components/QueuePanel';
+import toast, { Toaster } from 'react-hot-toast';
 import '../App.css';
 
 const HomePage = () => {
   const { user, logout } = useContext(AuthContext);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
+  // Mostrar mensaje de bienvenida para invitados
+  useEffect(() => {
+    if (!user) {
+      const hasShownWelcome = sessionStorage.getItem('guestWelcomeShown');
+      if (!hasShownWelcome) {
+        toast.success('🎵 ¡Bienvenido! Puedes buscar y reproducir música sin registrarte', {
+          duration: 5000,
+          icon: '👋',
+        });
+        sessionStorage.setItem('guestWelcomeShown', 'true');
+      }
+    }
+  }, [user]);
+
   const handleLogout = async () => {
     try {
       await logout();
+      sessionStorage.removeItem('guestWelcomeShown');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
@@ -25,6 +42,25 @@ const HomePage = () => {
     <MusicPlayerProvider>
       <MusicSearchProvider>
         <div className="home-container">
+          <Toaster 
+            position="top-center"
+            reverseOrder={false}
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#363636',
+                color: '#fff',
+                borderRadius: '10px',
+                padding: '16px',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#4ade80',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
           <nav className="navbar">
             <div className="nav-brand">
               <Link to="/">
@@ -63,14 +99,12 @@ const HomePage = () => {
                 <>
                   <h1>¡Bienvenido de vuelta, {user.name || 'Usuario'}!</h1>
                   <p>Descubre y reproduce tu música favorita</p>
-                  
                   <div className="music-search-section">
                     <SearchBarComponent />
                     <div className="search-results-wrapper">
                       <SearchBarResultsComponent />
                     </div>
                   </div>
-
                   <div className="hero-buttons">
                     <Link to="/principal" className="cta-primary">
                       Ir a Principal
@@ -84,14 +118,12 @@ const HomePage = () => {
                 <>
                   <h1>Bienvenido a KornBeat</h1>
                   <p>Descubre, reproduce y disfruta de millones de canciones</p>
-                  
                   <div className="music-search-section">
                     <SearchBarComponent />
                     <div className="search-results-wrapper">
-                      <SearchBarResultsComponent />
+                      <SearchBarResultsGuest />
                     </div>
                   </div>
-
                   <div className="hero-buttons">
                     <Link to="/login" className="cta-primary">
                       Comenzar

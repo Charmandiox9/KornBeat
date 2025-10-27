@@ -5,36 +5,33 @@ const cors = require('cors');
 const redis = require('redis');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const { initializeBucket } = require('../../../databases/minio/minio');
 require('dotenv').config();
 
 const app = express();
+const musicRoutes = require('./routes/musicRoutes');
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// ============= CONFIGURACIÓN DE REDIS =============
-let redisClient;
+// ============= REDIS CON CONTRASEÑA =============
+const redisClient = redis.createClient({
+  socket: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+  },
+  password: process.env.REDIS_PASSWORD || 'redis123', // 👈 AGREGAR ESTA LÍNEA
+  database: 0
+});
+
+redisClient.on('connect', () => console.log('🔄 Redis: Conectando...'));
+redisClient.on('ready', () => console.log('✅ Redis: Conectado y listo'));
+redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
 
 (async () => {
   try {
-    redisClient = redis.createClient({
-      url: process.env.REDIS_HOST || 'redis://localhost:6379',
-      socket: {
-        reconnectStrategy: (retries) => {
-          if (retries > 10) {
-            console.error('❌ Redis: Demasiados intentos de reconexión');
-            return new Error('Reintentos agotados');
-          }
-          return retries * 100;
-        }
-      }
-    });
-
-    redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
-    redisClient.on('ready', () => console.log('✅ Redis: Conectado'));
-
     await redisClient.connect();
-  } catch (error) {
-    console.error('❌ Error al conectar Redis:', error);
+  } catch (err) {
+    console.error('❌ Error al conectar Redis:', err);
   }
 })();
 
@@ -171,7 +168,9 @@ app.use(cors({
     'http://localhost',
     'http://localhost:80',
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Middleware de autenticación
@@ -202,396 +201,91 @@ const requireAuth = (req, res, next) => {
 };
 
 // ============= CONEXIÓN A MONGODB =============
+
+const { minioClient, bucketName } = require('../../../databases/minio/minio');
+const fs = require('fs').promises;
+const Song = require('./models/Song');
+const musicMetadata = require('music-metadata');
+const musicDir = path.join(__dirname, '../uploads/music');
+
+async function importMusicOnStartup() {
+  try {
+    await fs.access(musicDir);
+    const files = await fs.readdir(musicDir);
+    const mp3Files = files.filter(file => file.toLowerCase().endsWith('.mp3'));
+    for (const file of mp3Files) {
+      const filePath = path.join(musicDir, file);
+      // Evitar duplicados por nombre de archivo
+      const exists = await Song.findOne({ fileName: file });
+      if (exists) continue;
+
+      // Subir a MinIO si no existe
+      try {
+        const minioExists = await minioClient.statObject(bucketName, file).then(() => true).catch(() => false);
+        if (!minioExists) {
+          await minioClient.fPutObject(bucketName, file, filePath);
+          console.log(`🎵 Subido a MinIO: ${file}`);
+        }
+      } catch (err) {
+        console.error(`❌ Error subiendo a MinIO: ${file}`, err.message);
+      }
+
+      // Leer metadatos
+      let metadata;
+      let title = file.replace(/\.[^/.]+$/, '');
+      let artist = 'Desconocido';
+      let album = '';
+      let genre = '';
+      let duration = 0;
+      try {
+        metadata = await musicMetadata.parseFile(filePath);
+        title = metadata.common.title || title;
+        artist = metadata.common.artist || artist;
+        album = metadata.common.album || '';
+        genre = metadata.common.genre?.[0] || '';
+        duration = Math.round(metadata.format.duration || 0);
+      } catch {}
+
+      // Obtener tamaño del archivo
+      const fileStats = await fs.stat(filePath);
+      const fileSize = fileStats.size;
+
+      // Registrar en MongoDB
+      const song = new Song({
+        title,
+        artist,
+        album,
+        genre,
+        duration,
+        fileName: file,
+        fileSize,
+        playCount: 0
+      });
+      await song.save();
+      console.log(`✅ Registrada en MongoDB: ${title} - ${artist}`);
+    }
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.log('⚠️ La carpeta uploads/music no existe.');
+    } else {
+      console.error('❌ Error al importar música:', err.message);
+    }
+  }
+}
+
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ Conectado a MongoDB'))
+.then(async () => {
+  console.log('✅ Conectado a MongoDB');
+  await initializeBucket(); // Inicializar bucket de MinIO
+  await importMusicOnStartup(); // Importar música automáticamente
+})
 .catch(err => console.error('❌ Error al conectar MongoDB:', err));
 
-// ============= ESQUEMA DE CANCIÓN =============
-const songSchema = new mongoose.Schema({
-  titulo: { type: String, required: true, maxLength: 150 },
-  album_id: { type: mongoose.Schema.Types.ObjectId },
-  album_info: {
-    titulo: { type: String },
-    portada_url: { type: String }
-  },
-  artistas: [{
-    artista_id: { type: mongoose.Schema.Types.ObjectId },
-    nombre: { type: String },
-    tipo: { type: String, enum: ['principal', 'featuring', 'colaborador'] },
-    orden: { type: Number }
-  }],
-  numero_pista: { type: Number, min: 1 },
-  duracion_segundos: { type: Number, required: true, min: 1 },
-  fecha_lanzamiento: { type: Date },
-  archivo_url: { type: String, required: true },
-  letra: { type: String },
-  es_explicito: { type: Boolean },
-  es_instrumental: { type: Boolean },
-  idioma: { type: String, maxLength: 3 },
-  categorias: [{ type: String }],
-  reproducciones: { type: Number, default: 0, min: 0 },
-  likes: { type: Number, default: 0, min: 0 },
-  precio: { type: mongoose.Schema.Types.Decimal128 },
-  disponible: { type: Boolean, default: true },
-  fecha_creacion: { type: Date, default: Date.now }
-}, {
-  collection: 'canciones'
-});
-
-// Índices para mejorar búsquedas
-songSchema.index({ titulo: 'text', 'artistas.nombre': 'text' });
-songSchema.index({ categorias: 1 });
-songSchema.index({ reproducciones: -1 });
-songSchema.index({ fecha_lanzamiento: -1 });
-songSchema.index({ disponible: 1 });
-
-const Song = mongoose.model('Song', songSchema);
-
-// ============= RUTAS =============
-
-// Buscar canciones
-app.get('/music/songs/search', authenticateToken, async (req, res) => {
-  try {
-    const { q, categoria, limit = 20, page = 1 } = req.query;
-
-    if (!q && !categoria) {
-      return res.status(400).json({ message: 'Parámetro de búsqueda requerido' });
-    }
-
-    // Crear clave de cache basada en parámetros
-    const cacheKey = `search:${q || 'all'}:${categoria || 'all'}:${limit}:${page}`;
-    
-    // Intentar obtener del cache
-    let results = await getCachedQuery(cacheKey);
-
-    if (!results) {
-      const skip = (page - 1) * parseInt(limit);
-      const query = { disponible: true };
-
-      if (q) {
-        query.$text = { $search: q };
-      }
-      if (categoria) {
-        query.categorias = categoria;
-      }
-
-      const [songs, total] = await Promise.all([
-        Song.find(query)
-          .select('-letra') // No incluir letra en listados
-          .limit(parseInt(limit))
-          .skip(skip)
-          .sort({ reproducciones: -1 })
-          .lean(),
-        Song.countDocuments(query)
-      ]);
-
-      results = {
-        songs,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit))
-        }
-      };
-
-      // Cachear resultados por 5 minutos
-      await cacheQuery(cacheKey, results, 300);
-    }
-
-    res.json(results);
-  } catch (error) {
-    console.error('Error en búsqueda:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener canción por ID
-app.get('/music/songs/:id', authenticateToken, async (req, res) => {
-
-  try {
-    const { id } = req.params;
-
-    if(!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'ID de canción inválido' });
-    }
-
-    // Intentar obtener del cache
-    const song = await getCachedSong(id);
-
-    if (!song) {
-      // Si no está en cache, buscar en MongoDB
-      song = await Song.findById(id);
-      
-      if (!song || !song.disponible) {
-        return res.status(404).json({ message: 'Canción no encontrada' });
-      }
-
-      // Cachear para futuras solicitudes
-      await cacheSong(id, song);
-    }
-
-    res.json({ song });
-  } catch (error) {
-    console.error('Error al obtener canción:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener canciones populares
-app.get('/music/songs/popular', authenticateToken, async (req, res) => {
-  try {
-    const { limit = 50 } = req.query;
-    const cacheKey = `popular:${limit}`;
-
-    // Intentar cache
-    let songs = await getCachedQuery(cacheKey);
-
-    if (!songs) {
-      songs = await Song.find({ disponible: true })
-        .select('-letra')
-        .sort({ reproducciones: -1 })
-        .limit(parseInt(limit))
-        .lean();
-
-      // Cachear por 10 minutos
-      await cacheQuery(cacheKey, songs, 600);
-    }
-
-    res.json({ songs });
-  } catch (error) {
-    console.error('Error al obtener populares:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener canciones recientes
-app.get('/music/songs/recent', authenticateToken, async (req, res) => {
-  try {
-    const { limit = 50 } = req.query;
-    const cacheKey = `recent:${limit}`;
-
-    let songs = await getCachedQuery(cacheKey);
-
-    if (!songs) {
-      songs = await Song.find({ disponible: true })
-        .select('-letra')
-        .sort({ fecha_lanzamiento: -1 })
-        .limit(parseInt(limit))
-        .lean();
-
-      await cacheQuery(cacheKey, songs, 600);
-    }
-
-    res.json({ songs });
-  } catch (error) {
-    console.error('Error al obtener recientes:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener canciones por categoría/género
-app.get('/music/songs/category/:categoria', authenticateToken, async (req, res) => {
-  try {
-    const { categoria } = req.params;
-    const { limit = 50 } = req.query;
-    const cacheKey = `category:${categoria}:${limit}`;
-
-    let songs = await getCachedQuery(cacheKey);
-
-    if (!songs) {
-      songs = await Song.find({ 
-        categorias: categoria,
-        disponible: true 
-      })
-        .select('-letra')
-        .sort({ reproducciones: -1 })
-        .limit(parseInt(limit))
-        .lean();
-
-      await cacheQuery(cacheKey, songs, 600);
-    }
-
-    res.json({ songs });
-  } catch (error) {
-    console.error('Error al obtener por categoría:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener letra de canción
-app.get('/music/songs/:id/lyrics', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const song = await Song.findById(id).select('titulo letra artistas');
-
-    if (!song || !song.disponible) {
-      return res.status(404).json({ message: 'Canción no encontrada' });
-    }
-
-    res.json({ 
-      titulo: song.titulo,
-      artistas: song.artistas,
-      letra: song.letra || 'Letra no disponible'
-    });
-  } catch (error) {
-    console.error('Error al obtener letra:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Registrar reproducción (requiere autenticación)
-app.post('/music/songs/:id/play', requireAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Verificar que la canción existe
-    const song = await Song.findById(id).select('titulo artistas archivo_url');
-
-    if (!song || !song.disponible) {
-      return res.status(404).json({ message: 'Canción no encontrada' });
-    }
-
-    // Incrementar contador en Redis
-    await incrementCounter(id, 'plays');
-
-    // Agregar a historial reciente del usuario
-    const recentSong = {
-      song_id: id,
-      titulo: song.titulo,
-      artistas: song.artistas,
-      timestamp: Date.now()
-    };
-
-    const userRecent = await getUserRecentSongs(req.user.id) || [];
-    userRecent.unshift(recentSong);
-    await cacheUserRecentSongs(req.user.id, userRecent.slice(0, 50));
-
-    res.json({ 
-      message: 'Reproducción registrada',
-      song: {
-        _id: song._id,
-        titulo: song.titulo,
-        artistas: song.artistas,
-        archivo_url: song.archivo_url
-      }
-    });
-  } catch (error) {
-    console.error('Error al registrar reproducción:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Dar like a una canción (requiere autenticación)
-app.post('/music/songs/:id/like', requireAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Verificar que no haya dado like antes (usando Redis Set)
-    const likeKey = `user:${req.user.id}:likes`;
-    const hasLiked = await redisClient.sIsMember(likeKey, id);
-
-    if (hasLiked) {
-      return res.status(400).json({ message: 'Ya diste like a esta canción' });
-    }
-
-    // Agregar like
-    await redisClient.sAdd(likeKey, id);
-    await redisClient.expire(likeKey, 86400 * 30); // 30 días
-
-    // Incrementar contador
-    await incrementCounter(id, 'likes');
-
-    res.json({ message: 'Like agregado' });
-  } catch (error) {
-    console.error('Error al dar like:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Quitar like
-app.delete('/music/songs/:id/like', requireAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const likeKey = `user:${req.user.id}:likes`;
-    await redisClient.sRem(likeKey, id);
-
-    // Decrementar en MongoDB directamente
-    await Song.findByIdAndUpdate(id, { $inc: { likes: -1 } });
-
-    res.json({ message: 'Like removido' });
-  } catch (error) {
-    console.error('Error al quitar like:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener historial reciente del usuario
-app.get('/music/user/recent', requireAuth, async (req, res) => {
-  try {
-    const recent = await getUserRecentSongs(req.user.id);
-    res.json({ recent: recent || [] });
-  } catch (error) {
-    console.error('Error al obtener historial:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener canciones con más likes del usuario
-app.get('/music/user/liked', requireAuth, async (req, res) => {
-  try {
-    const likeKey = `user:${req.user.id}:likes`;
-    const likedIds = await redisClient.sMembers(likeKey);
-
-    if (likedIds.length === 0) {
-      return res.json({ songs: [] });
-    }
-
-    const songs = await Song.find({ 
-      _id: { $in: likedIds },
-      disponible: true 
-    })
-      .select('-letra')
-      .lean();
-
-    res.json({ songs });
-  } catch (error) {
-    console.error('Error al obtener likes:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
-
-// Obtener estadísticas de una canción
-app.get('/music/songs/:id/stats', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const song = await Song.findById(id).select('reproducciones likes');
-    
-    if (!song) {
-      return res.status(404).json({ message: 'Canción no encontrada' });
-    }
-
-    // Obtener contadores adicionales de Redis
-    const playsInRedis = await getCounter(id, 'plays');
-    const likesInRedis = await getCounter(id, 'likes');
-
-    res.json({
-      stats: {
-        reproducciones: song.reproducciones + playsInRedis,
-        likes: song.likes + likesInRedis
-      }
-    });
-  } catch (error) {
-    console.error('Error al obtener estadísticas:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-});
+// ============= MONTAR RUTAS =============
+app.use('/api/music', musicRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
