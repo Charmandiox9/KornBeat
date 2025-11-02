@@ -1,4 +1,4 @@
-/* App.css - Estilos para la página principal y navegación */
+/* App.css - Estilos GLOBALES y para otras páginas (NO HomePage) */
 
 * {
   margin: 0;
@@ -15,117 +15,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* === PÁGINA PRINCIPAL === */
-.home-container {
-  min-height: 100vh;
-}
+/* === ELIMINADOS LOS ESTILOS DE HOME-CONTAINER, NAVBAR, HERO-SECTION === */
+/* Estos ahora están solo en HomePage.css */
 
-/* Navbar */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-}
-
-.nav-brand h2 {
-  color: #2c3e50;
-  font-weight: 700;
-  font-size: 1.5rem;
-}
-
-.nav-links .login-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 25px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.nav-links .login-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-}
-
-/* Hero Section */
-.hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: white;
-  padding: 2rem;
-}
-
-.hero-content h1 {
-  font-size: 3.5rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  letter-spacing: -1px;
-}
-
-.hero-content p {
-  font-size: 1.25rem;
-  margin-bottom: 2.5rem;
-  opacity: 0.9;
-  max-width: 600px;
-}
-
-.hero-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.cta-primary,
-.cta-secondary {
-  padding: 1rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 150px;
-}
-
-.cta-primary {
-  background: white;
-  color: #667eea;
-}
-
-.cta-primary:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.cta-secondary {
-  background: transparent;
-  color: white;
-  border: 2px solid white;
-}
-
-.cta-secondary:hover {
-  background: white;
-  color: #667eea;
-  transform: translateY(-3px);
-}
-
-/* Features Section */
+/* Features Section (si lo usas en otra página) */
 .features-section {
   padding: 5rem 0;
   background: #f8fafc;
@@ -180,71 +73,6 @@
 .feature-card p {
   color: #6b7280;
   line-height: 1.6;
-}
-
-/* === AUTENTICACIÓN === */
-.auth-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-greeting {
-  color: #374151;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.user-info {
-  color: #374151;
-  font-weight: 500;
-  font-size: 0.9rem;
-  margin-right: 0.5rem;
-}
-
-.register-link {
-  color: #667eea;
-  text-decoration: none;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-}
-
-.register-link:hover {
-  background: rgba(102, 126, 234, 0.1);
-}
-
-.dashboard-btn {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.dashboard-btn:hover {
-  background: rgba(102, 126, 234, 0.2);
-  transform: translateY(-1px);
-}
-
-.logout-btn {
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.logout-btn:hover {
-  background: #dc2626;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 
 /* === WRAPPER DE LOGIN/REGISTRO === */
@@ -413,27 +241,6 @@
 
 /* === RESPONSIVIDAD === */
 @media (max-width: 768px) {
-  .navbar {
-    padding: 1rem;
-  }
-  
-  .nav-brand h2 {
-    font-size: 1.25rem;
-  }
-  
-  .hero-content h1 {
-    font-size: 2.5rem;
-  }
-  
-  .hero-content p {
-    font-size: 1.1rem;
-  }
-  
-  .hero-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-  
   .features-grid {
     grid-template-columns: 1fr;
   }
@@ -446,10 +253,6 @@
 }
 
 @media (max-width: 480px) {
-  .hero-content h1 {
-    font-size: 2rem;
-  }
-  
   .features-section h2 {
     font-size: 2rem;
   }
