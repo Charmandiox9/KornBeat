@@ -1,3 +1,4 @@
+// src/pages/HomePage.js
 import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
@@ -9,7 +10,7 @@ import SearchBarResultsGuest from '../components/SearchBarResultsGuest';
 import MiniPlayer from '../components/MiniPlayer';
 import QueuePanel from '../components/QueuePanel';
 import toast, { Toaster } from 'react-hot-toast';
-import '../App.css';
+import '../styles/HomePages.css'; // Asegúrate de que este archivo existe
 
 const HomePage = () => {
   const { user, logout } = useContext(AuthContext);
@@ -61,6 +62,8 @@ const HomePage = () => {
               },
             }}
           />
+          
+          {/* NAVBAR */}
           <nav className="navbar">
             <div className="nav-brand">
               <Link to="/">
@@ -83,7 +86,7 @@ const HomePage = () => {
               ) : (
                 <div className="auth-section">
                   <Link to="/register" className="register-link">
-                    Registrarse
+                    Registrarte
                   </Link>
                   <Link to="/login" className="login-btn">
                     Iniciar Sesión
@@ -93,21 +96,24 @@ const HomePage = () => {
             </div>
           </nav>
           
+          {/* HERO SECTION */}
           <main className="hero-section">
             <div className="hero-content">
               {user ? (
                 <>
-                  <h1>¡Bienvenido de vuelta, {user.name || 'Usuario'}!</h1>
+                  <h1>¡Bienvenido de vuelta!</h1>
                   <p>Descubre y reproduce tu música favorita</p>
+                  
                   <div className="music-search-section">
                     <SearchBarComponent />
                     <div className="search-results-wrapper">
                       <SearchBarResultsComponent />
                     </div>
                   </div>
+                  
                   <div className="hero-buttons">
                     <Link to="/principal" className="cta-primary">
-                      Ir a Principal
+                      Comenzar
                     </Link>
                     <button className="cta-secondary">
                       Ver perfil
@@ -117,13 +123,16 @@ const HomePage = () => {
               ) : (
                 <>
                   <h1>Bienvenido a KornBeat</h1>
-                  <p>Descubre, reproduce y disfruta de millones de canciones</p>
+                  <p>Explora, escucha y crea tu propio ritmo.<br/>
+                     Regístrate gratis y empieza a escuchar música ahora.</p>
+                  
                   <div className="music-search-section">
                     <SearchBarComponent />
                     <div className="search-results-wrapper">
                       <SearchBarResultsGuest />
                     </div>
                   </div>
+                  
                   <div className="hero-buttons">
                     <Link to="/login" className="cta-primary">
                       Comenzar
@@ -137,7 +146,7 @@ const HomePage = () => {
             </div>
           </main>
 
-          {/* Reproductor de música mejorado */}
+          {/* Reproductor de música */}
           <MiniPlayer />
 
           {/* Panel de cola de reproducción */}
