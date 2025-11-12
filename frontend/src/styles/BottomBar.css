@@ -1,0 +1,67 @@
+/* ==================== BARRA INFERIOR ==================== */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+}
+
+/* Navegación inferior */
+.bottom-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  background: rgba(15, 12, 41, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 968px) {
+  .bottom-navigation {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .nav-item {
+    padding: 0.5rem 1rem;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 580px) {
+  .bottom-navigation {
+    flex-wrap: wrap;
+    justify-content: space-around;
+  }
+
+  .nav-item span {
+    display: none;
+  }
+
+  .nav-item {
+    padding: 0.5rem;
+  }
+}
