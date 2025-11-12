@@ -63,7 +63,7 @@ const HomePage = () => {
             }}
           />
           
-          {/* NAVBAR */}
+
           <nav className="navbar">
             <div className="nav-brand">
               <Link to="/">
@@ -96,7 +96,6 @@ const HomePage = () => {
             </div>
           </nav>
           
-          {/* HERO SECTION */}
           <main className="hero-section">
             <div className="hero-content">
               {user ? (

@@ -1,15 +1,12 @@
-// src/pages/PrincipalPage.js
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import '../App.css';
 
-// Componente de página principal (área privada)
-const PrincipalPage = () => {
+const UsuarioPage = () => {
   const { user, logout } = useContext(AuthContext);
   
-  // Si no está logueado, redirigir al login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -26,7 +23,7 @@ const PrincipalPage = () => {
     <div className="principal-container">
       <nav className="principal-nav">
         <div className="nav-brand">
-          <Link to="/">
+          <Link to="/principal">
             <h2>Mi Aplicación</h2>
           </Link>
         </div>
@@ -34,7 +31,7 @@ const PrincipalPage = () => {
           <span className="user-info">
             {user.name || user.email}
           </span>
-          <Link to="/" className="home-link">
+          <Link to="/principal" className="home-link">
             Inicio
           </Link>
           <button onClick={handleLogout} className="logout-btn">
@@ -76,4 +73,4 @@ const PrincipalPage = () => {
   );
 };
 
-export default PrincipalPage;
+export default UsuarioPage;
