@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mongodb:
     image: mongo:latest
@@ -107,8 +105,8 @@ services:
 
   music-service:
     build:
-      context: ./services/music-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: /services/music-service/Dockerfile
     container_name: music-service
     restart: unless-stopped
     environment:

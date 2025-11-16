@@ -3,6 +3,7 @@ const { parseFile } = require('music-metadata');
 const fs = require('fs').promises;
 const path = require('path');
 const Song = require('./src/models/Song');
+const { minioClient, bucketName } = require('./src/minio');
 require('dotenv').config();
 
 // Colores para la consola
@@ -24,7 +25,8 @@ const stats = {
   errors: 0,
   withMetadata: 0,
   withoutMetadata: 0,
-  withCover: 0
+  withCover: 0,
+  uploadedToMinio: 0
 };
 
 // Conectar a MongoDB
@@ -41,12 +43,49 @@ async function connectDB() {
   }
 }
 
+// Verificar/crear bucket de MinIO
+async function initMinIO() {
+  try {
+    const exists = await minioClient.bucketExists(bucketName);
+    if (!exists) {
+      await minioClient.makeBucket(bucketName, 'us-east-1');
+      console.log(`${colors.green}✅ Bucket de MinIO creado: ${bucketName}${colors.reset}\n`);
+    } else {
+      console.log(`${colors.green}✅ Bucket de MinIO encontrado: ${bucketName}${colors.reset}\n`);
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Error con MinIO:${colors.reset}`, error);
+    throw error;
+  }
+}
+
+// Subir archivo a MinIO
+async function uploadToMinio(filePath, fileName) {
+  try {
+    // Verificar si ya existe en MinIO
+    try {
+      await minioClient.statObject(bucketName, fileName);
+      console.log(`   ${colors.yellow}⚠️  Ya existe en MinIO${colors.reset}`);
+      return true;
+    } catch (err) {
+      // No existe, continuar con la subida
+    }
+
+    // Subir archivo
+    await minioClient.fPutObject(bucketName, fileName, filePath);
+    stats.uploadedToMinio++;
+    console.log(`   ${colors.green}☁️  Subido a MinIO${colors.reset}`);
+    return true;
+  } catch (error) {
+    console.error(`   ${colors.red}❌ Error subiendo a MinIO:${colors.reset}`, error.message);
+    return false;
+  }
+}
+
 // Extraer artista y título del nombre de archivo
 function parseFileName(fileName) {
-  // Quitar extensión
   let clean = fileName.replace(/\.[^/.]+$/, '');
   
-  // Mapeo de artistas conocidos
   const artistMap = {
     'acdc': 'AC/DC',
     'arctic-monkeys': 'Arctic Monkeys',
@@ -62,7 +101,6 @@ function parseFileName(fileName) {
     'stones': 'The Rolling Stones'
   };
   
-  // Mapeo de géneros por artista
   const genreMap = {
     'AC/DC': 'Rock',
     'Arctic Monkeys': 'Indie Rock',
@@ -82,23 +120,20 @@ function parseFileName(fileName) {
   let title = clean;
   let genre = 'Sin Género';
   
-  // Buscar artista en el nombre del archivo
   for (const [key, value] of Object.entries(artistMap)) {
     if (clean.toLowerCase().startsWith(key)) {
       artist = value;
       genre = genreMap[value] || 'Sin Género';
-      // Remover el nombre del artista del título
       title = clean.substring(key.length).replace(/^[-_\s]+/, '');
       break;
     }
   }
   
-  // Limpiar el título
   title = title
-    .replace(/[-_]/g, ' ') // Reemplazar guiones y guiones bajos por espacios
-    .replace(/\d{4}/g, '') // Quitar años
-    .replace(/\b(official|video|audio|lyrics|lyric|hd|hq|320kbps|mp3)\b/gi, '') // Quitar palabras comunes
-    .replace(/\s+/g, ' ') // Normalizar espacios
+    .replace(/[-_]/g, ' ')
+    .replace(/\d{4}/g, '')
+    .replace(/\b(official|video|audio|lyrics|lyric|hd|hq|320kbps|mp3)\b/gi, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -107,36 +142,40 @@ function parseFileName(fileName) {
   return { artist, title, genre };
 }
 
-// Extraer portada del MP3 y guardarla
-async function extractCover(metadata, songId) {
+// Extraer portada del MP3 y subirla a MinIO
+async function extractAndUploadCover(metadata, songId, artist) {
   try {
     if (!metadata.common.picture || metadata.common.picture.length === 0) {
       return null;
     }
 
     const picture = metadata.common.picture[0];
-    const coverDir = path.join(__dirname, 'uploads', 'covers', 'song');
-    
-    // Crear directorio si no existe
-    await fs.mkdir(coverDir, { recursive: true });
-
-    // Generar nombre de archivo para la portada
     const ext = picture.format.split('/')[1] || 'jpg';
-    const coverFileName = `${songId}.${ext}`;
-    const coverPath = path.join(coverDir, coverFileName);
+    const coverFileName = `covers/${songId}.${ext}`;
+    
+    // Guardar temporalmente
+    const tempPath = path.join('/tmp', `${songId}.${ext}`);
+    await fs.writeFile(tempPath, picture.data);
 
-    // Guardar imagen
-    await fs.writeFile(coverPath, picture.data);
+    // Subir a MinIO
+    await minioClient.fPutObject(bucketName, coverFileName, tempPath, {
+      'Content-Type': picture.format
+    });
+
+    // Limpiar archivo temporal
+    await fs.unlink(tempPath);
 
     stats.withCover++;
-    return `/uploads/covers/song/${coverFileName}`;
+    console.log(`   ${colors.magenta}🖼️  Portada subida a MinIO${colors.reset}`);
+    
+    return coverFileName;
   } catch (error) {
-    console.error(`   ${colors.yellow}⚠️  Error al extraer portada:${colors.reset}`, error.message);
+    console.error(`   ${colors.yellow}⚠️  Error al subir portada:${colors.reset}`, error.message);
     return null;
   }
 }
 
-// Verificar si la canción ya existe en la base de datos
+// Verificar si la canción ya existe
 async function songExists(title, artist) {
   const existing = await Song.findOne({
     title: { $regex: new RegExp(`^${title}$`, 'i') },
@@ -168,7 +207,6 @@ async function processMP3File(filePath) {
     let title, artist, album, genre, duration;
 
     if (hasMetadata && metadata) {
-      // Usar metadatos del MP3
       title = metadata.common.title;
       artist = metadata.common.artist;
       album = metadata.common.album || '';
@@ -177,7 +215,6 @@ async function processMP3File(filePath) {
       stats.withMetadata++;
       console.log(`   ${colors.green}✓${colors.reset} Con metadatos: "${title}" - ${artist}`);
     } else {
-      // Usar nombre de archivo para extraer información
       const parsed = parseFileName(fileName);
       title = parsed.title;
       artist = parsed.artist;
@@ -191,8 +228,18 @@ async function processMP3File(filePath) {
     // Verificar si ya existe
     if (await songExists(title, artist)) {
       stats.duplicates++;
-      console.log(`   ${colors.red}❌ Duplicado${colors.reset}: Ya existe en la base de datos\n`);
+      console.log(`   ${colors.red}❌ Duplicado${colors.reset}: Ya existe en la base de datos`);
+      
+      // Aún así, subir a MinIO si no está
+      await uploadToMinio(filePath, fileName);
+      console.log('');
       return;
+    }
+
+    // Subir archivo a MinIO
+    const uploadSuccess = await uploadToMinio(filePath, fileName);
+    if (!uploadSuccess) {
+      throw new Error('No se pudo subir el archivo a MinIO');
     }
 
     // Obtener tamaño del archivo
@@ -216,13 +263,12 @@ async function processMP3File(filePath) {
     // Guardar en la base de datos
     await song.save();
 
-    // Extraer portada si tiene
+    // Extraer y subir portada si tiene
     if (hasMetadata && metadata) {
-      const coverUrl = await extractCover(metadata, song._id);
-      if (coverUrl) {
-        song.coverUrl = coverUrl;
+      const coverPath = await extractAndUploadCover(metadata, song._id, artist);
+      if (coverPath) {
+        song.coverUrl = coverPath;
         await song.save();
-        console.log(`   ${colors.magenta}🖼️  Portada extraída${colors.reset}`);
       }
     }
 
@@ -241,27 +287,23 @@ async function scanMusicFolder() {
   const musicDir = path.join(__dirname, 'uploads', 'music');
 
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}🎵 IMPORTADOR AUTOMÁTICO DE CANCIONES${colors.reset}`);
+  console.log(`${colors.bright}🎵 IMPORTADOR AUTOMÁTICO DE CANCIONES (con MinIO)${colors.reset}`);
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
   console.log(`📂 Escaneando: ${colors.cyan}${musicDir}${colors.reset}\n`);
 
   try {
-    // Verificar si existe la carpeta
     await fs.access(musicDir);
-    
-    // Leer archivos
     const files = await fs.readdir(musicDir);
     const mp3Files = files.filter(file => file.toLowerCase().endsWith('.mp3'));
 
     if (mp3Files.length === 0) {
-      console.log(`${colors.yellow}⚠️  No se encontraron archivos MP3 en la carpeta${colors.reset}\n`);
+      console.log(`${colors.yellow}⚠️  No se encontraron archivos MP3${colors.reset}\n`);
       return;
     }
 
     console.log(`${colors.green}✓${colors.reset} Encontrados ${colors.bright}${mp3Files.length}${colors.reset} archivos MP3\n`);
     console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-    // Procesar cada archivo
     for (const file of mp3Files) {
       const filePath = path.join(musicDir, file);
       await processMP3File(filePath);
@@ -269,8 +311,7 @@ async function scanMusicFolder() {
 
   } catch (error) {
     if (error.code === 'ENOENT') {
-      console.error(`${colors.red}❌ La carpeta uploads/music no existe${colors.reset}`);
-      console.log(`${colors.yellow}💡 Crea la carpeta y agrega archivos MP3${colors.reset}\n`);
+      console.error(`${colors.red}❌ La carpeta uploads/music no existe${colors.reset}\n`);
     } else {
       console.error(`${colors.red}❌ Error al escanear carpeta:${colors.reset}`, error);
     }
@@ -285,6 +326,7 @@ function showReport() {
 
   console.log(`   📁 Total de archivos escaneados:  ${colors.bright}${stats.total}${colors.reset}`);
   console.log(`   ${colors.green}✅ Canciones agregadas:${colors.reset}           ${colors.bright}${stats.added}${colors.reset}`);
+  console.log(`   ${colors.green}☁️  Subidas a MinIO:${colors.reset}              ${colors.bright}${stats.uploadedToMinio}${colors.reset}`);
   console.log(`   ${colors.red}❌ Duplicadas (omitidas):${colors.reset}         ${colors.bright}${stats.duplicates}${colors.reset}`);
   console.log(`   ${colors.red}❌ Errores:${colors.reset}                       ${colors.bright}${stats.errors}${colors.reset}`);
   console.log('');
@@ -308,16 +350,16 @@ function showReport() {
 async function main() {
   try {
     await connectDB();
+    await initMinIO();
     await scanMusicFolder();
     showReport();
   } catch (error) {
     console.error(`${colors.red}❌ Error fatal:${colors.reset}`, error);
   } finally {
     await mongoose.connection.close();
-    console.log(`${colors.green}✅ Conexión a MongoDB cerrada${colors.reset}`);
+    console.log(`${colors.green}✅ Conexión cerrada${colors.reset}`);
     process.exit(0);
   }
 }
 
-// Ejecutar
 main();
