@@ -5,6 +5,555 @@ const { minioClient, bucketName } = require('../minio');
 const mongoose = require('mongoose');
 const { processSongCoverUrl, processSongsCoverUrls } = require('../utils/coverUrlHelper');
 
+// Helper para validar ObjectId
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+// Helper para obtener la colección de playlists
+const getPlaylistsCollection = () => {
+  // Verificar que la conexión esté lista
+  if (!mongoose.connection.db) {
+    throw new Error('Base de datos no conectada');
+  }
+  return mongoose.connection.db.collection('playlists');
+};
+
+// ========== ENDPOINTS DE PLAYLISTS ==========
+
+// Obtener todas las playlists de un usuario
+router.get('/user/:userId/playlists', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const playlists = await playlistsCollection
+      .find({ usuario_creador_id: new mongoose.Types.ObjectId(userId) })
+      .sort({ fecha_creacion: -1 })
+      .toArray();
+
+    res.json({
+      success: true,
+      count: playlists.length,
+      playlists
+    });
+  } catch (error) {
+    console.error('Error al obtener playlists:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener playlists',
+      error: error.message 
+    });
+  }
+});
+
+// Obtener playlist por ID con canciones completas
+router.get('/playlists/:playlistId', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    if (!isValidObjectId(playlistId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de playlist inválido' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const playlist = await playlistsCollection.findOne({
+      _id: new mongoose.Types.ObjectId(playlistId)
+    });
+
+    if (!playlist) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    // Obtener información completa de las canciones
+    if (playlist.canciones && playlist.canciones.length > 0) {
+      const songIds = playlist.canciones.map(c => c.cancion_id);
+      
+      const songs = await Song.find({ 
+        _id: { $in: songIds } 
+      });
+
+      // Crear mapa de canciones
+      const songsMap = {};
+      songs.forEach(song => {
+        songsMap[song._id.toString()] = song.toObject();
+      });
+
+      // Combinar datos de playlist con datos completos de canciones
+      playlist.canciones = playlist.canciones
+        .map(playlistSong => {
+          const fullSong = songsMap[playlistSong.cancion_id.toString()];
+          if (!fullSong) return null;
+
+          return {
+            ...playlistSong,
+            cancion_completa: {
+              _id: fullSong._id,
+              titulo: fullSong.title,
+              artistas: [{ nombre: fullSong.artist }],
+              album_info: {
+                titulo: fullSong.album,
+                portada_url: fullSong.coverUrl
+              },
+              duracion_segundos: fullSong.duration,
+              archivo_url: `/api/music/songs/${fullSong._id}/stream`,
+              categorias: fullSong.genre ? [fullSong.genre] : [],
+              ...fullSong
+            }
+          };
+        })
+        .filter(song => song !== null)
+        .sort((a, b) => a.orden - b.orden);
+    }
+
+    res.json({
+      success: true,
+      playlist
+    });
+  } catch (error) {
+    console.error('Error al obtener playlist:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener playlist',
+      error: error.message 
+    });
+  }
+});
+
+// Crear nueva playlist
+router.post('/user/:userId/playlists', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { titulo, descripcion, es_privada, es_colaborativa } = req.body;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    if (!titulo || titulo.trim() === '') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El título es requerido' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const newPlaylist = {
+      titulo: titulo.trim(),
+      descripcion: descripcion?.trim() || '',
+      usuario_creador_id: new mongoose.Types.ObjectId(userId),
+      es_privada: es_privada || false,
+      es_colaborativa: es_colaborativa || false,
+      canciones: [],
+      total_canciones: 0,
+      duracion_total: 0,
+      seguidores: 0,
+      reproducciones: 0,
+      fecha_creacion: new Date(),
+      fecha_actualizacion: new Date()
+    };
+
+    const result = await playlistsCollection.insertOne(newPlaylist);
+
+    res.status(201).json({
+      success: true,
+      message: 'Playlist creada exitosamente',
+      playlist: {
+        _id: result.insertedId,
+        ...newPlaylist
+      }
+    });
+  } catch (error) {
+    console.error('Error al crear playlist:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al crear playlist',
+      error: error.message 
+    });
+  }
+});
+
+// Actualizar información de playlist
+router.put('/playlists/:playlistId', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { titulo, descripcion, es_privada, es_colaborativa } = req.body;
+
+    if (!isValidObjectId(playlistId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de playlist inválido' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const updateData = {
+      fecha_actualizacion: new Date()
+    };
+
+    if (titulo !== undefined) updateData.titulo = titulo.trim();
+    if (descripcion !== undefined) updateData.descripcion = descripcion.trim();
+    if (es_privada !== undefined) updateData.es_privada = es_privada;
+    if (es_colaborativa !== undefined) updateData.es_colaborativa = es_colaborativa;
+
+    const result = await playlistsCollection.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(playlistId) },
+      { $set: updateData },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Playlist actualizada exitosamente',
+      playlist: result.value
+    });
+  } catch (error) {
+    console.error('Error al actualizar playlist:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al actualizar playlist',
+      error: error.message 
+    });
+  }
+});
+
+// Eliminar playlist
+router.delete('/playlists/:playlistId', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    if (!isValidObjectId(playlistId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de playlist inválido' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const result = await playlistsCollection.deleteOne({
+      _id: new mongoose.Types.ObjectId(playlistId)
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Playlist eliminada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al eliminar playlist:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al eliminar playlist',
+      error: error.message 
+    });
+  }
+});
+
+// Agregar canción a playlist
+router.post('/playlists/:playlistId/songs', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { cancion_id, userId } = req.body;
+
+    if (!isValidObjectId(playlistId) || !isValidObjectId(cancion_id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'IDs inválidos' 
+      });
+    }
+
+    // Verificar que la canción existe
+    const song = await Song.findById(cancion_id);
+    if (!song) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Canción no encontrada' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const playlist = await playlistsCollection.findOne({
+      _id: new mongoose.Types.ObjectId(playlistId)
+    });
+
+    if (!playlist) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    // Verificar si la canción ya está en la playlist
+    const songExists = playlist.canciones.some(
+      c => c.cancion_id.toString() === cancion_id
+    );
+
+    if (songExists) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'La canción ya está en la playlist' 
+      });
+    }
+
+    // Crear objeto de canción para la playlist
+    const nuevaCancion = {
+      cancion_id: new mongoose.Types.ObjectId(cancion_id),
+      titulo: song.title,
+      artistas: [song.artist],
+      duracion: song.duration,
+      orden: playlist.canciones.length + 1,
+      fecha_agregada: new Date(),
+      agregada_por_usuario_id: userId ? new mongoose.Types.ObjectId(userId) : playlist.usuario_creador_id
+    };
+
+    // Actualizar playlist
+    const result = await playlistsCollection.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(playlistId) },
+      { 
+        $push: { canciones: nuevaCancion },
+        $inc: { 
+          total_canciones: 1,
+          duracion_total: song.duration || 0
+        },
+        $set: { fecha_actualizacion: new Date() }
+      },
+      { returnDocument: 'after' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Canción agregada a la playlist',
+      playlist: result.value
+    });
+  } catch (error) {
+    console.error('Error al agregar canción:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al agregar canción',
+      error: error.message 
+    });
+  }
+});
+
+// Eliminar canción de playlist
+router.delete('/playlists/:playlistId/songs/:cancionId', async (req, res) => {
+  try {
+    const { playlistId, cancionId } = req.params;
+
+    if (!isValidObjectId(playlistId) || !isValidObjectId(cancionId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'IDs inválidos' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const playlist = await playlistsCollection.findOne({
+      _id: new mongoose.Types.ObjectId(playlistId)
+    });
+
+    if (!playlist) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    // Buscar la canción para obtener su duración
+    const cancionAEliminar = playlist.canciones.find(
+      c => c.cancion_id.toString() === cancionId
+    );
+
+    if (!cancionAEliminar) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Canción no encontrada en la playlist' 
+      });
+    }
+
+    // Eliminar canción
+    const cancionesFiltradas = playlist.canciones
+      .filter(c => c.cancion_id.toString() !== cancionId)
+      .map((c, index) => ({ ...c, orden: index + 1 })); // Reordenar
+
+    const result = await playlistsCollection.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(playlistId) },
+      { 
+        $set: { 
+          canciones: cancionesFiltradas,
+          fecha_actualizacion: new Date()
+        },
+        $inc: { 
+          total_canciones: -1,
+          duracion_total: -(cancionAEliminar.duracion || 0)
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Canción eliminada de la playlist',
+      playlist: result.value
+    });
+  } catch (error) {
+    console.error('Error al eliminar canción:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al eliminar canción',
+      error: error.message 
+    });
+  }
+});
+
+// Reordenar canciones en playlist
+router.put('/playlists/:playlistId/reorder', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { nuevoOrden } = req.body; // Array de IDs en el nuevo orden
+
+    if (!isValidObjectId(playlistId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de playlist inválido' 
+      });
+    }
+
+    if (!Array.isArray(nuevoOrden)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Se requiere un array con el nuevo orden' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const playlist = await playlistsCollection.findOne({
+      _id: new mongoose.Types.ObjectId(playlistId)
+    });
+
+    if (!playlist) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    // Crear mapa de canciones por ID
+    const cancionesMap = {};
+    playlist.canciones.forEach(c => {
+      cancionesMap[c.cancion_id.toString()] = c;
+    });
+
+    // Reordenar según el nuevo orden
+    const cancionesReordenadas = nuevoOrden.map((id, index) => ({
+      ...cancionesMap[id],
+      orden: index + 1
+    }));
+
+    const result = await playlistsCollection.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(playlistId) },
+      { 
+        $set: { 
+          canciones: cancionesReordenadas,
+          fecha_actualizacion: new Date()
+        }
+      },
+      { returnDocument: 'after' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Playlist reordenada exitosamente',
+      playlist: result.value
+    });
+  } catch (error) {
+    console.error('Error al reordenar playlist:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al reordenar playlist',
+      error: error.message 
+    });
+  }
+});
+
+// Incrementar reproducciones de playlist
+router.post('/playlists/:playlistId/play', async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    if (!isValidObjectId(playlistId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de playlist inválido' 
+      });
+    }
+
+    const playlistsCollection = getPlaylistsCollection();
+
+    const result = await playlistsCollection.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(playlistId) },
+      { $inc: { reproducciones: 1 } },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Playlist no encontrada' 
+      });
+    }
+
+    res.json({
+      success: true,
+      reproducciones: result.value.reproducciones
+    });
+  } catch (error) {
+    console.error('Error al incrementar reproducciones:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al incrementar reproducciones',
+      error: error.message 
+    });
+  }
+});
+
+// ========== ENDPOINTS DE CANCIONES (EXISTENTES) ==========
+
 // Obtener todas las canciones
 router.get('/songs', async (req, res) => {
   try {
@@ -184,8 +733,6 @@ router.get('/search/:query', async (req, res) => {
     });
   }
 });
-
-// ========== ENDPOINTS EXISTENTES ==========
 
 // Obtener una canción específica
 router.get('/songs/:id', async (req, res) => {

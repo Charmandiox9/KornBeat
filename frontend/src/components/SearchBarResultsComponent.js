@@ -161,9 +161,9 @@ const SearchBarResultsComponent = () => {
             >
               <div className="song-content">
                 <div className="song-cover">
-                  {coverUrl && !hasImageError ? (
+                  {song._id && !hasImageError ? (
                     <img 
-                      src={`http://localhost:3002${coverUrl}`} 
+                      src={`http://localhost:3002/api/music/covers/${song._id}.png`} 
                       alt={`Portada de ${albumName || songTitle}`}
                       className="cover-image"
                       loading="lazy"

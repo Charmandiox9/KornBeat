@@ -286,6 +286,10 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(async () => {
   console.log('✅ Conectado a MongoDB');
   
+  // ⭐ IMPORTANTE: Exponer la conexión de la base de datos
+  app.locals.db = mongoose.connection.db;
+  console.log('✅ Base de datos disponible en app.locals.db');
+  
   try {
     await initializeBucket();
     console.log('✅ MinIO inicializado');

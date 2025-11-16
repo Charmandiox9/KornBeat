@@ -23,9 +23,9 @@ const MiniPlayer = () => {
                      currentSong.artist || 
                      'Artista desconocido';
   const albumCover = currentSong.album_info?.portada_url 
-    ? `http://localhost:3002${currentSong.album_info.portada_url}` 
+    ? `http://localhost:3002/api/music/covers/${currentSong._id}.png` 
     : currentSong.coverUrl 
-    ? `http://localhost:3002${currentSong.coverUrl}` 
+    ? `http://localhost:3002/api/music/covers/${currentSong._id}.png` 
     : null;
 
   return (
