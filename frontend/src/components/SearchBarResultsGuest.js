@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { Music, Search, Loader2, Play, Heart, MoreVertical, ListPlus, PlayCircle } from 'lucide-react';
 import { useMusicSearch } from '../context/MusicSearchContext';
@@ -140,7 +139,6 @@ const SearchBarResultsGuest = () => {
                            'Artista desconocido';
           const albumName = song.album_info?.titulo || song.album || '';
           const songDuration = song.duracion_segundos || song.duration || 0;
-          const coverUrl = song.album_info?.portada_url || song.coverUrl || '';
           const hasImageError = imageErrors.has(song._id);
           const isLiked = likedSongs.has(song._id);
           const isPlaying = currentSong?._id === song._id;
@@ -157,9 +155,9 @@ const SearchBarResultsGuest = () => {
             >
               <div className="song-content">
                 <div className="song-cover">
-                  {coverUrl && !hasImageError ? (
+                  {song._id && !hasImageError ? (
                     <img 
-                      src={`http://localhost:3002${coverUrl}`} 
+                      src={`http://localhost:3002/api/music/covers/${song._id}.png`} 
                       alt={`Portada de ${albumName || songTitle}`}
                       className="cover-image"
                       loading="lazy"

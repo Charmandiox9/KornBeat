@@ -42,25 +42,76 @@ export const MusicPlayerProvider = ({ children }) => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.preload = 'metadata';
+      // Habilitar CORS
+      audioRef.current.crossOrigin = 'anonymous';
     }
 
     const audio = audioRef.current;
 
     // Event listeners
-    const handleLoadStart = () => setIsLoading(true);
-    const handleCanPlay = () => setIsLoading(false);
+    const handleLoadStart = () => {
+      console.log('🔄 Cargando audio...');
+      setIsLoading(true);
+      setError(null);
+    };
+    
+    const handleCanPlay = () => {
+      console.log('✅ Audio listo para reproducir');
+      setIsLoading(false);
+    };
+    
     const handleLoadedMetadata = () => {
+      console.log('📊 Metadatos cargados, duración:', audio.duration);
       setDuration(audio.duration);
       setIsLoading(false);
     };
+    
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleEnded = () => handleSongEnd();
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    
+    const handleEnded = () => {
+      console.log('🏁 Canción finalizada');
+      handleSongEnd();
+    };
+    
+    const handlePlay = () => {
+      console.log('▶️  Reproduciendo');
+      setIsPlaying(true);
+    };
+    
+    const handlePause = () => {
+      console.log('⏸️  Pausado');
+      setIsPlaying(false);
+    };
+    
     const handleError = (e) => {
+      console.error('❌ Error de audio:', e);
+      console.error('Audio src:', audio.src);
+      console.error('Audio error code:', audio.error?.code);
+      console.error('Audio error message:', audio.error?.message);
+      
       setIsLoading(false);
-      setError('Error al cargar la canción');
-      console.error('Error de audio:', e);
+      
+      let errorMessage = 'Error al cargar la canción';
+      if (audio.error) {
+        switch (audio.error.code) {
+          case 1: // MEDIA_ERR_ABORTED
+            errorMessage = 'Reproducción abortada';
+            break;
+          case 2: // MEDIA_ERR_NETWORK
+            errorMessage = 'Error de red al cargar la canción';
+            break;
+          case 3: // MEDIA_ERR_DECODE
+            errorMessage = 'Error al decodificar la canción';
+            break;
+          case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+            errorMessage = 'Formato de audio no soportado o archivo no encontrado';
+            break;
+          default:
+            errorMessage = 'Error desconocido al reproducir';
+        }
+      }
+      
+      setError(errorMessage);
     };
 
     audio.addEventListener('loadstart', handleLoadStart);
@@ -93,9 +144,14 @@ export const MusicPlayerProvider = ({ children }) => {
 
   // Reproducir canción
   const playSong = useCallback((song, addToHistory = true) => {
-    if (!song) return;
+    if (!song) {
+      console.error('❌ No se proporcionó una canción');
+      return;
+    }
 
-    // Construir URL del stream basándose en el formato de la canción
+    console.log('🎵 Intentando reproducir:', song);
+
+    // Construir URL del stream
     let streamUrl;
     
     if (song.archivo_url) {
@@ -103,14 +159,16 @@ export const MusicPlayerProvider = ({ children }) => {
       streamUrl = song.archivo_url.startsWith('http') 
         ? song.archivo_url 
         : `${API_BASE}${song.archivo_url}`;
-    } else if (song.fileName || song._id) {
-      // Formato antiguo (inglés) - usar endpoint de streaming
+    } else if (song._id) {
+      // Usar el ID para el endpoint de streaming
       streamUrl = `${API_BASE}/api/music/songs/${song._id}/stream`;
     } else {
-      console.error('No se encontró URL de audio en la canción');
-      setError('No se puede reproducir esta canción');
+      console.error('❌ No se pudo construir URL de audio:', song);
+      setError('No se puede reproducir esta canción (falta ID)');
       return;
     }
+
+    console.log('🔗 URL del stream:', streamUrl);
 
     const songWithFullUrl = {
       ...song,
@@ -119,36 +177,60 @@ export const MusicPlayerProvider = ({ children }) => {
 
     setCurrentSong(songWithFullUrl);
     setError(null);
+    setIsLoading(true);
 
     if (audioRef.current) {
+      // Pausar audio actual
+      audioRef.current.pause();
+      
+      // Establecer nueva fuente
       audioRef.current.src = streamUrl;
-      audioRef.current.load(); // Importante: cargar el nuevo audio
-      audioRef.current.play().catch(err => {
-        console.error('Error al reproducir:', err);
-        setError('No se pudo reproducir la canción');
-      });
+      
+      // Cargar y reproducir
+      audioRef.current.load();
+      
+      // Intentar reproducir después de que se cargue
+      const playPromise = audioRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✅ Reproducción iniciada exitosamente');
+          })
+          .catch(err => {
+            console.error('❌ Error al reproducir:', err);
+            setError(`No se pudo reproducir: ${err.message}`);
+            setIsLoading(false);
+          });
+      }
     }
 
     // Agregar al historial
     if (addToHistory && song._id) {
       setHistory(prev => {
         const filtered = prev.filter(s => s._id !== song._id);
-        return [song, ...filtered].slice(0, 50); // Mantener últimas 50
+        return [song, ...filtered].slice(0, 50);
       });
     }
   }, []);
 
   // Play/Pause toggle
   const togglePlay = useCallback(() => {
-    if (!audioRef.current || !currentSong) return;
+    if (!audioRef.current || !currentSong) {
+      console.warn('⚠️  No hay canción cargada');
+      return;
+    }
 
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(err => {
-        console.error('Error al reproducir:', err);
-        setError('No se pudo reproducir la canción');
-      });
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.error('Error al reproducir:', err);
+          setError('No se pudo reproducir la canción');
+        });
+      }
     }
   }, [isPlaying, currentSong]);
 
