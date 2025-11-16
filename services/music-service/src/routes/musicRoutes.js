@@ -1,19 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const Song = require('../models/Song');
-// ✅ CORRECCIÓN: Usar la misma ruta relativa que en app.js
 const { minioClient, bucketName } = require('../minio'); 
+const mongoose = require('mongoose');
+const { processSongCoverUrl, processSongsCoverUrls } = require('../utils/coverUrlHelper');
 
 // Obtener todas las canciones
 router.get('/songs', async (req, res) => {
   try {
     const songs = await Song.find().sort({ createdAt: -1 });
     
+    // Procesar URLs de portadas
+    const songsWithCovers = processSongsCoverUrls(songs, req);
+    
     res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
-      data: songs,
-      count: songs.length
+      data: songsWithCovers,
+      count: songsWithCovers.length
     });
   } catch (error) {
     console.error('Error getting songs:', error);
@@ -38,13 +42,16 @@ router.get('/search/artist/:artistName', async (req, res) => {
       ]
     }).sort({ playCount: -1 });
 
+    // Procesar URLs de portadas
+    const songsWithCovers = processSongsCoverUrls(songs, req);
+
     res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
-      data: songs,
+      data: songsWithCovers,
       searchType: 'artist',
       query: artistName,
-      count: songs.length
+      count: songsWithCovers.length
     });
   } catch (error) {
     console.error('Error searching by artist:', error);
@@ -64,12 +71,15 @@ router.get('/search/song/:songTitle', async (req, res) => {
       title: { $regex: songTitle, $options: 'i' }
     }).sort({ playCount: -1 });
 
+    // Procesar URLs de portadas
+    const songsWithCovers = processSongsCoverUrls(songs, req);
+
     res.json({
       success: true,
-      data: songs,
+      data: songsWithCovers,
       searchType: 'song',
       query: songTitle,
-      count: songs.length
+      count: songsWithCovers.length
     });
   } catch (error) {
     console.error('Error searching by song:', error);
@@ -96,24 +106,17 @@ router.get('/search/category/:category', async (req, res) => {
     }).sort({ playCount: -1 });
 
     console.log('✅ Canciones encontradas:', songs.length);
-    
-    if (songs.length === 0) {
-      const allSongs = await Song.find().limit(5);
-      console.log('📋 Muestra de canciones en DB:', allSongs.map(s => ({
-        title: s.title,
-        artist: s.artist,
-        genre: s.genre,
-        categorias: s.categorias
-      })));
-    }
+
+    // Procesar URLs de portadas
+    const songsWithCovers = processSongsCoverUrls(songs, req);
 
     res.setHeader('Content-Type', 'application/json');
     res.json({
       success: true,
-      data: songs,
+      data: songsWithCovers,
       searchType: 'category',
       query: category,
-      count: songs.length
+      count: songsWithCovers.length
     });
   } catch (error) {
     console.error('❌ Error searching by category:', error);
@@ -129,6 +132,9 @@ router.get('/search/category/:category', async (req, res) => {
 router.get('/search/:query', async (req, res) => {
   try {
     const { query } = req.params;
+    
+    console.log('🔍 Búsqueda general:', query);
+    
     const songs = await Song.find({
       $or: [
         { title: { $regex: query, $options: 'i' } },
@@ -139,31 +145,36 @@ router.get('/search/:query', async (req, res) => {
       ]
     }).sort({ playCount: -1 });
 
+    console.log('✅ Canciones encontradas:', songs.length);
+
+    // Procesar URLs de portadas
+    const songsWithCovers = processSongsCoverUrls(songs, req);
+
     const results = {
-      byTitle: songs.filter(song => 
+      byTitle: songsWithCovers.filter(song => 
         song.title.toLowerCase().includes(query.toLowerCase())
       ),
-      byArtist: songs.filter(song => 
+      byArtist: songsWithCovers.filter(song => 
         song.artist.toLowerCase().includes(query.toLowerCase()) ||
         (song.composers && song.composers.some(composer => 
           composer.toLowerCase().includes(query.toLowerCase())
         ))
       ),
-      byAlbum: songs.filter(song => 
+      byAlbum: songsWithCovers.filter(song => 
         song.album && song.album.toLowerCase().includes(query.toLowerCase())
       ),
-      byGenre: songs.filter(song => 
+      byGenre: songsWithCovers.filter(song => 
         song.genre && song.genre.toLowerCase().includes(query.toLowerCase())
       )
     };
 
     res.json({
       success: true,
-      data: songs,
+      data: songsWithCovers,
       results: results,
       searchType: 'general',
       query: query,
-      count: songs.length
+      count: songsWithCovers.length
     });
   } catch (error) {
     console.error('Error in general search:', error);
@@ -179,22 +190,42 @@ router.get('/search/:query', async (req, res) => {
 // Obtener una canción específica
 router.get('/songs/:id', async (req, res) => {
   try {
-    const song = await Song.findById(req.params.id);
+    const { id } = req.params;
+    
+    // ✅ Validar que el ID sea un ObjectId válido de MongoDB
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.error('❌ ID inválido:', id);
+      return res.status(400).json({
+        success: false,
+        message: 'ID de canción inválido'
+      });
+    }
+
+    const song = await Song.findById(id);
+    
     if (!song) {
+      console.error('❌ Canción no encontrada:', id);
       return res.status(404).json({
         success: false,
         message: 'Canción no encontrada'
       });
     }
+    
+    console.log('✅ Canción encontrada:', song.title, '-', song.artist);
+    
+    // Procesar URL de portada
+    const songWithCover = processSongCoverUrl(song, req);
+    
     res.json({
       success: true,
-      data: song
+      data: songWithCover
     });
   } catch (error) {
     console.error('Error getting song:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener canción'
+      message: 'Error al obtener canción',
+      error: error.message
     });
   }
 });
@@ -202,26 +233,42 @@ router.get('/songs/:id', async (req, res) => {
 // Stream de audio desde MinIO
 router.get('/songs/:id/stream', async (req, res) => {
   try {
-    const song = await Song.findById(req.params.id);
-    if (!song) {
-      console.error('❌ Canción no encontrada:', req.params.id);
-      return res.status(404).json({
+    const { id } = req.params;
+    
+    console.log('🎵 Stream solicitado para ID:', id);
+    
+    // ✅ CRÍTICO: Validar que el ID sea un ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.error('❌ ID inválido:', id);
+      return res.status(400).json({
         success: false,
-        message: 'Canción no encontrada'
+        message: 'ID de canción inválido'
       });
     }
 
-    console.log('🎵 Streaming desde MinIO:', song.title, '-', song.artist);
+    const song = await Song.findById(id);
+    
+    if (!song) {
+      console.error('❌ Canción no encontrada en DB:', id);
+      return res.status(404).json({
+        success: false,
+        message: 'Canción no encontrada',
+        id: id
+      });
+    }
 
-    // Incrementar contador (sin await)
-    Song.findByIdAndUpdate(req.params.id, { $inc: { playCount: 1 } }).exec();
+    console.log('✅ Canción encontrada:', song.title, '-', song.artist);
+    console.log('📁 Archivo:', song.fileName);
+
+    // Incrementar contador de reproducción (sin await para no bloquear)
+    Song.findByIdAndUpdate(id, { $inc: { playCount: 1 } }).exec();
 
     try {
-      // Obtener información del objeto en MinIO
+      // Verificar que el archivo existe en MinIO
       const stat = await minioClient.statObject(bucketName, song.fileName);
       const fileSize = stat.size;
 
-      console.log('✅ Archivo en MinIO, tamaño:', fileSize, 'bytes');
+      console.log('✅ Archivo en MinIO:', song.fileName, '- Tamaño:', fileSize, 'bytes');
 
       // Headers CORS
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -285,7 +332,7 @@ router.get('/songs/:id/stream', async (req, res) => {
 
       } else {
         // Streaming completo
-        console.log('📡 Streaming completo');
+        console.log('📡 Streaming completo del archivo');
 
         res.writeHead(200, {
           'Content-Length': fileSize,
@@ -307,6 +354,7 @@ router.get('/songs/:id/stream', async (req, res) => {
 
     } catch (minioError) {
       console.error('❌ Error al acceder a MinIO:', minioError);
+      console.error('Bucket:', bucketName, '- Archivo:', song.fileName);
       
       // Fallback: intentar desde sistema de archivos
       console.log('⚠️  Intentando fallback al sistema de archivos...');
@@ -330,16 +378,20 @@ router.get('/songs/:id/stream', async (req, res) => {
 
         fs.createReadStream(musicPath).pipe(res);
       } else {
+        console.error('❌ Archivo no encontrado en ningún lugar');
         return res.status(404).json({
           success: false,
           message: 'Archivo no encontrado en MinIO ni en sistema de archivos',
-          fileName: song.fileName
+          fileName: song.fileName,
+          bucketName: bucketName
         });
       }
     }
 
   } catch (error) {
     console.error('❌ Error streaming song:', error);
+    console.error('Stack:', error.stack);
+    
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
@@ -355,7 +407,12 @@ router.get('/songs/:id/stream', async (req, res) => {
 // Servir cover desde MinIO
 router.get('/covers/:coverPath(*)', async (req, res) => {
   try {
-    const coverPath = req.params.coverPath;
+    let coverPath = req.params.coverPath;
+    
+    // Normalizar el path (asegurar que tenga covers/ al inicio)
+    if (!coverPath.startsWith('covers/')) {
+      coverPath = `covers/${coverPath}`;
+    }
     
     console.log('🖼️  Buscando cover en MinIO:', coverPath);
     
@@ -366,10 +423,12 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
       const ext = coverPath.split('.').pop().toLowerCase();
       const contentType = ext === 'png' ? 'image/png' : 
                          ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 
-                         'image/png';
+                         ext === 'webp' ? 'image/webp' :
+                         ext === 'gif' ? 'image/gif' :
+                         'image/jpeg';
       
       res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 día
       res.setHeader('Access-Control-Allow-Origin', '*');
       
       dataStream.pipe(res);
@@ -393,7 +452,9 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
         const ext = path.extname(localPath).toLowerCase();
         const contentType = ext === '.png' ? 'image/png' : 
                            ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 
-                           'image/png';
+                           ext === '.webp' ? 'image/webp' :
+                           ext === '.gif' ? 'image/gif' :
+                           'image/jpeg';
         
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -418,285 +479,43 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
   }
 });
 
-// ========== ENDPOINTS DE DEBUG - Agregar al principio de musicRoutes.js ==========
-
-// 🐛 DEBUG: Verificar todas las canciones con detalles completos
-router.get('/debug/all-songs', async (req, res) => {
+// Obtener URL de la portada de una canción
+router.get('/songs/:id/cover-url', async (req, res) => {
   try {
-    const songs = await Song.find().limit(10);
+    const { id } = req.params;
     
-    const detailedSongs = songs.map(song => ({
-      _id: song._id,
-      _id_string: song._id.toString(),
-      _id_type: typeof song._id,
-      title: song.title,
-      artist: song.artist,
-      fileName: song.fileName,
-      // Ver todos los campos del documento
-      fullDocument: song.toObject()
-    }));
-    
-    res.json({
-      success: true,
-      totalInDB: await Song.countDocuments(),
-      sampleSongs: detailedSongs
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// 🐛 DEBUG: Verificar un ID específico
-router.get('/debug/check-id/:id', async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔍 DEBUG CHECK ID');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('ID recibido:', id);
-    console.log('ID length:', id.length);
-    console.log('ID type:', typeof id);
-    console.log('Es ObjectId válido?:', mongoose.Types.ObjectId.isValid(id));
-    
-    // Intentar buscar la canción
-    let songById = null;
-    let songByIdError = null;
-    
-    try {
-      songById = await Song.findById(id);
-      console.log('Canción encontrada por ID:', songById ? 'SÍ' : 'NO');
-    } catch (err) {
-      songByIdError = err.message;
-      console.log('Error buscando por ID:', err.message);
-    }
-    
-    // Buscar canciones con IDs similares
-    const allSongs = await Song.find();
-    const similarIds = allSongs.filter(song => {
-      const songId = song._id.toString();
-      // Buscar IDs que sean similares (diferencia de pocos caracteres)
-      let differences = 0;
-      for (let i = 0; i < Math.min(id.length, songId.length); i++) {
-        if (id[i] !== songId[i]) differences++;
-      }
-      return differences <= 3; // Máximo 3 caracteres diferentes
-    });
-    
-    console.log('Canciones con IDs similares:', similarIds.length);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
-    res.json({
-      success: true,
-      input: {
-        id: id,
-        length: id.length,
-        type: typeof id,
-        isValidObjectId: mongoose.Types.ObjectId.isValid(id)
-      },
-      searchResults: {
-        found: !!songById,
-        error: songByIdError,
-        song: songById ? {
-          _id: songById._id.toString(),
-          title: songById.title,
-          artist: songById.artist,
-          fileName: songById.fileName
-        } : null
-      },
-      similarIds: similarIds.map(song => ({
-        _id: song._id.toString(),
-        title: song.title,
-        artist: song.artist,
-        differences: (() => {
-          let diff = 0;
-          const songId = song._id.toString();
-          for (let i = 0; i < Math.min(id.length, songId.length); i++) {
-            if (id[i] !== songId[i]) diff++;
-          }
-          return diff;
-        })()
-      })),
-      totalSongsInDB: allSongs.length
-    });
-  } catch (error) {
-    console.error('Error en debug:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      stack: error.stack
-    });
-  }
-});
-
-// 🐛 DEBUG: Probar stream con ID específico
-router.get('/debug/stream-test/:id', async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    console.log('🎵 TEST STREAM para ID:', id);
-    
-    // Validar ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.json({
+      return res.status(400).json({
         success: false,
-        message: 'ID inválido',
-        id: id
+        message: 'ID inválido'
       });
     }
     
-    // Buscar canción
     const song = await Song.findById(id);
     
     if (!song) {
-      return res.json({
+      return res.status(404).json({
         success: false,
-        message: 'Canción no encontrada',
-        id: id
+        message: 'Canción no encontrada'
       });
     }
     
-    // Verificar archivo en MinIO
-    let minioStatus = 'not_checked';
-    let minioError = null;
-    let fileSize = 0;
-    
-    try {
-      const stat = await minioClient.statObject(bucketName, song.fileName);
-      minioStatus = 'found';
-      fileSize = stat.size;
-    } catch (err) {
-      minioStatus = 'not_found';
-      minioError = err.message;
-    }
-    
-    // Verificar en filesystem
-    const fs = require('fs');
-    const path = require('path');
-    const fsPath = path.join(__dirname, '..', '..', 'uploads', 'music', song.fileName);
-    const fsExists = fs.existsSync(fsPath);
+    // Construir URL completa de la portada
+    const coverUrl = song.coverUrl || song.portada_url;
+    const fullCoverUrl = coverUrl 
+      ? `${req.protocol}://${req.get('host')}/api/music/covers/${coverUrl.replace(/^covers\//, '')}`
+      : null;
     
     res.json({
       success: true,
-      song: {
-        _id: song._id.toString(),
-        title: song.title,
-        artist: song.artist,
-        fileName: song.fileName
-      },
-      storage: {
-        minio: {
-          status: minioStatus,
-          bucket: bucketName,
-          error: minioError,
-          fileSize: fileSize
-        },
-        filesystem: {
-          exists: fsExists,
-          path: fsPath
-        }
-      },
-      streamUrl: `${req.protocol}://${req.get('host')}/api/music/songs/${id}/stream`
+      coverUrl: fullCoverUrl,
+      hasCover: !!coverUrl
     });
   } catch (error) {
+    console.error('Error obteniendo URL de cover:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      stack: error.stack
-    });
-  }
-});
-
-// 🐛 DEBUG: Listar archivos en MinIO
-router.get('/debug/minio-files', async (req, res) => {
-  try {
-    const files = [];
-    const stream = minioClient.listObjects(bucketName, '', true);
-    
-    stream.on('data', (obj) => {
-      files.push({
-        name: obj.name,
-        size: obj.size,
-        sizeMB: (obj.size / 1024 / 1024).toFixed(2),
-        lastModified: obj.lastModified
-      });
-    });
-    
-    stream.on('error', (err) => {
-      res.status(500).json({
-        success: false,
-        error: err.message
-      });
-    });
-    
-    stream.on('end', () => {
-      res.json({
-        success: true,
-        bucket: bucketName,
-        totalFiles: files.length,
-        files: files
-      });
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// 🐛 DEBUG: Comparar MongoDB vs MinIO
-router.get('/debug/compare-storage', async (req, res) => {
-  try {
-    // Obtener todas las canciones de MongoDB
-    const songs = await Song.find();
-    
-    // Obtener todos los archivos de MinIO
-    const minioFiles = [];
-    const stream = minioClient.listObjects(bucketName, '', true);
-    
-    await new Promise((resolve, reject) => {
-      stream.on('data', (obj) => minioFiles.push(obj.name));
-      stream.on('error', reject);
-      stream.on('end', resolve);
-    });
-    
-    // Comparar
-    const comparison = songs.map(song => {
-      const existsInMinio = minioFiles.includes(song.fileName);
-      return {
-        _id: song._id.toString(),
-        title: song.title,
-        artist: song.artist,
-        fileName: song.fileName,
-        existsInMinio: existsInMinio,
-        status: existsInMinio ? '✅' : '❌'
-      };
-    });
-    
-    const missingFiles = comparison.filter(c => !c.existsInMinio);
-    
-    res.json({
-      success: true,
-      summary: {
-        totalSongs: songs.length,
-        totalMinioFiles: minioFiles.length,
-        missingInMinio: missingFiles.length
-      },
-      comparison: comparison,
-      missingFiles: missingFiles,
-      orphanedFiles: minioFiles.filter(f => 
-        !songs.some(s => s.fileName === f)
-      )
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      stack: error.stack
+      message: 'Error al obtener URL de cover'
     });
   }
 });
