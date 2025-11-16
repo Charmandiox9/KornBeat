@@ -1,14 +1,15 @@
+# ========================================
+# STAGE 1: Builder
+# ========================================
 FROM node:18-alpine AS builder
 
-# Metadata
 LABEL maintainer="tu-email@example.com"
 LABEL description="Music Service - Microservicio de música"
 
-# Directorio de trabajo
-WORKDIR /app
+WORKDIR /build
 
-# Copiar package files
-COPY package*.json ./
+# Copiar package.json desde services/music-service
+COPY services/music-service/package*.json ./
 
 # Instalar dependencias
 RUN npm ci --only=production && npm cache clean --force
@@ -28,14 +29,19 @@ RUN addgroup -g 1001 -S nodejs && \
 # Directorio de trabajo
 WORKDIR /app
 
-# Crear directorio para archivos de audio
-RUN mkdir -p /app/audio && chown -R nodejs:nodejs /app/audio
+# Crear directorios necesarios
+RUN mkdir -p /app/uploads/music && \
+    chown -R nodejs:nodejs /app/uploads
 
 # Copiar node_modules del builder
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /build/node_modules ./node_modules
 
-# Copiar código fuente
-COPY --chown=nodejs:nodejs . .
+# Copiar minio.js desde databases/
+COPY --chown=nodejs:nodejs databases/minio/minio.js ./src/minio.js
+
+# Copiar código fuente del music-service
+COPY --chown=nodejs:nodejs services/music-service/src ./src
+COPY --chown=nodejs:nodejs services/music-service/package*.json ./
 
 # Cambiar a usuario no-root
 USER nodejs
