@@ -1,9 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const Song = require('../models/Song');
+const LikeCancion = require('../models/LikeCancion');
 const { minioClient, bucketName } = require('../minio'); 
 const mongoose = require('mongoose');
 const { processSongCoverUrl, processSongsCoverUrls } = require('../utils/coverUrlHelper');
+
+// Importar funciones de caché de reels
+const { 
+  saveUserReelPosition, 
+  getUserReelPosition, 
+  clearUserReelPosition,
+  addToReelHistory,
+  getReelHistory
+} = require('../utils/cacheHelper');
 
 // Helper para validar ObjectId
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -1063,6 +1073,471 @@ router.get('/songs/:id/cover-url', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al obtener URL de cover'
+    });
+  }
+});
+
+// ========== ENDPOINTS DE FAVORITOS ==========
+
+// Obtener canciones favoritas del usuario con información completa
+router.get('/user/:userId/favorites', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50, skip = 0, sort = 'recent' } = req.query;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    // Determinar ordenamiento
+    let sortOptions = {};
+    switch(sort) {
+      case 'recent':
+        sortOptions = { fecha_like: -1 };
+        break;
+      case 'oldest':
+        sortOptions = { fecha_like: 1 };
+        break;
+      case 'title':
+        sortOptions = { 'songDetails.title': 1 };
+        break;
+      default:
+        sortOptions = { fecha_like: -1 };
+    }
+
+    // Obtener likes con información de canciones
+    const favorites = await LikeCancion.aggregate([
+      {
+        $match: { 
+          usuario_id: new mongoose.Types.ObjectId(userId) 
+        }
+      },
+      {
+        $lookup: {
+          from: 'songs',
+          localField: 'cancion_id',
+          foreignField: '_id',
+          as: 'songDetails'
+        }
+      },
+      {
+        $unwind: '$songDetails'
+      },
+      {
+        $sort: sortOptions
+      },
+      {
+        $skip: parseInt(skip)
+      },
+      {
+        $limit: parseInt(limit)
+      },
+      {
+        $project: {
+          _id: 1,
+          usuario_id: 1,
+          cancion_id: 1,
+          fecha_like: 1,
+          song: {
+            _id: '$songDetails._id',
+            title: '$songDetails.title',
+            artist: '$songDetails.artist',
+            album: '$songDetails.album',
+            duration: '$songDetails.duration',
+            genre: '$songDetails.genre',
+            coverUrl: '$songDetails.coverUrl',
+            portada_url: '$songDetails.portada_url',
+            fileName: '$songDetails.fileName',
+            playCount: '$songDetails.playCount',
+            likes: '$songDetails.likes'
+          }
+        }
+      }
+    ]);
+
+    // Procesar URLs de portadas
+    const favoritesWithUrls = await processSongsCoverUrls(
+      favorites.map(f => f.song)
+    );
+
+    const result = favorites.map((fav, index) => ({
+      ...fav,
+      song: favoritesWithUrls[index]
+    }));
+
+    // Obtener total de favoritos
+    const total = await LikeCancion.countDocuments({ 
+      usuario_id: new mongoose.Types.ObjectId(userId) 
+    });
+
+    res.json({
+      success: true,
+      count: result.length,
+      total,
+      favorites: result
+    });
+
+  } catch (error) {
+    console.error('Error al obtener favoritos:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener canciones favoritas',
+      error: error.message 
+    });
+  }
+});
+
+// Agregar canción a favoritos
+router.post('/user/:userId/favorites/:songId', async (req, res) => {
+  try {
+    const { userId, songId } = req.params;
+
+    if (!isValidObjectId(userId) || !isValidObjectId(songId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario o canción inválido' 
+      });
+    }
+
+    // Verificar que la canción existe
+    const song = await Song.findById(songId);
+    if (!song) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Canción no encontrada' 
+      });
+    }
+
+    // Crear o obtener el like
+    const like = await LikeCancion.findOneAndUpdate(
+      {
+        usuario_id: new mongoose.Types.ObjectId(userId),
+        cancion_id: new mongoose.Types.ObjectId(songId)
+      },
+      {
+        usuario_id: new mongoose.Types.ObjectId(userId),
+        cancion_id: new mongoose.Types.ObjectId(songId),
+        fecha_like: new Date()
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    // Incrementar contador de likes en la canción
+    await Song.findByIdAndUpdate(songId, { $inc: { likes: 1 } });
+
+    res.json({
+      success: true,
+      message: 'Canción agregada a favoritos',
+      like
+    });
+
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        success: false, 
+        message: 'La canción ya está en favoritos' 
+      });
+    }
+    
+    console.error('Error al agregar a favoritos:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al agregar canción a favoritos',
+      error: error.message 
+    });
+  }
+});
+
+// Eliminar canción de favoritos
+router.delete('/user/:userId/favorites/:songId', async (req, res) => {
+  try {
+    const { userId, songId } = req.params;
+
+    if (!isValidObjectId(userId) || !isValidObjectId(songId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario o canción inválido' 
+      });
+    }
+
+    const result = await LikeCancion.findOneAndDelete({
+      usuario_id: new mongoose.Types.ObjectId(userId),
+      cancion_id: new mongoose.Types.ObjectId(songId)
+    });
+
+    if (!result) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'La canción no está en favoritos' 
+      });
+    }
+
+    // Decrementar contador de likes en la canción
+    await Song.findByIdAndUpdate(songId, { $inc: { likes: -1 } });
+
+    res.json({
+      success: true,
+      message: 'Canción eliminada de favoritos'
+    });
+
+  } catch (error) {
+    console.error('Error al eliminar de favoritos:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al eliminar canción de favoritos',
+      error: error.message 
+    });
+  }
+});
+
+// Verificar si una canción está en favoritos
+router.get('/user/:userId/favorites/:songId/check', async (req, res) => {
+  try {
+    const { userId, songId } = req.params;
+
+    if (!isValidObjectId(userId) || !isValidObjectId(songId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario o canción inválido' 
+      });
+    }
+
+    const like = await LikeCancion.findOne({
+      usuario_id: new mongoose.Types.ObjectId(userId),
+      cancion_id: new mongoose.Types.ObjectId(songId)
+    });
+
+    res.json({
+      success: true,
+      isFavorite: !!like,
+      likeDate: like ? like.fecha_like : null
+    });
+
+  } catch (error) {
+    console.error('Error al verificar favorito:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al verificar si la canción está en favoritos',
+      error: error.message 
+    });
+  }
+});
+
+// ========== ENDPOINTS DE CACHÉ DE ÚLTIMA POSICIÓN ==========
+
+// Guardar última posición del usuario (última canción escuchada)
+router.post('/user/:userId/reel-position', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { songId, position, timestamp, progress, isPlaying } = req.body;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    if (!songId || position === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Se requiere songId y position' 
+      });
+    }
+
+    // Verificar que la canción existe
+    if (isValidObjectId(songId)) {
+      const song = await Song.findById(songId);
+      if (!song) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Canción no encontrada' 
+        });
+      }
+    }
+
+    const reelPosition = {
+      songId,
+      position: parseInt(position),
+      timestamp: timestamp || Date.now(),
+      progress: progress || 0,
+      isPlaying: isPlaying !== undefined ? isPlaying : false
+    };
+
+    const saved = await saveUserReelPosition(userId, reelPosition);
+
+    if (!saved) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Cache no disponible' 
+      });
+    }
+
+    // Agregar al historial de reproducción
+    await addToReelHistory(userId, songId);
+
+    res.json({
+      success: true,
+      message: 'Última posición guardada',
+      position: reelPosition
+    });
+
+  } catch (error) {
+    console.error('Error al guardar última posición:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al guardar última posición',
+      error: error.message 
+    });
+  }
+});
+
+// Obtener última posición del usuario
+router.get('/user/:userId/reel-position', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    const position = await getUserReelPosition(userId);
+
+    if (!position) {
+      return res.json({
+        success: true,
+        hasPosition: false,
+        position: null,
+        message: 'No hay posición guardada para este usuario'
+      });
+    }
+
+    // Obtener información de la canción si existe
+    let songDetails = null;
+    if (position.songId && isValidObjectId(position.songId)) {
+      const song = await Song.findById(position.songId);
+      if (song) {
+        songDetails = await processSongCoverUrl(song.toObject());
+      }
+    }
+
+    res.json({
+      success: true,
+      hasPosition: true,
+      position: {
+        ...position,
+        song: songDetails
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener última posición:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener última posición',
+      error: error.message 
+    });
+  }
+});
+
+// Eliminar última posición del usuario
+router.delete('/user/:userId/reel-position', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    const cleared = await clearUserReelPosition(userId);
+
+    if (!cleared) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Cache no disponible' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Última posición eliminada'
+    });
+
+  } catch (error) {
+    console.error('Error al eliminar última posición:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al eliminar última posición',
+      error: error.message 
+    });
+  }
+});
+
+// Obtener historial de reproducción del usuario
+router.get('/user/:userId/reel-history', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50 } = req.query;
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de usuario inválido' 
+      });
+    }
+
+    const history = await getReelHistory(userId, parseInt(limit));
+
+    // Obtener detalles de las canciones del historial
+    const songIds = history
+      .filter(id => isValidObjectId(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+
+    let songs = [];
+    if (songIds.length > 0) {
+      songs = await Song.find({ _id: { $in: songIds } });
+      songs = await processSongsCoverUrls(songs.map(s => s.toObject()));
+    }
+
+    // Crear mapa de canciones
+    const songsMap = {};
+    songs.forEach(song => {
+      songsMap[song._id.toString()] = song;
+    });
+
+    // Combinar historial con detalles de canciones (manteniendo el orden)
+    const historyWithDetails = history
+      .map(songId => ({
+        songId,
+        song: songsMap[songId] || null
+      }))
+      .filter(item => item.song !== null);
+
+    res.json({
+      success: true,
+      count: historyWithDetails.length,
+      history: historyWithDetails
+    });
+
+  } catch (error) {
+    console.error('Error al obtener historial de reproducción:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener historial de reproducción',
+      error: error.message 
     });
   }
 });

@@ -1,7 +1,9 @@
 // App.js - Adaptado para tu estructura con /principal
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthContext } from './context/authContext';
+import { useMusicPlayer } from './context/MusicPlayerContext';
+import ResumeDialog from './components/ResumeDialog';
 import './App.css';
 
 import HomePage from './pages/HomePage';
@@ -28,13 +30,104 @@ import EstadisticasPage from './pages/settings/Estadistica';
 
 
 function App() {
-  const { initialLoading } = useContext(AuthContext);
+  const { initialLoading, user } = useContext(AuthContext);
+  const { 
+    showResumeDialog, 
+    lastPosition, 
+    resumeLastPosition, 
+    dismissResumeDialog,
+    loadLastPosition,
+    saveCurrentPosition,
+    currentSong,
+    isPlaying,
+    currentTime
+  } = useMusicPlayer();
+
+  // Cargar última posición al iniciar sesión
+  useEffect(() => {
+    if (user && user._id) {
+      console.log('👤 Usuario autenticado, cargando última posición...');
+      loadLastPosition(user._id);
+    }
+  }, [user, loadLastPosition]);
+
+  // Guardar posición cada 5 segundos mientras se reproduce
+  useEffect(() => {
+    if (!user?._id) return;
+
+    console.log('🔄 Iniciando intervalo de guardado cada 5s');
+    const saveInterval = setInterval(() => {
+      saveCurrentPosition(user._id);
+    }, 5000);
+
+    return () => {
+      console.log('🧹 Limpiando interval de guardado');
+      clearInterval(saveInterval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id]); // Solo userId - saveCurrentPosition se actualiza solo
+
+  // Guardar posición al cambiar estado de reproducción o al cambiar de canción
+  useEffect(() => {
+    if (user?._id && currentSong?._id) {
+      // Pequeño delay para asegurar que el estado esté completamente actualizado
+      const timer = setTimeout(() => {
+        console.log('💾 Guardando por cambio de estado/canción:', {
+          song: currentSong.title || currentSong.titulo,
+          isPlaying
+        });
+        saveCurrentPosition(user._id);
+      }, 100); // 100ms delay
+      
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, currentSong?._id, user?._id]); // saveCurrentPosition se actualiza automáticamente
+
+  // Guardar posición al cerrar/desmontar
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (user && user._id && currentSong) {
+        // Usar sendBeacon para garantizar que se envíe antes de cerrar
+        const position = {
+          songId: currentSong._id,
+          position: 0,
+          progress: Math.floor((currentTime / (currentSong.duration || 1)) * 100),
+          isPlaying: false, // Siempre pausado al cerrar
+          timestamp: Date.now()
+        };
+
+        navigator.sendBeacon(
+          `http://localhost:3002/api/music/user/${user._id}/reel-position`,
+          JSON.stringify(position)
+        );
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user, currentSong, currentTime]);
 
   if (initialLoading) {
     return <InitialLoading />;
   }
+
+  if (initialLoading) {
+    return <InitialLoading />;
+  }
+
   return (
-    <Routes>
+    <>
+      {/* Diálogo de reanudar reproducción */}
+      {showResumeDialog && lastPosition && (
+        <ResumeDialog
+          position={lastPosition}
+          onResume={resumeLastPosition}
+          onDismiss={dismissResumeDialog}
+        />
+      )}
+
+      <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -57,6 +150,7 @@ function App() {
       <Route path="/configuracion" element={<ConfiguracionPage />} />
       <Route path="/estadisticas" element={<EstadisticasPage />} />
     </Routes>
+    </>
   );
 }
 

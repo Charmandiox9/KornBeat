@@ -4,8 +4,7 @@ import TopBar from "../components/TopBar";
 import BottomBar from "../components/BottomBar";
 import MiniPlayer from "../components/MiniPlayer";
 import QueuePanel from "../components/QueuePanel";
-import { MusicPlayerProvider, useMusicPlayer } from '../context/MusicPlayerContext';
-import { MusicSearchProvider } from '../context/MusicSearchContext';
+import { useMusicPlayer } from '../context/MusicPlayerContext';
 import { AuthContext } from '../context/authContext';
 import "../styles/Playlist.css";
 
@@ -469,13 +468,7 @@ const CreatePlaylistModal = ({ onClose, onCreate }) => {
 
 // 🎯 COMPONENTE PRINCIPAL - Aquí se integra todo
 const Playlist = () => {
-  return (
-    <MusicPlayerProvider>  {/* 🎵 Provider del reproductor */}
-      <MusicSearchProvider>  {/* 🔍 Provider de búsqueda */}
-        <PlaylistContent />  {/* 📋 Todo el contenido de la página */}
-      </MusicSearchProvider>
-    </MusicPlayerProvider>
-  );
+  return <PlaylistContent />;  {/* 📋 Todo el contenido de la página */}
 };
 
 export default Playlist;

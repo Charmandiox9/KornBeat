@@ -1,8 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
-import { MusicSearchProvider, useMusicSearch } from '../context/MusicSearchContext';
-import { MusicPlayerProvider } from '../context/MusicPlayerContext';
+import { useMusicSearch } from '../context/MusicSearchContext';
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
@@ -129,13 +128,7 @@ const Principal = () => {
 
   if (!user) return null;
 
-  return (
-    <MusicPlayerProvider>
-      <MusicSearchProvider>
-        <PrincipalContent />
-      </MusicSearchProvider>
-    </MusicPlayerProvider>
-  );
+  return <PrincipalContent />;
 };
 
 export default Principal;
