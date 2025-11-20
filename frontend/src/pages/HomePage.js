@@ -2,8 +2,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
-import { MusicSearchProvider } from '../context/MusicSearchContext';
-import { MusicPlayerProvider } from '../context/MusicPlayerContext';
 import SearchBarComponent from '../components/SearchBarComponent';
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
 import SearchBarResultsGuest from '../components/SearchBarResultsGuest';
@@ -40,14 +38,12 @@ const HomePage = () => {
   };
 
   return (
-    <MusicPlayerProvider>
-      <MusicSearchProvider>
-        <div className="home-container">
-          <Toaster 
-            position="top-center"
-            reverseOrder={false}
-            toastOptions={{
-              duration: 4000,
+    <div className="home-container">
+      <Toaster 
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 4000,
               style: {
                 background: '#363636',
                 color: '#fff',
@@ -154,8 +150,6 @@ const HomePage = () => {
             onClose={() => setIsQueueOpen(false)} 
           />
         </div>
-      </MusicSearchProvider>
-    </MusicPlayerProvider>
   );
 };
 

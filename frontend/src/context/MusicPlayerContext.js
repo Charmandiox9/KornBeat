@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import cacheService from '../services/cacheService';
+import { AuthContext } from './authContext';
 
 const MusicPlayerContext = createContext();
 
@@ -13,6 +15,7 @@ export const useMusicPlayer = () => {
 const API_BASE = 'http://localhost:3002';
 
 export const MusicPlayerProvider = ({ children }) => {
+  const { user } = useContext(AuthContext); // Obtener usuario del contexto
   const audioRef = useRef(null);
   
   // Estados del reproductor
@@ -25,6 +28,16 @@ export const MusicPlayerProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // DEBUG: Log cuando currentSong cambie
+  useEffect(() => {
+    console.log('🎵 currentSong actualizado:', {
+      exists: !!currentSong,
+      id: currentSong?._id,
+      title: currentSong?.title || currentSong?.titulo,
+      type: typeof currentSong
+    });
+  }, [currentSong]);
+  
   // Cola de reproducción
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -36,6 +49,23 @@ export const MusicPlayerProvider = ({ children }) => {
   
   // Mini player expandido
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Caché de última posición
+  const [lastPosition, setLastPosition] = useState(null);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const savePositionTimeoutRef = useRef(null);
+  
+  // Refs para valores actuales - SOLO se crean UNA VEZ, no en cada render
+  const currentSongRef = useRef(null);
+  const currentIndexRef = useRef(-1);
+  const isPlayingRef = useRef(false);
+  
+  // Actualizar refs en useEffect para que se ejecute DESPUÉS de cada render
+  useEffect(() => {
+    currentSongRef.current = currentSong;
+    currentIndexRef.current = currentIndex;
+    isPlayingRef.current = isPlaying;
+  }, [currentSong, currentIndex, isPlaying]);
 
   // Inicializar audio ref
   useEffect(() => {
@@ -175,7 +205,9 @@ export const MusicPlayerProvider = ({ children }) => {
       archivo_url: streamUrl
     };
 
+    console.log('🔧 Estableciendo currentSong:', songWithFullUrl);
     setCurrentSong(songWithFullUrl);
+    console.log('✅ setCurrentSong llamado');
     setError(null);
     setIsLoading(true);
 
@@ -395,7 +427,164 @@ export const MusicPlayerProvider = ({ children }) => {
     setIsExpanded(false);
   }, []);
 
-  const value = {
+  // ========== FUNCIONES DE CACHÉ DE ÚLTIMA POSICIÓN ==========
+
+  /**
+   * Cargar última posición del usuario desde Redis
+   */
+  const loadLastPosition = useCallback(async (userId) => {
+    if (!userId) return;
+
+    try {
+      console.log('📍 Cargando última posición para usuario:', userId);
+      const response = await cacheService.getPosition(userId);
+      
+      console.log('🔍 Respuesta completa del cache:', response);
+      
+      if (response.success && response.hasPosition) {
+        console.log('✅ Última posición encontrada:', response.position);
+        console.log('🎵 Song object:', response.position?.song);
+        console.log('🆔 SongId:', response.position?.songId);
+        
+        setLastPosition(response.position);
+        setShowResumeDialog(true);
+        
+        console.log('✅ Dialog activado - showResumeDialog: true');
+      } else {
+        console.log('ℹ️  No hay posición guardada');
+        setLastPosition(null);
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar última posición:', error);
+    }
+  }, []);
+
+  /**
+   * Función para guardar posición actual
+   * NO usa useCallback para que siempre tenga acceso a las refs más recientes
+   */
+  const savePositionInternal = async (userId) => {
+    const audio = audioRef.current;
+    const song = currentSongRef.current;
+    const index = currentIndexRef.current;
+    const playing = isPlayingRef.current;
+    
+    if (!userId || !song || !song._id) {
+      return;
+    }
+
+    try {
+      const actualDuration = audio?.duration || 0;
+      const actualTime = audio?.currentTime || 0;
+      const progress = actualDuration > 0 ? Math.floor((actualTime / actualDuration) * 100) : 0;
+      
+      const position = {
+        songId: song._id,
+        position: index,
+        progress: progress,
+        isPlaying: playing,
+        timestamp: Date.now()
+      };
+      
+      await cacheService.savePosition(userId, position);
+    } catch (error) {
+      console.error('❌ Error al guardar posición:', error);
+    }
+  };
+
+  /**
+   * Guardar posición actual del usuario en Redis
+   * useCallback con savePositionInternal como dependencia para que se actualice
+   */
+  const saveCurrentPosition = useCallback((userId) => {
+    savePositionInternal(userId);
+  }, [savePositionInternal]);
+
+  /**
+   * Guardar posición con debounce
+   */
+  const savePositionDebounced = useCallback((userId) => {
+    if (savePositionTimeoutRef.current) {
+      clearTimeout(savePositionTimeoutRef.current);
+    }
+
+    savePositionTimeoutRef.current = setTimeout(() => {
+      savePositionFunctionRef.current?.(userId);
+    }, 1000);
+  }, []);
+
+  /**
+   * Restaurar última posición
+   */
+  const resumeLastPosition = useCallback(() => {
+    if (!lastPosition || !lastPosition.song) return;
+
+    console.log('▶️  Restaurando última posición:', lastPosition);
+    
+    // Configurar canción
+    setCurrentSong(lastPosition.song);
+    
+    // Agregar a la cola si no está
+    if (!queue.find(s => s._id === lastPosition.song._id)) {
+      setQueue([lastPosition.song]);
+      setCurrentIndex(0);
+    }
+
+    // Esperar a que se cargue el audio y luego buscar
+    if (audioRef.current) {
+      const handleCanPlay = () => {
+        const seekTime = (lastPosition.progress / 100) * audioRef.current.duration;
+        audioRef.current.currentTime = seekTime;
+        setCurrentTime(seekTime);
+        
+        // No reproducir automáticamente, dejar pausado
+        setIsPlaying(false);
+        
+        audioRef.current.removeEventListener('canplay', handleCanPlay);
+      };
+
+      audioRef.current.addEventListener('canplay', handleCanPlay);
+      
+      // Construir URL y cargar
+      const streamUrl = `${API_BASE}/api/music/songs/${lastPosition.song._id}/stream`;
+      audioRef.current.src = streamUrl;
+      audioRef.current.load();
+    }
+
+    setShowResumeDialog(false);
+    setLastPosition(null);
+  }, [lastPosition, queue]);
+
+  /**
+   * Rechazar restauración - EMPEZAR DE NUEVO
+   * Borra la posición guardada en caché para que no vuelva a aparecer
+   */
+  const dismissResumeDialog = useCallback(async () => {
+    console.log('🔴 dismissResumeDialog ejecutándose...');
+    console.log('📦 lastPosition:', lastPosition);
+    console.log('👤 Usuario del contexto:', user);
+    
+    if (user?._id) {
+      try {
+        console.log('🗑️ Borrando posición guardada para usuario:', user._id);
+        const result = await cacheService.clearPosition(user._id);
+        console.log('✅ Resultado del borrado:', result);
+      } catch (error) {
+        console.error('❌ Error al borrar posición:', error);
+      }
+    } else {
+      console.log('⚠️ No se pudo borrar - falta user._id');
+    }
+    
+    console.log('🔄 Cerrando diálogo...');
+    setShowResumeDialog(false);
+    setLastPosition(null);
+    console.log('✅ Diálogo cerrado');
+  }, [lastPosition, user]);
+
+  // Cerrar reproductor
+
+  const value = useMemo(() => ({
     // Estado
     currentSong,
     isPlaying,
@@ -412,6 +601,10 @@ export const MusicPlayerProvider = ({ children }) => {
     repeat,
     isExpanded,
     audioRef,
+    
+    // Caché de última posición
+    lastPosition,
+    showResumeDialog,
     
     // Acciones
     playSong,
@@ -431,8 +624,55 @@ export const MusicPlayerProvider = ({ children }) => {
     playNow,
     playNextInQueue,
     toggleExpanded,
-    closePlayer
-  };
+    closePlayer,
+    
+    // Funciones de caché
+    loadLastPosition,
+    saveCurrentPosition,
+    savePositionDebounced,
+    resumeLastPosition,
+    dismissResumeDialog
+  }), [
+    currentSong,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    isMuted,
+    isLoading,
+    error,
+    queue,
+    currentIndex,
+    history,
+    shuffle,
+    repeat,
+    isExpanded,
+    lastPosition,
+    showResumeDialog,
+    playSong,
+    togglePlay,
+    seekTo,
+    changeVolume,
+    toggleMute,
+    addToQueue,
+    addMultipleToQueue,
+    playFromQueue,
+    playNext,
+    playPrevious,
+    clearQueue,
+    removeFromQueue,
+    toggleShuffle,
+    toggleRepeat,
+    playNow,
+    playNextInQueue,
+    toggleExpanded,
+    closePlayer,
+    loadLastPosition,
+    saveCurrentPosition,
+    savePositionDebounced,
+    resumeLastPosition,
+    dismissResumeDialog
+  ]);
 
   return (
     <MusicPlayerContext.Provider value={value}>

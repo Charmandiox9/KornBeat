@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs').promises;
 
 const { initializeBucket, minioClient, bucketName } = require('./minio');
+const cacheHelper = require('./utils/cacheHelper');
 require('dotenv').config();
 
 const app = express();
@@ -36,6 +37,8 @@ redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
 (async () => {
   try {
     await redisClient.connect();
+    // Inicializar el cliente de Redis en el helper de caché
+    cacheHelper.setRedisClient(redisClient);
   } catch (err) {
     console.error('❌ Error al conectar Redis:', err);
   }
@@ -372,5 +375,6 @@ module.exports = {
   getCachedSong, 
   incrementCounter,
   authenticateToken,
-  requireAuth
+  requireAuth,
+  ...cacheHelper
 };
