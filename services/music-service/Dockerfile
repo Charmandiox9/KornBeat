@@ -9,7 +9,7 @@ LABEL description="Music Service - Microservicio de música"
 WORKDIR /build
 
 # Copiar package.json desde services/music-service
-COPY services/music-service/package*.json ./
+COPY package*.json ./
 
 # Instalar dependencias
 RUN npm ci --only=production && npm cache clean --force
@@ -37,11 +37,11 @@ RUN mkdir -p /app/uploads/music && \
 COPY --from=builder --chown=nodejs:nodejs /build/node_modules ./node_modules
 
 # Copiar minio.js desde databases/
-COPY --chown=nodejs:nodejs databases/minio/minio.js ./src/minio.js
+COPY --chown=nodejs:nodejs src/minio.js ./src/minio.js
 
 # Copiar código fuente del music-service
-COPY --chown=nodejs:nodejs services/music-service/src ./src
-COPY --chown=nodejs:nodejs services/music-service/package*.json ./
+COPY --chown=nodejs:nodejs src ./src
+COPY --chown=nodejs:nodejs package*.json ./
 
 # Cambiar a usuario no-root
 USER nodejs
