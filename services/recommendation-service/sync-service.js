@@ -1,6 +1,7 @@
 // sync-service.js - Servicio de sincronización MongoDB -> Neo4j
 const { MongoClient } = require('mongodb');
 const neo4j = require('neo4j-driver');
+const config = require('./config');
 require('dotenv').config();
 
 // Configuración MongoDB
@@ -12,9 +13,12 @@ const neo4jDriver = neo4j.driver(
   process.env.NEO4J_URI || 'bolt://localhost:7687',
   neo4j.auth.basic(
     process.env.NEO4J_USER || 'neo4j',
-    process.env.NEO4J_PASSWORD || 'neo4j_password'
+    process.env.NEO4J_PASSWORD || 'password'
   )
 );
+
+// Helper para obtener nombre de colección
+const getCollection = (name) => mongoDb.collection(config.collections[name]);
 
 // ==================== FUNCIONES DE SINCRONIZACIÓN ====================
 
@@ -24,7 +28,7 @@ async function syncUsuarios() {
   const session = neo4jDriver.session();
   
   try {
-    const usuarios = await mongoDb.collection('usuarios').find({ active: true }).toArray();
+    const usuarios = await getCollection('usuarios').find({ active: true }).toArray();
     
     for (const usuario of usuarios) {
       await session.run(`
@@ -39,8 +43,8 @@ async function syncUsuarios() {
       `, {
         id: usuario._id.toString(),
         username: usuario.username,
-        name: usuario.name,
-        country: usuario.country,
+        name: usuario.name, // Corregido: usar 'name' no 'nombre'
+        country: usuario.country, // Corregido: usar 'country' no 'pais'
         is_premium: usuario.is_premium || false,
         es_artist: usuario.es_artist || false,
         date_of_register: usuario.date_of_register?.toISOString() || new Date().toISOString()
@@ -61,7 +65,7 @@ async function syncArtistas() {
   const session = neo4jDriver.session();
   
   try {
-    const artistas = await mongoDb.collection('artistas').find({ activo: true }).toArray();
+    const artistas = await getCollection('artistas').find({ activo: true }).toArray();
     
     for (const artista of artistas) {
       await session.run(`
@@ -100,7 +104,7 @@ async function syncGeneros() {
   const session = neo4jDriver.session();
   
   try {
-    const categorias = await mongoDb.collection('categorias').find({ activa: true }).toArray();
+    const categorias = await getCollection('categorias').find({ activa: true }).toArray();
     
     for (const cat of categorias) {
       await session.run(`
@@ -129,7 +133,7 @@ async function syncAlbumes() {
   const session = neo4jDriver.session();
   
   try {
-    const albumes = await mongoDb.collection('albumes').find({ disponible: true }).toArray();
+    const albumes = await getCollection('albumes').find({ disponible: true }).toArray();
     
     for (const album of albumes) {
       // Crear nodo de álbum
@@ -187,92 +191,151 @@ async function syncAlbumes() {
   }
 }
 
-// 5. Sincronizar Canciones (la más compleja)
+// 5. Sincronizar Canciones (adaptado a tu esquema real)
 async function syncCanciones() {
   console.log('🎶 Sincronizando canciones...');
   const session = neo4jDriver.session();
   
   try {
-    const canciones = await mongoDb.collection('songs').find({ disponible: true }).toArray();
+    const collectionName = config.collections.canciones;
+    console.log(`  📋 Usando colección: ${collectionName}`);
     
-    for (const cancion of canciones) {
-      // Crear nodo de canción
-      await session.run(`
-        MERGE (c:Cancion {id: $id})
-        SET c.titulo = $titulo,
-            c.duracion_segundos = $duracion,
-            c.archivo_url = $archivo_url,
-            c.portada_url = $portada_url,
-            c.es_explicito = $es_explicito,
-            c.es_instrumental = $es_instrumental,
-            c.reproducciones = $reproducciones,
-            c.likes = $likes,
-            c.disponible = true,
-            c.fecha_lanzamiento = datetime($fecha_lanzamiento),
-            c.artistas = $artistas_json,
-            c.last_update = datetime()
-      `, {
-        id: cancion._id.toString(),
-        titulo: cancion.titulo,
-        duracion: neo4j.int(cancion.duracion_segundos),
-        archivo_url: cancion.archivo_url || '',
-        portada_url: cancion.album_info?.portada_url || '',
-        es_explicito: cancion.es_explicito || false,
-        es_instrumental: cancion.es_instrumental || false,
-        reproducciones: neo4j.int(cancion.reproducciones?.toString() || '0'),
-        likes: neo4j.int(cancion.likes?.toString() || '0'),
-        fecha_lanzamiento: cancion.fecha_lanzamiento?.toISOString() || new Date().toISOString(),
-        artistas_json: JSON.stringify(cancion.artistas || [])
-      });
+    // Tu esquema no tiene campo 'disponible', así que traemos todas
+    const canciones = await mongoDb.collection(collectionName)
+      .find({})
+      .toArray();
+    
+    if (canciones.length === 0) {
+      console.log('  ⚠️  No se encontraron canciones.');
+      return;
+    }
+    
+    console.log(`  📊 Encontradas ${canciones.length} canciones`);
+    
+    // Sincronizar en lotes
+    const batchSize = config.sync.batchSize;
+    for (let i = 0; i < canciones.length; i += batchSize) {
+      const batch = canciones.slice(i, i + batchSize);
       
-      // Relación con álbum
-      if (cancion.album_id) {
-        await session.run(`
-          MATCH (c:Cancion {id: $cancion_id})
-          MATCH (a:Album {id: $album_id})
-          MERGE (c)-[:BELONGS_TO]->(a)
-        `, {
-          cancion_id: cancion._id.toString(),
-          album_id: cancion.album_id.toString()
-        });
-      }
-      
-      // Relaciones con artistas
-      if (cancion.artistas && cancion.artistas.length > 0) {
-        for (const artista of cancion.artistas) {
+      for (const cancion of batch) {
+        try {
+          // Validar campos mínimos
+          if (!cancion.title) {
+            console.log(`  ⚠️  Canción sin título, saltando: ${cancion._id}`);
+            continue;
+          }
+          
+          // Extraer género principal de categorias o tags
+          let generos = [];
+          if (cancion.genre) generos.push(cancion.genre);
+          if (cancion.categorias && cancion.categorias.length > 0) {
+            generos = [...generos, ...cancion.categorias];
+          }
+          if (cancion.tags && cancion.tags.length > 0) {
+            generos = [...generos, ...cancion.tags];
+          }
+          // Remover duplicados
+          generos = [...new Set(generos.filter(g => g && typeof g === 'string'))];
+          
+          // Crear nodo de canción adaptado a tu esquema
           await session.run(`
-            MATCH (c:Cancion {id: $cancion_id})
-            MATCH (a:Artista {id: $artista_id})
-            MERGE (c)-[r:PERFORMED_BY]->(a)
-            SET r.tipo = $tipo,
-                r.orden = $orden
+            MERGE (c:Cancion {id: $id})
+            SET c.titulo = $titulo,
+                c.artista = $artista,
+                c.duracion_segundos = $duracion,
+                c.genero = $genero,
+                c.album = $album,
+                c.archivo_url = $archivo_url,
+                c.portada_url = $portada_url,
+                c.reproducciones = $reproducciones,
+                c.disponible = true,
+                c.fecha_lanzamiento = datetime($fecha_lanzamiento),
+                c.fecha_subida = datetime($fecha_subida),
+                c.compositores = $compositores,
+                c.generos_array = $generos_array,
+                c.last_update = datetime()
           `, {
-            cancion_id: cancion._id.toString(),
-            artista_id: artista.artista_id.toString(),
-            tipo: artista.tipo || 'principal',
-            orden: neo4j.int(artista.orden || 1)
+            id: cancion._id.toString(),
+            titulo: cancion.title,
+            artista: cancion.artist || 'Desconocido',
+            duracion: neo4j.int(cancion.duration || 0),
+            genero: cancion.genre || 'Sin género',
+            album: cancion.album || '',
+            archivo_url: cancion.fileName || '',
+            portada_url: cancion.coverUrl || '',
+            reproducciones: neo4j.int(cancion.playCount || 0),
+            fecha_lanzamiento: cancion.createdAt?.toISOString() || new Date().toISOString(),
+            fecha_subida: cancion.uploadDate?.toISOString() || new Date().toISOString(),
+            compositores: JSON.stringify(cancion.composers || []),
+            generos_array: JSON.stringify(generos)
           });
+          
+          // Crear o enlazar artista (usando el string de artist)
+          if (cancion.artist && cancion.artist.trim()) {
+            // Crear artista si no existe (como nodo simple)
+            await session.run(`
+              MERGE (a:Artista {nombre_artistico: $nombre})
+              ON CREATE SET a.id = randomUUID(),
+                           a.created_from = 'song_sync',
+                           a.created_at = datetime()
+              
+              WITH a
+              MATCH (c:Cancion {id: $cancion_id})
+              MERGE (c)-[r:PERFORMED_BY]->(a)
+              SET r.tipo = 'principal'
+            `, {
+              nombre: cancion.artist.trim(),
+              cancion_id: cancion._id.toString()
+            });
+          }
+          
+          // Relaciones con géneros (todos los que encontramos)
+          for (const genero of generos) {
+            if (genero && genero.trim()) {
+              await session.run(`
+                MATCH (c:Cancion {id: $cancion_id})
+                MERGE (g:Genero {nombre: $genero})
+                ON CREATE SET g.created_at = datetime()
+                MERGE (c)-[:HAS_GENRE]->(g)
+              `, {
+                cancion_id: cancion._id.toString(),
+                genero: genero.trim()
+              });
+            }
+          }
+          
+          // Si hay álbum (aunque sea string vacío, algunos pueden tenerlo)
+          if (cancion.album && cancion.album.trim()) {
+            await session.run(`
+              MERGE (al:Album {titulo: $titulo})
+              ON CREATE SET al.id = randomUUID(),
+                           al.created_from = 'song_sync',
+                           al.created_at = datetime()
+              
+              WITH al
+              MATCH (c:Cancion {id: $cancion_id})
+              MERGE (c)-[:BELONGS_TO]->(al)
+            `, {
+              titulo: cancion.album.trim(),
+              cancion_id: cancion._id.toString()
+            });
+          }
+          
+        } catch (cancionError) {
+          console.error(`  ❌ Error procesando canción ${cancion.title || cancion._id}:`, cancionError.message);
         }
       }
       
-      // Relaciones con géneros
-      if (cancion.categorias && cancion.categorias.length > 0) {
-        for (const genero of cancion.categorias) {
-          await session.run(`
-            MATCH (c:Cancion {id: $cancion_id})
-            MERGE (g:Genero {nombre: $genero})
-            MERGE (c)-[:HAS_GENRE]->(g)
-          `, {
-            cancion_id: cancion._id.toString(),
-            genero: genero
-          });
-        }
+      if (i + batchSize < canciones.length) {
+        await new Promise(resolve => setTimeout(resolve, config.sync.delayBetweenBatches));
+        console.log(`  ⏳ Procesadas ${Math.min(i + batchSize, canciones.length)} de ${canciones.length} canciones...`);
       }
     }
     
     console.log(`✅ ${canciones.length} canciones sincronizadas`);
   } catch (error) {
     console.error('❌ Error sincronizando canciones:', error);
+    throw error;
   } finally {
     await session.close();
   }
@@ -288,7 +351,7 @@ async function syncHistorialReciente() {
     const hace30Dias = new Date();
     hace30Dias.setDate(hace30Dias.getDate() - 30);
     
-    const historial = await mongoDb.collection('historial_reproducciones')
+    const historial = await getCollection('historial')
       .find({
         fecha_reproduccion: { $gte: hace30Dias }
       })
@@ -325,7 +388,7 @@ async function syncLikes() {
   const session = neo4jDriver.session();
   
   try {
-    const likes = await mongoDb.collection('likes_canciones').find().toArray();
+    const likes = await getCollection('likes_canciones').find().toArray();
     
     for (const like of likes) {
       await session.run(`
@@ -354,7 +417,7 @@ async function syncSeguimientos() {
   const session = neo4jDriver.session();
   
   try {
-    const seguimientos = await mongoDb.collection('seguimiento_artistas').find().toArray();
+    const seguimientos = await getCollection('seguimiento_artistas').find().toArray();
     
     for (const seg of seguimientos) {
       await session.run(`
@@ -385,14 +448,13 @@ async function calcularPreferencias() {
   const session = neo4jDriver.session();
   
   try {
+    // Neo4j 5.x usa COUNT {} en lugar de size()
     await session.run(`
       MATCH (u:Usuario)-[r:REPRODUJO]->(c:Cancion)-[:HAS_GENRE]->(g:Genero)
       WITH u, g, COUNT(r) as reproducciones
-      WITH u, g, reproducciones,
-           COUNT { (u)-[:REPRODUJO]->(:Cancion) } as total_reproducciones
-      WITH u, g, reproducciones,
-           toFloat(reproducciones) / toFloat(total_reproducciones) as score
-      WHERE total_reproducciones > 0
+      WITH u, g, reproducciones, 
+           toFloat(reproducciones) / 
+           toFloat(COUNT {(u)-[:REPRODUJO]->(:Cancion)}) as score
       MERGE (u)-[pref:TIENE_PREFERENCIA]->(g)
       SET pref.score = score,
           pref.reproducciones = reproducciones,
@@ -401,7 +463,8 @@ async function calcularPreferencias() {
     
     console.log('✅ Preferencias calculadas');
   } catch (error) {
-    console.error('❌ Error calculando preferencias:', error);
+    console.error('❌ Error calculando preferencias:', error.message);
+    // No lanzar error, es una función opcional
   } finally {
     await session.close();
   }

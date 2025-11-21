@@ -4,17 +4,17 @@
 module.exports = {
   // Mapeo de colecciones MongoDB
   collections: {
-    canciones: process.env.SONGS_COLLECTION || 'songs',
-    usuarios: process.env.USERS_COLLECTION || 'usuarios',
-    artistas: process.env.ARTISTS_COLLECTION || 'artistas',
-    albumes: process.env.ALBUMS_COLLECTION || 'albumes',
-    categorias: process.env.CATEGORIES_COLLECTION || 'categorias',
-    playlists: process.env.PLAYLISTS_COLLECTION || 'playlists',
-    historial: process.env.HISTORY_COLLECTION || 'historial_reproducciones',
-    likes_canciones: process.env.LIKES_SONGS_COLLECTION || 'likes_canciones',
-    likes_albumes: process.env.LIKES_ALBUMS_COLLECTION || 'likes_albumes',
-    seguimiento_artistas: process.env.FOLLOW_ARTISTS_COLLECTION || 'seguimiento_artistas',
-    seguimiento_playlists: process.env.FOLLOW_PLAYLISTS_COLLECTION || 'seguimiento_playlists',
+    canciones: 'songs',
+    usuarios: 'usuarios',
+    artistas: 'artistas',
+    albumes: 'albumes',
+    categorias: 'categorias',
+    playlists: 'playlists',
+    historial: 'historial_reproducciones',
+    likes_canciones: 'likes_canciones',
+    likes_albumes: 'likes_albumes',
+    seguimiento_artistas: 'seguimiento_artistas',
+    seguimiento_playlists: 'seguimiento_playlists',
     discograficas: process.env.LABELS_COLLECTION || 'discograficas'
   },
 
