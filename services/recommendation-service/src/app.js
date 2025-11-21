@@ -6,7 +6,16 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:80'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization']
+}));
 app.use(express.json());
 
 // Conexión a Neo4j
@@ -96,11 +105,18 @@ app.get('/api/recommendations/top-global', async (req, res) => {
   try {
     const { limit = 100, offset = 0 } = req.query;
     
+    // Verificar caché
+    const cacheKey = `top-global:${limit}:${offset}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     const result = await session.run(`
       MATCH (c:Cancion)
       RETURN c.id as id,
              c.titulo as titulo,
-             c.artistas as artistas,
+             c.artista as artista,
              c.portada_url as portada_url,
              c.reproducciones as reproducciones,
              c.duracion_segundos as duracion
@@ -115,17 +131,22 @@ app.get('/api/recommendations/top-global', async (req, res) => {
     const canciones = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       portada_url: record.get('portada_url'),
       reproducciones: record.get('reproducciones')?.toNumber() || 0,
       duracion: record.get('duracion')?.toNumber() || 0
     }));
 
-    res.json({ 
+    const response = { 
       success: true, 
       data: canciones,
       total: canciones.length 
-    });
+    };
+    
+    // Guardar en caché por 5 minutos
+    await setCache(cacheKey, response, 300);
+
+    res.json(response);
   } catch (error) {
     console.error('Error en top-global:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -134,18 +155,21 @@ app.get('/api/recommendations/top-global', async (req, res) => {
   }
 });
 
-// 2. Top 100 por País
+// 2. Top 100 por País (⚠️ Limitado - requiere metadata de artistas)
 app.get('/api/recommendations/top-country/:country', async (req, res) => {
   const session = driver.session();
   try {
     const { country } = req.params;
     const { limit = 100, offset = 0 } = req.query;
     
+    // Nota: Esta query busca artistas que TENGAN el campo country
+    // Los artistas creados desde sync no tendrán este campo
     const result = await session.run(`
-      MATCH (a:Artista {country: $country})<-[:PERFORMED_BY]-(c:Cancion)
+      MATCH (a:Artista)<-[:PERFORMED_BY]-(c:Cancion)
+      WHERE a.country = $country
       RETURN c.id as id,
              c.titulo as titulo,
-             c.artistas as artistas,
+             c.artista as artista,
              c.portada_url as portada_url,
              c.reproducciones as reproducciones,
              c.duracion_segundos as duracion,
@@ -162,7 +186,7 @@ app.get('/api/recommendations/top-country/:country', async (req, res) => {
     const canciones = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       artista_nombre: record.get('artista_nombre'),
       portada_url: record.get('portada_url'),
       reproducciones: record.get('reproducciones')?.toNumber() || 0,
@@ -173,7 +197,8 @@ app.get('/api/recommendations/top-country/:country', async (req, res) => {
       success: true, 
       data: canciones,
       country: country.toUpperCase(),
-      total: canciones.length 
+      total: canciones.length,
+      warning: canciones.length === 0 ? 'No se encontraron artistas con información de país' : null
     });
   } catch (error) {
     console.error('Error en top-country:', error);
@@ -190,10 +215,7 @@ app.get('/api/recommendations/for-user/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 50 } = req.query;
     
-    // Algoritmo: Encuentra canciones similares basadas en:
-    // - Mismo género/categoría
-    // - Mismos artistas o artistas relacionados
-    // - Canciones que otros usuarios con gustos similares escuchan
+    // Algoritmo basado en géneros que el usuario ha escuchado
     const result = await session.run(`
       MATCH (u:Usuario {id: $userId})-[r:REPRODUJO]->(c:Cancion)-[:HAS_GENRE]->(g:Genero)
       WITH u, g, COUNT(r) as escuchas
@@ -209,7 +231,7 @@ app.get('/api/recommendations/for-user/:userId', async (req, res) => {
       
       RETURN DISTINCT cancion_recomendada.id as id,
              cancion_recomendada.titulo as titulo,
-             cancion_recomendada.artistas as artistas,
+             cancion_recomendada.artista as artista,
              cancion_recomendada.portada_url as portada_url,
              cancion_recomendada.reproducciones as reproducciones,
              cancion_recomendada.duracion_segundos as duracion,
@@ -225,7 +247,7 @@ app.get('/api/recommendations/for-user/:userId', async (req, res) => {
     const recomendaciones = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       portada_url: record.get('portada_url'),
       reproducciones: record.get('reproducciones')?.toNumber() || 0,
       duracion: record.get('duracion')?.toNumber() || 0,
@@ -253,7 +275,14 @@ app.get('/api/recommendations/by-genres', async (req, res) => {
   const session = driver.session();
   try {
     const { genres, userId, limit = 30 } = req.query;
-    const generosList = Array.isArray(genres) ? genres : [genres];
+    const generosList = Array.isArray(genres) ? genres : (genres ? [genres] : []);
+    
+    if (generosList.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Se requiere al menos un género' 
+      });
+    }
     
     const result = await session.run(`
       UNWIND $genres as genero
@@ -266,12 +295,12 @@ app.get('/api/recommendations/by-genres', async (req, res) => {
       
       RETURN c.id as id,
              c.titulo as titulo,
-             c.artistas as artistas,
+             c.artista as artista,
              c.portada_url as portada_url,
              c.reproducciones as reproducciones,
              c.duracion_segundos as duracion,
              generos_match,
-             SIZE(generos_match) as match_count
+             COUNT {(c)-[:HAS_GENRE]->(:Genero)} as match_count
       ORDER BY match_count DESC, c.reproducciones DESC
       LIMIT $limit
     `, { 
@@ -283,7 +312,7 @@ app.get('/api/recommendations/by-genres', async (req, res) => {
     const canciones = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       portada_url: record.get('portada_url'),
       reproducciones: record.get('reproducciones')?.toNumber() || 0,
       duracion: record.get('duracion')?.toNumber() || 0,
@@ -305,15 +334,17 @@ app.get('/api/recommendations/by-genres', async (req, res) => {
   }
 });
 
-// 5. Artistas similares basados en colaboraciones y géneros
+// 5. Artistas similares basados en géneros compartidos
 app.get('/api/recommendations/similar-artists/:artistId', async (req, res) => {
   const session = driver.session();
   try {
     const { artistId } = req.params;
     const { limit = 20 } = req.query;
     
+    // Busca por ID o por nombre
     const result = await session.run(`
-      MATCH (a1:Artista {id: $artistId})<-[:PERFORMED_BY]-(c:Cancion)-[:HAS_GENRE]->(g:Genero)
+      MATCH (a1:Artista)<-[:PERFORMED_BY]-(c:Cancion)-[:HAS_GENRE]->(g:Genero)
+      WHERE a1.id = $artistId OR a1.nombre_artistico = $artistId
       WITH a1, COLLECT(DISTINCT g) as generos_artista
       
       MATCH (g)<-[:HAS_GENRE]-(c2:Cancion)-[:PERFORMED_BY]->(a2:Artista)
@@ -327,8 +358,10 @@ app.get('/api/recommendations/similar-artists/:artistId', async (req, res) => {
              a2.oyentes_mensuales as oyentes,
              a2.verificado as verificado,
              generos_comunes,
-             SIZE(generos_artista) as total_generos,
-             toFloat(generos_comunes) / SIZE(generos_artista) as similarity_score
+             COUNT {(a1)<-[:PERFORMED_BY]-(c3:Cancion)-[:HAS_GENRE]->()} as total_generos,
+             toFloat(generos_comunes) / CASE WHEN COUNT {(a1)<-[:PERFORMED_BY]-(c3:Cancion)-[:HAS_GENRE]->()} > 0 
+                                             THEN COUNT {(a1)<-[:PERFORMED_BY]-(c3:Cancion)-[:HAS_GENRE]->()} 
+                                             ELSE 1 END as similarity_score
       ORDER BY similarity_score DESC, a2.oyentes_mensuales DESC
       LIMIT $limit
     `, { 
@@ -341,7 +374,7 @@ app.get('/api/recommendations/similar-artists/:artistId', async (req, res) => {
       nombre: record.get('nombre'),
       imagen_url: record.get('imagen_url'),
       oyentes: record.get('oyentes')?.toNumber() || 0,
-      verificado: record.get('verificado'),
+      verificado: record.get('verificado') || false,
       generos_comunes: record.get('generos_comunes')?.toNumber() || 0,
       similarity_score: parseFloat(record.get('similarity_score')?.toFixed(2) || 0)
     }));
@@ -388,7 +421,7 @@ app.get('/api/recommendations/collaborative/:userId', async (req, res) => {
       
       RETURN recomendada.id as id,
              recomendada.titulo as titulo,
-             recomendada.artistas as artistas,
+             recomendada.artista as artista,
              recomendada.portada_url as portada_url,
              recomendada.reproducciones as reproducciones,
              recomendada.duracion_segundos as duracion,
@@ -403,7 +436,7 @@ app.get('/api/recommendations/collaborative/:userId', async (req, res) => {
     const recomendaciones = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       portada_url: record.get('portada_url'),
       reproducciones: record.get('reproducciones')?.toNumber() || 0,
       duracion: record.get('duracion')?.toNumber() || 0,
@@ -425,7 +458,7 @@ app.get('/api/recommendations/collaborative/:userId', async (req, res) => {
   }
 });
 
-// 7. Descubrir nuevos artistas del país del usuario
+// 7. Descubrir nuevos artistas del país del usuario (⚠️ Limitado)
 app.get('/api/recommendations/discover-local/:userId', async (req, res) => {
   const session = driver.session();
   try {
@@ -434,8 +467,9 @@ app.get('/api/recommendations/discover-local/:userId', async (req, res) => {
     
     const result = await session.run(`
       MATCH (u:Usuario {id: $userId})
-      MATCH (a:Artista {country: u.country})<-[:PERFORMED_BY]-(c:Cancion)
-      WHERE NOT EXISTS((u)-[:REPRODUJO]->(c))
+      MATCH (a:Artista)<-[:PERFORMED_BY]-(c:Cancion)
+      WHERE a.country = u.country
+        AND NOT EXISTS((u)-[:REPRODUJO]->(c))
         AND NOT EXISTS((u)-[:SIGUE]->(a))
         AND c.disponible = true
       
@@ -444,9 +478,9 @@ app.get('/api/recommendations/discover-local/:userId', async (req, res) => {
       
       RETURN DISTINCT c.id as id,
              c.titulo as titulo,
-             c.artistas as artistas,
+             c.artista as artista,
              c.portada_url as portada_url,
-             c.reproducciones as reproducciones,
+             c.reproducciones as reproducciones_totales,
              c.duracion_segundos as duracion,
              a.nombre_artistico as artista_nombre,
              a.oyentes_mensuales as oyentes_artista
@@ -459,10 +493,10 @@ app.get('/api/recommendations/discover-local/:userId', async (req, res) => {
     const descubrimientos = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       artista_nombre: record.get('artista_nombre'),
       portada_url: record.get('portada_url'),
-      reproducciones: record.get('reproducciones')?.toNumber() || 0,
+      reproducciones: record.get('reproducciones_totales')?.toNumber() || 0,
       duracion: record.get('duracion')?.toNumber() || 0,
       oyentes_artista: record.get('oyentes_artista')?.toNumber() || 0,
       razon: 'Nuevo talento local para descubrir'
@@ -472,7 +506,8 @@ app.get('/api/recommendations/discover-local/:userId', async (req, res) => {
       success: true, 
       data: descubrimientos,
       usuario_id: userId,
-      total: descubrimientos.length 
+      total: descubrimientos.length,
+      warning: descubrimientos.length === 0 ? 'No hay artistas con información de país disponible' : null
     });
   } catch (error) {
     console.error('Error en discover-local:', error);
@@ -489,18 +524,18 @@ app.get('/api/recommendations/trending', async (req, res) => {
     const { limit = 50, country } = req.query;
     
     const query = country ? `
-      MATCH (a:Artista {country: $country})<-[:PERFORMED_BY]-(c:Cancion)
-      WHERE c.disponible = true
+      MATCH (a:Artista)<-[:PERFORMED_BY]-(c:Cancion)
+      WHERE a.country = $country AND c.disponible = true
       
-      MATCH (c)<-[r:REPRODUJO]-(u:Usuario)
+      OPTIONAL MATCH (c)<-[r:REPRODUJO]-(u:Usuario)
       WHERE r.fecha >= datetime() - duration({days: 7})
       
       WITH c, COUNT(r) as reproducciones_semana, a
-      ORDER BY reproducciones_semana DESC
+      ORDER BY reproducciones_semana DESC, c.reproducciones DESC
       
       RETURN c.id as id,
              c.titulo as titulo,
-             c.artistas as artistas,
+             c.artista as artista,
              c.portada_url as portada_url,
              c.reproducciones as reproducciones_totales,
              c.duracion_segundos as duracion,
@@ -511,15 +546,15 @@ app.get('/api/recommendations/trending', async (req, res) => {
       MATCH (c:Cancion)
       WHERE c.disponible = true
       
-      MATCH (c)<-[r:REPRODUJO]-(u:Usuario)
+      OPTIONAL MATCH (c)<-[r:REPRODUJO]-(u:Usuario)
       WHERE r.fecha >= datetime() - duration({days: 7})
       
       WITH c, COUNT(r) as reproducciones_semana
-      ORDER BY reproducciones_semana DESC
+      ORDER BY reproducciones_semana DESC, c.reproducciones DESC
       
       RETURN c.id as id,
              c.titulo as titulo,
-             c.artistas as artistas,
+             c.artista as artista,
              c.portada_url as portada_url,
              c.reproducciones as reproducciones_totales,
              c.duracion_segundos as duracion,
@@ -535,7 +570,7 @@ app.get('/api/recommendations/trending', async (req, res) => {
     const trending = result.records.map(record => ({
       id: record.get('id'),
       titulo: record.get('titulo'),
-      artistas: record.get('artistas'),
+      artista: record.get('artista'),
       artista_nombre: record.get('artista_nombre') || null,
       portada_url: record.get('portada_url'),
       reproducciones_totales: record.get('reproducciones_totales')?.toNumber() || 0,
@@ -571,25 +606,27 @@ app.get('/health', async (req, res) => {
 });
 
 // ==================== INICIO DEL SERVIDOR ====================
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3003;
 
 app.listen(PORT, async () => {
+  await initRedis();
   await verifyConnection();
   console.log(`🚀 Microservicio de Recomendaciones ejecutándose en puerto ${PORT}`);
   console.log(`📊 Endpoints disponibles:`);
   console.log(`   GET /api/recommendations/top-global`);
-  console.log(`   GET /api/recommendations/top-country/:country`);
+  console.log(`   GET /api/recommendations/top-country/:country (⚠️  requiere metadata)`);
   console.log(`   GET /api/recommendations/for-user/:userId`);
   console.log(`   GET /api/recommendations/by-genres?genres=Pop,Rock`);
   console.log(`   GET /api/recommendations/similar-artists/:artistId`);
   console.log(`   GET /api/recommendations/collaborative/:userId`);
-  console.log(`   GET /api/recommendations/discover-local/:userId`);
+  console.log(`   GET /api/recommendations/discover-local/:userId (⚠️  requiere metadata)`);
   console.log(`   GET /api/recommendations/trending`);
 });
 
-// Cerrar conexión al salir
+// Cerrar conexiones al salir
 process.on('SIGINT', async () => {
   await driver.close();
-  console.log('\n👋 Conexión a Neo4j cerrada');
+  if (redisClient) await redisClient.quit();
+  console.log('\n👋 Conexiones cerradas');
   process.exit(0);
 });
