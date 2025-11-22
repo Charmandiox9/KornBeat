@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import { MusicSearchProvider, useMusicSearch } from '../context/MusicSearchContext';
@@ -14,7 +14,7 @@ const API_BASE_RECOMMENDATIONS = 'http://localhost:3003/api/recommendations';
 const PrincipalContent = () => {
   const { user } = useContext(AuthContext);
   const { searchResults, searchQuery } = useMusicSearch();
-  const { playSong } = useMusicPlayer();
+  const { playNow, addMultipleToQueue, clearQueue, playFromQueue } = useMusicPlayer();
   const navigate = useNavigate();
 
   const [notifications] = useState(3);
@@ -22,7 +22,7 @@ const PrincipalContent = () => {
   const [topCountry, setTopCountry] = useState([]);
   const [loadingGlobal, setLoadingGlobal] = useState(true);
   const [loadingCountry, setLoadingCountry] = useState(true);
-  const [userCountry, setUserCountry] = useState('CL'); // Por defecto CL, puedes obtenerlo del contexto del usuario
+  const [userCountry, setUserCountry] = useState('CL');
 
   useEffect(() => {
     if (!user) navigate('/login');
@@ -79,19 +79,97 @@ const PrincipalContent = () => {
 
   const hasSearchResults = searchResults.length > 0 || searchQuery;
 
-  const handleSongClick = (song) => {
-    // Preparar la canción en el formato que espera MusicPlayerContext
-    const songData = {
+  // Función para formatear canciones del TOP al formato del player
+  const formatSongForPlayer = useCallback((song) => {
+    // Asegurarse de que la estructura sea compatible con el reproductor
+    const formattedSong = {
       _id: song.id,
       titulo: song.titulo,
-      artista: song.artista || song.artista_nombre,
-      portada_url: `${API_BASE_MUSIC}/covers/${song.portada_url}`, // URL completa de la portada
-      archivo_url: `${API_BASE_MUSIC}/songs/${song.id}/stream`
+      // Crear array de artistas si viene como string
+      artistas: song.artista || song.artista_nombre 
+        ? [{ nombre: song.artista || song.artista_nombre }]
+        : [],
+      // Información del álbum
+      album_info: {
+        titulo: song.album || '',
+      },
+      // URLs completas
+      portada_url: song.portada_url 
+        ? `${API_BASE_MUSIC}/covers/${song._id}.png`
+        : null,
+      archivo_url: `${API_BASE_MUSIC}/songs/${song.id}/stream`,
+      // Datos adicionales
+      duracion_segundos: song.duracion_segundos || 0,
+      categorias: song.categorias || [],
     };
     
-    console.log('🎵 Reproduciendo desde TOP:', songData);
-    playSong(songData);
-  };
+    console.log('🎵 Canción formateada:', formattedSong);
+    return formattedSong;
+  }, []);
+
+  // Función para reproducir canción del TOP Global
+  const handlePlayFromTopGlobal = useCallback((e, song, index) => {
+    e.stopPropagation();
+    
+    // Obtener todas las canciones desde la seleccionada hasta el final
+    const songsFromIndex = topGlobal.slice(index);
+    
+    // Formatear todas las canciones para el player
+    const formattedSongs = songsFromIndex.map(formatSongForPlayer);
+    
+    console.log('🎵 Reproduciendo desde TOP GLOBAL:', {
+      cancionSeleccionada: song.titulo,
+      posicion: index + 1,
+      totalEnCola: formattedSongs.length,
+      canciones: formattedSongs.map(s => s.titulo)
+    });
+    
+    // Usar playNow con la primera canción y luego agregar el resto a la cola
+    if (formattedSongs.length > 0) {
+      clearQueue();
+      
+      // Agregar todas las canciones a la cola
+      addMultipleToQueue(formattedSongs);
+      
+      // Reproducir la primera canción (índice 0 de la nueva cola)
+      // Usamos setTimeout para asegurar que la cola se actualice primero
+      setTimeout(() => {
+        playFromQueue(0);
+      }, 0);
+    }
+  }, [topGlobal, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
+
+  // Función para reproducir canción del TOP País
+  const handlePlayFromTopCountry = useCallback((e, song, index) => {
+    e.stopPropagation();
+    
+    // Obtener todas las canciones desde la seleccionada hasta el final
+    const songsFromIndex = topCountry.slice(index);
+    
+    // Formatear todas las canciones para el player
+    const formattedSongs = songsFromIndex.map(formatSongForPlayer);
+    
+    console.log('🎵 Reproduciendo desde TOP', userCountry, ':', {
+      cancionSeleccionada: song.titulo,
+      posicion: index + 1,
+      totalEnCola: formattedSongs.length,
+      canciones: formattedSongs.map(s => s.titulo)
+    });
+    
+    // Usar playNow con la primera canción y luego agregar el resto a la cola
+    if (formattedSongs.length > 0) {
+      clearQueue();
+      
+      // Agregar todas las canciones a la cola
+      addMultipleToQueue(formattedSongs);
+      
+      // Reproducir la primera canción (índice 0 de la nueva cola)
+      // Usamos setTimeout para asegurar que la cola se actualice primero
+      setTimeout(() => {
+        playFromQueue(0);
+      }, 0);
+    }
+  }, [topCountry, userCountry, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
   const recentlyPlayed = [
     { id: 1, type: 'Artista', name: 'Artista Ejemplo' },
@@ -178,7 +256,7 @@ const PrincipalContent = () => {
                     <div 
                       key={song.id} 
                       className="card-placeholder clickable"
-                      onClick={() => handleSongClick(song)}
+                      onClick={(e) => handlePlayFromTopCountry(e, song, index)}
                       style={{ cursor: 'pointer' }}
                     >
                       <div className="card-image" style={{ position: 'relative' }}>
@@ -238,7 +316,7 @@ const PrincipalContent = () => {
                     <div 
                       key={song.id} 
                       className="card-placeholder clickable"
-                      onClick={() => handleSongClick(song)}
+                      onClick={(e) => handlePlayFromTopGlobal(e, song, index)}
                       style={{ cursor: 'pointer' }}
                     >
                       <div className="card-image" style={{ position: 'relative' }}>
