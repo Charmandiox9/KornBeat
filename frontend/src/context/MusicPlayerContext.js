@@ -318,7 +318,7 @@ export const MusicPlayerProvider = ({ children }) => {
   const playFromQueue = useCallback((index) => {
     if (index >= 0 && index < queue.length) {
       setCurrentIndex(index);
-      playSong(queue[index]);
+      playSong(queue[index], true);
     }
   }, [queue, playSong]);
 
