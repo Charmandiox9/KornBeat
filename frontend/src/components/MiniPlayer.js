@@ -15,7 +15,19 @@ const MiniPlayer = () => {
     closePlayer
   } = useMusicPlayer();
 
-  if (!currentSong) return null;
+  // LOG DEBUG EN EL RENDER
+  console.log('[MiniPlayer] Render:', {
+    currentSong,
+    hasSong: !!currentSong,
+    songId: currentSong?._id,
+    songTitle: currentSong?.title || currentSong?.titulo,
+    isExpanded
+  });
+
+  if (!currentSong || !currentSong._id) {
+    console.warn('[MiniPlayer] No hay canción activa, no se renderiza la barra');
+    return null;
+  }
 
   // Compatibilidad con ambos formatos (español e inglés)
   const songTitle = currentSong.titulo || currentSong.title || 'Sin título';
@@ -29,7 +41,7 @@ const MiniPlayer = () => {
     : null;
 
   return (
-    <div className={`mini-player ${isExpanded ? 'expanded' : ''}`}>
+    <div className={`mini-player ${isExpanded ? 'expanded' : ''}`} style={{ border: '2px solid red', zIndex: 10000 }}>
       {/* Barra de progreso superior */}
       <div className="mini-player-progress-top">
         <ProgressBar showTime={false} />
@@ -144,6 +156,6 @@ const MiniPlayer = () => {
       )}
     </div>
   );
-};
+}
 
 export default MiniPlayer;

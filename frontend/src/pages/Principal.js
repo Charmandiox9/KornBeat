@@ -6,6 +6,7 @@ import { MusicPlayerProvider, useMusicPlayer } from '../context/MusicPlayerConte
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
+import MiniPlayer from '../components/MiniPlayer';
 import '../styles/Principal.css';
 
 const API_BASE_MUSIC = 'http://localhost:3002/api/music';
@@ -82,14 +83,14 @@ const PrincipalContent = () => {
   const handleSongClick = (song) => {
     // Preparar la canción en el formato que espera MusicPlayerContext
     const songData = {
-      _id: song.id,
-      titulo: song.titulo,
-      artista: song.artista || song.artista_nombre,
-      portada_url: `${API_BASE_MUSIC}/covers/${song.portada_url}`, // URL completa de la portada
-      archivo_url: `${API_BASE_MUSIC}/songs/${song.id}/stream`
+      _id: song._id || song.id,
+      titulo: song.title || song.titulo,
+      artista: song.artist || song.artista || song.artista_nombre,
+      portada_url: song.coverUrl || `${API_BASE_MUSIC}/songs/${song._id || song.id}/cover-url`,
+      archivo_url: `${API_BASE_MUSIC}/songs/${song._id || song.id}/stream`
     };
     
-    console.log('🎵 Reproduciendo desde TOP:', songData);
+    console.log('🎵 Reproduciendo canción:', songData);
     playSong(songData);
   };
 
@@ -305,6 +306,8 @@ const Principal = () => {
     <MusicPlayerProvider>
       <MusicSearchProvider>
         <PrincipalContent />
+        {/* Barra de reproducción siempre visible */}
+        <MiniPlayer />
       </MusicSearchProvider>
     </MusicPlayerProvider>
   );

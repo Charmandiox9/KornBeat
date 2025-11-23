@@ -17,9 +17,85 @@ const API_BASE = 'http://localhost:3002';
 export const MusicPlayerProvider = ({ children }) => {
   const { user } = useContext(AuthContext); // Obtener usuario del contexto
   const audioRef = useRef(null);
+
+  // Restaurar última canción y posición al iniciar sesión
+  useEffect(() => {
+    if (user?._id) {
+      console.log('🔄 [RESTORE] Usuario logueado, restaurando última posición...');
+      (async () => {
+        try {
+          const response = await cacheService.getPosition(user._id);
+          console.log('🔍 [RESTORE] Respuesta de cache:', response);
+          if (response.success && response.hasPosition && response.position?.song) {
+            let savedSong = response.position.song;
+            const savedPosition = response.position.position || 0;
+            const wasPlaying = response.position.isPlaying || false;
+
+            // Normalizar objeto de canción restaurada
+            if (!savedSong.archivo_url) {
+              if (savedSong._id) {
+                savedSong.archivo_url = `${API_BASE}/api/music/songs/${savedSong._id}/stream`;
+              } else {
+                console.warn('⚠️ [RESTORE] La canción restaurada no tiene _id ni archivo_url');
+              }
+            }
+
+            setCurrentSong(savedSong);
+            setQueue([savedSong]);
+            setCurrentIndex(0);
+            setError(null);
+            setIsLoading(true);
+
+            if (audioRef.current) {
+              audioRef.current.src = savedSong.archivo_url;
+              audioRef.current.load();
+              audioRef.current.currentTime = savedPosition;
+              setCurrentTime(savedPosition);
+              setDuration(audioRef.current.duration || 0);
+              if (wasPlaying) {
+                audioRef.current.play().then(() => {
+                  setIsPlaying(true);
+                  console.log('▶️ [RESTORE] Canción restaurada y reproduciendo');
+                }).catch(err => {
+                  setIsPlaying(false);
+                  console.warn('⚠️ [RESTORE] No se pudo reproducir automáticamente:', err);
+                });
+              } else {
+                audioRef.current.pause();
+                setIsPlaying(false);
+                console.log('⏸️ [RESTORE] Canción restaurada en pausa');
+              }
+            }
+          } else {
+            console.log('ℹ️ [RESTORE] No hay posición guardada');
+            setLastPosition(null);
+          }
+        } catch (error) {
+          console.error('❌ [RESTORE] Error al cargar última posición:', error);
+        }
+      })();
+    }
+  }, [user?._id]);
   
-  // Estados del reproductor
-  const [currentSong, setCurrentSong] = useState(null);
+  // Estados del reproductor - SIN restauración automática de localStorage
+  const [currentSong, _setCurrentSong] = useState(null);
+  
+  // Wrapper para detectar quién está reseteando currentSong (SIN guardar en localStorage)
+  const setCurrentSong = useCallback((newValue) => {
+    // Limpiar intervalo de auto-guardado al cambiar de canción
+    if (autoSaveIntervalRef.current) {
+      console.log('🧹 [AUTO-SAVE] Limpiando intervalo en setCurrentSong (cambio de canción)');
+      clearInterval(autoSaveIntervalRef.current);
+      autoSaveIntervalRef.current = null;
+    }
+    if (newValue === null) {
+      console.log('⚠️ [RESET] Limpiando currentSong');
+    } else if (newValue?._id) {
+      console.log('✅ [SET] Estableciendo currentSong:', newValue.title || newValue.titulo);
+    }
+    _setCurrentSong(newValue);
+  }, []);
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -30,12 +106,21 @@ export const MusicPlayerProvider = ({ children }) => {
   
   // DEBUG: Log cuando currentSong cambie
   useEffect(() => {
-    console.log('🎵 currentSong actualizado:', {
+    console.log('🎵 [STATE] currentSong actualizado:', {
       exists: !!currentSong,
       id: currentSong?._id,
       title: currentSong?.title || currentSong?.titulo,
-      type: typeof currentSong
+      type: typeof currentSong,
+      isNull: currentSong === null,
+      isUndefined: currentSong === undefined,
+      keys: currentSong ? Object.keys(currentSong) : []
     });
+    
+    if (currentSong?._id) {
+      console.log('✅ [STATE] currentSong TIENE _id:', currentSong._id);
+    } else {
+      console.log('❌ [STATE] currentSong NO tiene _id:', currentSong);
+    }
   }, [currentSong]);
   
   // Cola de reproducción
@@ -54,6 +139,7 @@ export const MusicPlayerProvider = ({ children }) => {
   const [lastPosition, setLastPosition] = useState(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const savePositionTimeoutRef = useRef(null);
+  const autoSaveIntervalRef = useRef(null);
   
   // Refs para valores actuales - SOLO se crean UNA VEZ, no en cada render
   const currentSongRef = useRef(null);
@@ -62,9 +148,20 @@ export const MusicPlayerProvider = ({ children }) => {
   
   // Actualizar refs en useEffect para que se ejecute DESPUÉS de cada render
   useEffect(() => {
+    console.log('🔄 [REF UPDATE] Actualizando refs:', {
+      currentSong: currentSong?._id ? `${currentSong.title} (${currentSong._id})` : null,
+      currentIndex,
+      isPlaying
+    });
     currentSongRef.current = currentSong;
     currentIndexRef.current = currentIndex;
     isPlayingRef.current = isPlaying;
+    
+    console.log('✅ [REF UPDATE] Refs actualizadas:', {
+      refSong: currentSongRef.current?._id,
+      refIndex: currentIndexRef.current,
+      refPlaying: isPlayingRef.current
+    });
   }, [currentSong, currentIndex, isPlaying]);
 
   // Inicializar audio ref
@@ -110,10 +207,16 @@ export const MusicPlayerProvider = ({ children }) => {
     
     const handlePause = () => {
       console.log('⏸️  Pausado');
+      console.trace('📍 Stack trace del pause:');
       setIsPlaying(false);
     };
     
     const handleError = (e) => {
+      // Ignorar errores si no hay canción activa
+      if (!currentSong || !currentSong._id) {
+        return;
+      }
+      
       console.error('❌ Error de audio:', e);
       console.error('Audio src:', audio.src);
       console.error('Audio error code:', audio.error?.code);
@@ -205,9 +308,21 @@ export const MusicPlayerProvider = ({ children }) => {
       archivo_url: streamUrl
     };
 
-    console.log('🔧 Estableciendo currentSong:', songWithFullUrl);
+    console.log('🔧 [PLAY] Estableciendo currentSong:', songWithFullUrl);
+    console.log('🔍 [PLAY] songWithFullUrl tiene:', {
+      _id: songWithFullUrl._id,
+      title: songWithFullUrl.title,
+      artist: songWithFullUrl.artist,
+      archivo_url: songWithFullUrl.archivo_url,
+      keys: Object.keys(songWithFullUrl)
+    });
+    
+    // Actualizar refs INMEDIATAMENTE antes de cambiar el state
+    currentSongRef.current = songWithFullUrl;
+    console.log('⚡ [PLAY] Ref actualizada inmediatamente:', currentSongRef.current._id);
+    
     setCurrentSong(songWithFullUrl);
-    console.log('✅ setCurrentSong llamado');
+    console.log('✅ [PLAY] setCurrentSong llamado con _id:', songWithFullUrl._id);
     setError(null);
     setIsLoading(true);
 
@@ -218,23 +333,30 @@ export const MusicPlayerProvider = ({ children }) => {
       // Establecer nueva fuente
       audioRef.current.src = streamUrl;
       
-      // Cargar y reproducir
+      // Cargar el audio
       audioRef.current.load();
       
-      // Intentar reproducir después de que se cargue
-      const playPromise = audioRef.current.play();
+      // Reproducir cuando los datos estén listos (no cuando solo se pueda reproducir)
+      const playWhenLoaded = () => {
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('▶️ [PLAY] Reproducción iniciada automáticamente');
+            })
+            .catch(error => {
+              console.log('⚠️ [PLAY] Autoplay bloqueado:', error.message);
+              console.log('👆 El usuario debe hacer clic en Play manualmente');
+            });
+        }
+        
+        // Limpiar listener
+        audioRef.current.removeEventListener('loadeddata', playWhenLoaded);
+      };
       
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log('✅ Reproducción iniciada exitosamente');
-          })
-          .catch(err => {
-            console.error('❌ Error al reproducir:', err);
-            setError(`No se pudo reproducir: ${err.message}`);
-            setIsLoading(false);
-          });
-      }
+      // Escuchar cuando los datos estén cargados (más confiable que canplay)
+      audioRef.current.addEventListener('loadeddata', playWhenLoaded, { once: true });
     }
 
     // Agregar al historial
@@ -415,22 +537,114 @@ export const MusicPlayerProvider = ({ children }) => {
 
   // Cerrar reproductor
   const closePlayer = useCallback(() => {
+    console.log('🔴 [RESET] Cerrando reproductor completamente...');
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
     }
+    // Limpiar localStorage para que no vuelva a aparecer
+    localStorage.removeItem('kornbeat_lastSong');
     setCurrentSong(null);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     setError(null);
     setIsExpanded(false);
+    setQueue([]);
+    setCurrentIndex(-1);
+    console.log('✅ [RESET] Reproductor limpiado');
   }, []);
+
+  // Listener para evento de logout
+  useEffect(() => {
+    const handleLogoutCleanup = () => {
+      console.log('🧹 [LOGOUT] Evento de limpieza detectado');
+      // Limpiar intervalo de auto-guardado
+      if (autoSaveIntervalRef.current) {
+        clearInterval(autoSaveIntervalRef.current);
+        autoSaveIntervalRef.current = null;
+      }
+      closePlayer();
+    };
+
+    window.addEventListener('logout-cleanup', handleLogoutCleanup);
+    return () => window.removeEventListener('logout-cleanup', handleLogoutCleanup);
+  }, [closePlayer]);
+
+  // Auto-guardar posición cada 3 segundos cuando hay canción reproduciendo
+  useEffect(() => {
+    console.log('🔄 [AUTO-SAVE] useEffect ejecutado con deps:', {
+      hasUser: !!user,
+      userId: user?._id,
+      hasSong: !!currentSong,
+      songId: currentSong?._id,
+      songTitle: currentSong?.title || currentSong?.titulo,
+      duration
+    });
+
+    // Limpiar SIEMPRE el intervalo antes de crear uno nuevo
+    if (autoSaveIntervalRef.current) {
+      console.log('🧹 [AUTO-SAVE] Limpiando intervalo anterior (por cambio de canción/usuario/duración)');
+      clearInterval(autoSaveIntervalRef.current);
+      autoSaveIntervalRef.current = null;
+    }
+
+    // Solo crear intervalo si hay usuario y canción actual
+    if (user?._id && currentSong?._id) {
+      console.log('⏰ [AUTO-SAVE] ✅ Iniciando auto-guardado cada 3 segundos para:', currentSong.title || currentSong.titulo);
+      autoSaveIntervalRef.current = setInterval(() => {
+        if (audioRef.current && currentSong?._id) {
+          const currentPos = Math.floor(audioRef.current.currentTime);
+          const position = {
+            songId: currentSong._id,
+            position: currentPos,
+            timestamp: Date.now(),
+            progress: duration > 0 ? (audioRef.current.currentTime / duration) * 100 : 0,
+            isPlaying: !audioRef.current.paused,
+            song: {
+              _id: currentSong._id,
+              title: currentSong.title || currentSong.titulo,
+              artist: currentSong.artist || currentSong.artista,
+              album: currentSong.album,
+              coverUrl: currentSong.coverUrl || currentSong.portada_url,
+              archivo_url: currentSong.archivo_url
+            }
+          };
+          cacheService.savePosition(user._id, position)
+            .then((result) => {
+              console.log('✅ [AUTO-SAVE] Guardado exitoso:', currentPos, 's -', result);
+            })
+            .catch(err => {
+              console.error('❌ [AUTO-SAVE] Error al guardar:', err);
+            });
+        } else {
+          console.log('⚠️ [AUTO-SAVE TICK] Cancelado - falta audioRef o currentSong');
+        }
+      }, 3000);
+      console.log('✅ [AUTO-SAVE] Intervalo creado con ID:', autoSaveIntervalRef.current);
+    } else {
+      if (!user?._id) {
+        console.log('❌ [AUTO-SAVE] NO iniciado - falta USUARIO');
+      } else if (!currentSong?._id) {
+        console.log('❌ [AUTO-SAVE] NO iniciado - falta CANCIÓN');
+      }
+    }
+
+    // Cleanup al desmontar o cambiar dependencias
+    return () => {
+      if (autoSaveIntervalRef.current) {
+        console.log('🧹 [AUTO-SAVE] Limpiando intervalo en cleanup (desmontaje o cambio de deps)');
+        clearInterval(autoSaveIntervalRef.current);
+        autoSaveIntervalRef.current = null;
+      }
+    };
+  }, [user, currentSong, duration]);
 
   // ========== FUNCIONES DE CACHÉ DE ÚLTIMA POSICIÓN ==========
 
   /**
    * Cargar última posición del usuario desde Redis
+   * AHORA: Restaura automáticamente sin diálogo
    */
   const loadLastPosition = useCallback(async (userId) => {
     if (!userId) return;
@@ -438,18 +652,35 @@ export const MusicPlayerProvider = ({ children }) => {
     try {
       console.log('📍 Cargando última posición para usuario:', userId);
       const response = await cacheService.getPosition(userId);
-      
       console.log('🔍 Respuesta completa del cache:', response);
-      
-      if (response.success && response.hasPosition) {
+      if (response.success && response.hasPosition && response.position?.song) {
         console.log('✅ Última posición encontrada:', response.position);
-        console.log('🎵 Song object:', response.position?.song);
-        console.log('🆔 SongId:', response.position?.songId);
-        
-        setLastPosition(response.position);
-        setShowResumeDialog(true);
-        
-        console.log('✅ Dialog activado - showResumeDialog: true');
+        const savedSong = response.position.song;
+        const savedPosition = response.position.position || 0;
+        const wasPlaying = response.position.isPlaying || false;
+        // Forzar seteo de currentSong y cola
+        setCurrentSong(savedSong); // <--- FORZADO
+        setQueue([savedSong]);
+        setCurrentIndex(0);
+        // Cargar canción en el reproductor
+        playSong(savedSong, false); // false = no agregar al historial
+        // Restaurar posición después de que cargue el audio
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = savedPosition;
+            setCurrentTime(savedPosition);
+            if (wasPlaying) {
+              audioRef.current.play();
+              setIsPlaying(true);
+              console.log('▶️ Canción restaurada en REPRODUCCIÓN');
+            } else {
+              audioRef.current.pause();
+              setIsPlaying(false);
+              console.log('⏸️ Canción restaurada en PAUSA (lista para reproducir)');
+            }
+            console.log('⏩ Posición restaurada a:', savedPosition, 'segundos');
+          }
+        }, 800);
       } else {
         console.log('ℹ️  No hay posición guardada');
         setLastPosition(null);
@@ -457,38 +688,58 @@ export const MusicPlayerProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Error al cargar última posición:', error);
     }
-  }, []);
+  }, [playSong]);
 
   /**
    * Función para guardar posición actual
    * NO usa useCallback para que siempre tenga acceso a las refs más recientes
    */
   const savePositionInternal = async (userId) => {
+    console.log('🚀 [SAVE] savePositionInternal llamado con userId:', userId);
     const audio = audioRef.current;
     const song = currentSongRef.current;
     const index = currentIndexRef.current;
     const playing = isPlayingRef.current;
-    
-    if (!userId || !song || !song._id) {
+    console.log('🔍 [SAVE] Estado de refs:', {
+      hasAudio: !!audio,
+      hasSong: !!song,
+      songId: song?._id,
+      songTitle: song?.title,
+      index,
+      playing
+    });
+    if (!userId) {
+      console.log('❌ [SAVE] CANCELADO - falta userId');
       return;
     }
-
+    if (!song) {
+      console.log('❌ [SAVE] CANCELADO - falta song (currentSongRef es null)');
+      return;
+    }
+    if (!song._id) {
+      console.log('❌ [SAVE] CANCELADO - song existe pero NO tiene _id:', song);
+      return;
+    }
     try {
       const actualDuration = audio?.duration || 0;
       const actualTime = audio?.currentTime || 0;
       const progress = actualDuration > 0 ? Math.floor((actualTime / actualDuration) * 100) : 0;
-      
       const position = {
         songId: song._id,
-        position: index,
+        position: actualTime,
         progress: progress,
         isPlaying: playing,
         timestamp: Date.now()
       };
-      
-      await cacheService.savePosition(userId, position);
+      console.log('💾 [SAVE] Enviando a Redis:', {
+        ...position,
+        songTitle: song.title,
+        positionFormatted: `${actualTime.toFixed(2)}s / ${actualDuration.toFixed(2)}s`
+      });
+      const result = await cacheService.savePosition(userId, position);
+      console.log('✅ [SAVE] Resultado del guardado:', result);
     } catch (error) {
-      console.error('❌ Error al guardar posición:', error);
+      console.error('❌ [SAVE] Error al guardar posición:', error);
     }
   };
 
@@ -497,6 +748,7 @@ export const MusicPlayerProvider = ({ children }) => {
    * useCallback con savePositionInternal como dependencia para que se actualice
    */
   const saveCurrentPosition = useCallback((userId) => {
+    console.log('📞 [CALLBACK] saveCurrentPosition llamado con userId:', userId);
     savePositionInternal(userId);
   }, [savePositionInternal]);
 
@@ -509,7 +761,7 @@ export const MusicPlayerProvider = ({ children }) => {
     }
 
     savePositionTimeoutRef.current = setTimeout(() => {
-      savePositionFunctionRef.current?.(userId);
+      // Implementación removida - usar saveCurrentPosition directamente
     }, 1000);
   }, []);
 
@@ -521,39 +773,34 @@ export const MusicPlayerProvider = ({ children }) => {
 
     console.log('▶️  Restaurando última posición:', lastPosition);
     
-    // Configurar canción
-    setCurrentSong(lastPosition.song);
-    
-    // Agregar a la cola si no está
-    if (!queue.find(s => s._id === lastPosition.song._id)) {
-      setQueue([lastPosition.song]);
-      setCurrentIndex(0);
-    }
-
-    // Esperar a que se cargue el audio y luego buscar
-    if (audioRef.current) {
-      const handleCanPlay = () => {
-        const seekTime = (lastPosition.progress / 100) * audioRef.current.duration;
-        audioRef.current.currentTime = seekTime;
-        setCurrentTime(seekTime);
-        
-        // No reproducir automáticamente, dejar pausado
-        setIsPlaying(false);
-        
-        audioRef.current.removeEventListener('canplay', handleCanPlay);
-      };
-
-      audioRef.current.addEventListener('canplay', handleCanPlay);
-      
-      // Construir URL y cargar
-      const streamUrl = `${API_BASE}/api/music/songs/${lastPosition.song._id}/stream`;
-      audioRef.current.src = streamUrl;
-      audioRef.current.load();
-    }
-
+    // Cerrar diálogo
     setShowResumeDialog(false);
+    
+    // Guardar posición a restaurar
+    const savedPosition = lastPosition.position || 0;
+    const savedSong = lastPosition.song;
+    
+    // Limpiar lastPosition
     setLastPosition(null);
-  }, [lastPosition, queue]);
+    
+    // Usar playSong para cargar con toda la UI
+    playSong(savedSong);
+    
+    // Configurar cola
+    setQueue([savedSong]);
+    setCurrentIndex(0);
+    
+    // Restaurar posición después de que cargue
+    if (savedPosition > 0) {
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.currentTime = savedPosition;
+          setCurrentTime(savedPosition);
+          console.log('⏩ Posición restaurada a:', savedPosition, 'segundos');
+        }
+      }, 500);
+    }
+  }, [lastPosition, playSong]);
 
   /**
    * Rechazar restauración - EMPEZAR DE NUEVO
@@ -586,6 +833,8 @@ export const MusicPlayerProvider = ({ children }) => {
 
   const value = useMemo(() => ({
     // Estado
+    // LOG DEBUG EN EL RENDER DEL CONTEXT
+    ...(console.log('[RENDER CONTEXT] currentSong:', currentSong), {}),
     currentSong,
     isPlaying,
     currentTime,

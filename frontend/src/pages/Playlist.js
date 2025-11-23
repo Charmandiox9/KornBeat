@@ -21,6 +21,15 @@ const PlaylistContent = () => {
   const [activeMenu, setActiveMenu] = useState(null);
 
   const API_BASE = 'http://localhost:3002/api/music';
+  const userId = user?._id || user?.id; // 🎯 Obtener ID del usuario
+
+  // Cargar playlists del usuario
+  useEffect(() => {
+    if (user && userId) {
+      fetchUserPlaylists();
+    }
+    // eslint-disable-next-line
+  }, [userId]);
 
   // 🔐 Verificar que el usuario esté autenticado
   if (!user) {
@@ -38,13 +47,6 @@ const PlaylistContent = () => {
       </div>
     );
   }
-
-  const userId = user._id || user.id; // 🎯 Obtener ID del usuario
-
-  // Cargar playlists del usuario
-  useEffect(() => {
-    fetchUserPlaylists();
-  }, []);
 
   const fetchUserPlaylists = async () => {
     setIsLoading(true);

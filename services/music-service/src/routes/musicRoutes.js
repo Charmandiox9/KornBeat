@@ -966,6 +966,14 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
   try {
     let coverPath = req.params.coverPath;
     
+    // Validar que coverPath no esté vacío
+    if (!coverPath || coverPath.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cover path inválido'
+      });
+    }
+    
     // Normalizar el path (asegurar que tenga covers/ al inicio)
     if (!coverPath.startsWith('covers/')) {
       coverPath = `covers/${coverPath}`;
@@ -1005,7 +1013,18 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
       const path = require('path');
       const localPath = path.join(__dirname, '..', '..', 'uploads', coverPath);
       
+      // Verificar que existe y NO es un directorio
       if (fs.existsSync(localPath)) {
+        const stats = fs.statSync(localPath);
+        
+        if (stats.isDirectory()) {
+          console.warn('⚠️  Path es un directorio, no un archivo:', coverPath);
+          return res.status(404).json({
+            success: false,
+            message: 'Path inválido'
+          });
+        }
+        
         const ext = path.extname(localPath).toLowerCase();
         const contentType = ext === '.png' ? 'image/png' : 
                            ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 
@@ -1017,7 +1036,15 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
         res.setHeader('Cache-Control', 'public, max-age=86400');
         res.setHeader('Access-Control-Allow-Origin', '*');
         
-        fs.createReadStream(localPath).pipe(res);
+        // Crear stream con manejo de errores
+        const stream = fs.createReadStream(localPath);
+        stream.on('error', (err) => {
+          console.error('❌ Error leyendo cover:', err);
+          if (!res.headersSent) {
+            res.status(500).end();
+          }
+        });
+        stream.pipe(res);
       } else {
         console.warn('⚠️  Cover no encontrado:', coverPath);
         return res.status(404).json({
@@ -1336,7 +1363,7 @@ router.get('/user/:userId/favorites/:songId/check', async (req, res) => {
 router.post('/user/:userId/reel-position', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { songId, position, timestamp, progress, isPlaying } = req.body;
+    const { songId, position, timestamp, progress, isPlaying, song } = req.body;
 
     if (!isValidObjectId(userId)) {
       return res.status(400).json({ 
@@ -1353,13 +1380,18 @@ router.post('/user/:userId/reel-position', async (req, res) => {
     }
 
     // Verificar que la canción existe
+    let songDetails = null;
     if (isValidObjectId(songId)) {
-      const song = await Song.findById(songId);
-      if (!song) {
+      const songDoc = await Song.findById(songId);
+      if (!songDoc) {
         return res.status(404).json({ 
           success: false, 
           message: 'Canción no encontrada' 
         });
+      }
+      // Obtener detalles completos de la canción si no se enviaron
+      if (!song) {
+        songDetails = await processSongCoverUrl(songDoc.toObject());
       }
     }
 
@@ -1368,7 +1400,8 @@ router.post('/user/:userId/reel-position', async (req, res) => {
       position: parseInt(position),
       timestamp: timestamp || Date.now(),
       progress: progress || 0,
-      isPlaying: isPlaying !== undefined ? isPlaying : false
+      isPlaying: isPlaying !== undefined ? isPlaying : false,
+      song: song || songDetails // Guardar el objeto completo de la canción
     };
 
     const saved = await saveUserReelPosition(userId, reelPosition);
@@ -1422,9 +1455,11 @@ router.get('/user/:userId/reel-position', async (req, res) => {
       });
     }
 
-    // Obtener información de la canción si existe
-    let songDetails = null;
-    if (position.songId && isValidObjectId(position.songId)) {
+    // Si ya tiene el objeto song guardado en Redis, usarlo directamente
+    // Si no, obtener de la base de datos
+    let songDetails = position.song || null;
+    
+    if (!songDetails && position.songId && isValidObjectId(position.songId)) {
       const song = await Song.findById(position.songId);
       if (song) {
         songDetails = await processSongCoverUrl(song.toObject());

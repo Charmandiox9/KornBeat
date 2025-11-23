@@ -36,17 +36,32 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout
+  // Logout - limpia sesión Y resetea el reproductor
   const logout = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
-    try {
-      await axios.post(`${API_URL}/auth/logout`, { refreshToken });
-    } catch (error) {
-      console.warn('Error en logout:', error.response?.data?.message);
+    
+    // Intentar cerrar sesión en el servidor, pero SOLO si tenemos token
+    if (refreshToken) {
+      try {
+        // Silenciar completamente los errores de logout
+        await axios.post(`${API_URL}/auth/logout`, { refreshToken }).catch(() => {});
+      } catch (error) {
+        // Ignorar completamente
+      }
     }
+    
+    // Limpiar tokens
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    
+    // Limpiar usuario
     setUser(null);
+    
+    // Limpiar el reproductor (llamar resetPlayer del contexto global)
+    // Esto se ejecutará después de que el componente se actualice
+    window.dispatchEvent(new CustomEvent('logout-cleanup'));
+    
+    console.log('✅ Sesión cerrada');
   };
 
   // Comprobar token
@@ -88,20 +103,32 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Interceptor para manejar tokens expirados automáticamente
+  // Interceptor para manejar tokens expirados - SIN logout automático agresivo
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401 && user) {
+        const originalRequest = error.config;
+        
+        // Solo intentar refresh si es un 401 Y no es la petición de logout
+        if (error.response?.status === 401 && 
+            user && 
+            !originalRequest.url?.includes('/auth/logout') &&
+            !originalRequest._retry) {
+          
+          originalRequest._retry = true;
+          
           try {
-            await refreshToken();
-            // Reintentar la petición original
-            return axios.request(error.config);
+            const newToken = await refreshToken();
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            return axios.request(originalRequest);
           } catch (refreshError) {
+            // Solo hacer logout si el refresh falla
+            console.log('🔐 Token expirado, cerrando sesión...');
             logout();
           }
         }
+        
         return Promise.reject(error);
       }
     );
