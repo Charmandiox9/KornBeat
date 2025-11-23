@@ -10,12 +10,7 @@ import '../styles/MusicPage.css';
 const MusicPage = () => {
   const { user, logout } = useContext(AuthContext);
 
-  // Si no hay usuario, retorna antes de renderizar cualquier provider o hijo
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Hooks después del return condicional
+  // Hooks siempre primero, antes de cualquier return condicional
   const [allSongs, setAllSongs] = useState([]); // Todas las canciones
   const [displayedSongs, setDisplayedSongs] = useState([]); // Canciones mostradas
   const [currentSong, setCurrentSong] = useState(null);
@@ -27,8 +22,16 @@ const MusicPage = () => {
 
   // Cargar todas las canciones desde el music-service
   useEffect(() => {
-    fetchAllSongs();
-  }, []);
+    if (user) {
+      fetchAllSongs();
+    }
+    // eslint-disable-next-line
+  }, [user]);
+
+  // Si no hay usuario, retorna después de declarar los hooks
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const fetchAllSongs = async () => {
     try {
@@ -239,35 +242,26 @@ const MusicPage = () => {
           <div className="categories-section">
             <h3>🎭 Explorar por Género</h3>
             <div className="category-buttons">
-              <button onClick={() => handleCategorySearch('Pop')} className="category-btn pop">
-                🎤 Pop
-              </button>
               <button onClick={() => handleCategorySearch('Rock')} className="category-btn rock">
                 🎸 Rock
               </button>
-              <button onClick={() => handleCategorySearch('Hip-Hop')} className="category-btn hiphop">
-                🎧 Hip-Hop
+              <button onClick={() => handleCategorySearch('Metal')} className="category-btn metal">
+                🤘 Metal
               </button>
-              <button onClick={() => handleCategorySearch('Jazz')} className="category-btn jazz">
-                🎷 Jazz
+              <button onClick={() => handleCategorySearch('Grunge')} className="category-btn grunge">
+                🎤 Grunge
               </button>
-              <button onClick={() => handleCategorySearch('Electrónica')} className="category-btn electronica">
-                🎹 Electrónica
+              <button onClick={() => handleCategorySearch('Indie Rock')} className="category-btn indie">
+                🎧 Indie Rock
+              </button>
+              <button onClick={() => handleCategorySearch('Progressive Rock')} className="category-btn progressive">
+                🎹 Progressive Rock
+              </button>
+              <button onClick={() => handleCategorySearch('Alternative Rock')} className="category-btn alternative">
+                🎵 Alternative Rock
               </button>
               <button onClick={() => handleCategorySearch('Reggaeton')} className="category-btn reggaeton">
                 🔥 Reggaeton
-              </button>
-              <button onClick={() => handleCategorySearch('Clásica')} className="category-btn clasica">
-                🎻 Clásica
-              </button>
-              <button onClick={() => handleCategorySearch('Country')} className="category-btn country">
-                🤠 Country
-              </button>
-              <button onClick={() => handleCategorySearch('R&B')} className="category-btn rnb">
-                🎵 R&B
-              </button>
-              <button onClick={() => handleCategorySearch('Metal')} className="category-btn metal">
-                🤘 Metal
               </button>
             </div>
           </div>

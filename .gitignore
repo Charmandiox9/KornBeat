@@ -1,1 +1,56 @@
-node_modules
+# Dependencies
+node_modules/
+**/node_modules/
+package-lock.json
+
+# Build outputs
+frontend/build/
+**/dist/
+**/build/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Docker
+.docker/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Uploads (archivos temporales de desarrollo)
+uploads/
+uploadsss/
+**/uploads/music/
+**/uploads/covers/
+
+# Database data (si usas volúmenes locales)
+data/
+*.sqlite
+*.db
