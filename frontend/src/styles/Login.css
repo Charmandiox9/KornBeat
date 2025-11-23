@@ -1,39 +1,167 @@
-/* Login.css - Estilos para el componente de Login */
+/* Login.css - Diseño de dos columnas con imagen de fondo */
 
-/* Contenedor principal - ocupa toda la pantalla y centra el contenido */
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* ==================== WRAPPER PRINCIPAL ==================== */
+.login-wrapper {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 1rem;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: url('../images/smooth-purple.jpg') center/cover no-repeat fixed;
+  position: relative;
 }
 
-/* Tarjeta principal del login */
+/* ==================== NAVBAR SUPERIOR ==================== */
+.login-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 3rem;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.login-nav-brand h2 {
+  font-size: 1.8rem;
+  color: #001f5c;
+  font-weight: 700;
+  margin: 0;
+}
+
+.login-nav-brand a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.login-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nav-register-btn,
+.nav-login-btn {
+  padding: 0.6rem 1.5rem;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.nav-register-btn {
+  background: transparent;
+  color: #333;
+  border: 2px solid #333;
+}
+
+.nav-register-btn:hover {
+  background: #f0f0f0;
+}
+
+.nav-login-btn {
+  background: #000;
+  color: white;
+  border: 2px solid #000;
+}
+
+.nav-login-btn:hover {
+  background: #333;
+}
+
+/* ==================== CONTENEDOR DE DOS COLUMNAS ==================== */
+.login-container {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: calc(100vh - 80px); /* Resta la altura del navbar */
+}
+
+/* ==================== COLUMNA IZQUIERDA ==================== */
+.login-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: white;
+}
+
+.welcome-content {
+  max-width: 600px;
+  width: 100%;
+}
+
+.welcome-content h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 3rem;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Barra de búsqueda decorativa */
+.search-decoration {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 50px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+}
+
+.search-decoration .search-icon {
+  font-size: 1.2rem;
+  margin-right: 1rem;
+  color: #666;
+}
+
+.search-input-decoration {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1.1rem;
+  color: #333;
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.search-input-decoration::placeholder {
+  color: #999;
+}
+
+/* ==================== COLUMNA DERECHA ==================== */
+.login-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+/* ==================== TARJETA DE LOGIN ==================== */
 .login-card {
-  background: #ffffff;
-  padding: 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  background: white;
+  padding: 3rem 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 420px;
-  position: relative;
-  backdrop-filter: blur(10px);
+  animation: fadeInUp 0.5s ease-out;
 }
 
-/* Título principal */
-.login-card h2 {
-  margin: 0 0 1.5rem 0;
-  font-size: 2rem;
-  font-weight: 700;
-  color: #2c3e50;
-  text-align: center;
-  letter-spacing: -0.5px;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Mensaje de error general */
+/* ==================== MENSAJE DE ERROR ==================== */
 .error-message {
   background-color: #fef2f2;
   border: 1px solid #fecaca;
@@ -46,17 +174,15 @@
   text-align: center;
 }
 
-/* Formulario */
+/* ==================== FORMULARIO ==================== */
 .login-form {
   margin-bottom: 1.5rem;
 }
 
-/* Grupos de campos del formulario */
 .form-group {
   margin-bottom: 1.5rem;
 }
 
-/* Etiquetas de los campos */
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
@@ -66,7 +192,6 @@
   letter-spacing: 0.025em;
 }
 
-/* Campos de entrada */
 .form-group input {
   width: 100%;
   padding: 0.875rem 1rem;
@@ -80,12 +205,11 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #001f5c;
   background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 31, 92, 0.1);
 }
 
-/* Campo con error */
 .form-group input.error {
   border-color: #ef4444;
   background-color: #fef2f2;
@@ -96,7 +220,6 @@
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
-/* Campos deshabilitados */
 .form-group input:disabled {
   background-color: #f3f4f6;
   color: #9ca3af;
@@ -104,7 +227,6 @@
   opacity: 0.7;
 }
 
-/* Mensajes de error de campo */
 .field-error {
   display: block;
   color: #ef4444;
@@ -113,12 +235,12 @@
   font-weight: 500;
 }
 
-/* Botón principal */
-.login-form button {
+/* ==================== BOTÓN DE SUBMIT ==================== */
+.login-submit-btn {
   width: 100%;
   padding: 0.875rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: #000;
+  color: white;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
@@ -126,103 +248,116 @@
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 0.5rem;
-  position: relative;
-  overflow: hidden;
 }
 
-.login-form button:hover:not(:disabled) {
+.login-submit-btn:hover:not(:disabled) {
+  background: #333;
   transform: translateY(-1px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
-.login-form button:active:not(:disabled) {
+.login-submit-btn:active:not(:disabled) {
   transform: translateY(0);
 }
 
-/* Botón deshabilitado */
-.login-form button:disabled {
+.login-submit-btn:disabled {
   background: #9ca3af;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-/* Texto de los enlaces */
-.login-card p {
+/* ==================== ENLACES ==================== */
+.login-links {
   text-align: center;
-  margin: 1rem 0 0.5rem 0;
-  color: #6b7280;
-  font-size: 0.875rem;
+  margin-top: 1.5rem;
 }
 
-/* Enlaces */
-.login-card a {
-  color: #667eea;
+.forgot-link {
+  color: #001f5c;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 0.875rem;
   transition: all 0.2s ease;
 }
 
-.login-card a:hover {
-  color: #5a67d8;
+.forgot-link:hover {
   text-decoration: underline;
+  color: #000;
 }
 
-/* Enlace de contraseña olvidada */
-.login-card > a:last-child {
-  display: block;
-  text-align: center;
-  margin-top: 1rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.login-card > a:last-child:hover {
-  color: #667eea;
-}
-
-/* Responsividad para móviles */
-@media (max-width: 480px) {
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 968px) {
   .login-container {
-    padding: 1rem;
+    grid-template-columns: 1fr;
   }
-  
+
+  .login-left {
+    display: none; /* Ocultar mensaje de bienvenida en móviles */
+  }
+
+  .login-navbar {
+    padding: 1rem 2rem;
+  }
+
+  .welcome-content h1 {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .login-navbar {
+    padding: 1rem 1.5rem;
+  }
+
+  .login-nav-brand h2 {
+    font-size: 1.5rem;
+  }
+
+  .login-right {
+    padding: 2rem 1.5rem;
+  }
+
   .login-card {
     padding: 2rem 1.5rem;
-    border-radius: 12px;
-  }
-  
-  .login-card h2 {
-    font-size: 1.75rem;
-  }
-  
-  .form-group input {
-    padding: 0.75rem;
-  }
-  
-  .login-form button {
-    padding: 0.75rem 1.25rem;
   }
 }
 
-/* Animación de carga suave */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+@media (max-width: 480px) {
+  .login-navbar {
+    padding: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .login-nav-links {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .login-right {
+    padding: 1.5rem 1rem;
+  }
+
+  .login-card {
+    padding: 1.5rem 1rem;
+    border-radius: 16px;
+  }
+
+  .nav-register-btn,
+  .nav-login-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
   }
 }
 
-.login-card {
-  animation: fadeIn 0.5s ease-out;
+/* ==================== ANIMACIÓN DE CARGA ==================== */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* Mejora visual para el estado de carga */
-.login-form button:disabled::after {
+.login-submit-btn:disabled::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -236,8 +371,7 @@
   animation: spin 1s linear infinite;
 }
 
-
-/* contraseña olvidada */
+/* ==================== ESTILOS ADICIONALES (Contraseña olvidada) ==================== */
 .forgot-description {
   color: #666;
   margin-bottom: 20px;
@@ -248,7 +382,7 @@
   background-color: #e6fffa;
   color: #047857;
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -270,31 +404,27 @@
 }
 
 .action-links button {
-  background: #667eea;
+  background: #001f5c;
   color: white;
   padding: 10px;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.3s ease;
+  font-weight: 500;
 }
 
 .action-links button:hover {
-  background: #5a67d8;
+  background: #000;
 }
 
 .action-links a {
-  color: #667eea;
+  color: #001f5c;
   text-decoration: none;
+  font-weight: 500;
 }
 
 .action-links a:hover {
   text-decoration: underline;
-}
-
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 

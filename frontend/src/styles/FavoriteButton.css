@@ -1,0 +1,148 @@
+.favorite-button {
+  background: none;
+  border: none;
+  color: var(--text-primary, #e0e0e0);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  position: relative;
+  opacity: 0.7;
+}
+
+.favorite-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color, #1db954);
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+.favorite-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.favorite-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.favorite-button:disabled:hover {
+  background-color: transparent;
+  transform: scale(1);
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid var(--primary-color, #1db954);
+  outline-offset: 2px;
+}
+
+/* Tamaños */
+.favorite-button-small {
+  width: 32px;
+  height: 32px;
+}
+
+.favorite-button-small .favorite-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.favorite-button-medium {
+  width: 40px;
+  height: 40px;
+}
+
+.favorite-button-medium .favorite-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.favorite-button-large {
+  width: 48px;
+  height: 48px;
+}
+
+.favorite-button-large .favorite-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Icono */
+.favorite-icon {
+  color: var(--text-primary, #e0e0e0);
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.favorite-button:hover .favorite-icon {
+  color: var(--primary-color, #1db954);
+  opacity: 1;
+}
+
+/* Estado favorito */
+.favorite-button.is-favorite {
+  opacity: 1;
+}
+
+.favorite-button.is-favorite .favorite-icon {
+  color: var(--primary-color, #1db954);
+  fill: var(--primary-color, #1db954);
+  opacity: 1;
+}
+
+.favorite-button.is-favorite:hover .favorite-icon {
+  color: var(--primary-hover, #1ed760);
+  fill: var(--primary-hover, #1ed760);
+}
+
+/* Indicador de favorito activo */
+.favorite-button.is-favorite::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: var(--primary-color, #1db954);
+  border-radius: 50%;
+}
+
+/* Animación al hacer click */
+.favorite-button.is-animating {
+  animation: heartBeat 0.4s ease-in-out;
+}
+
+@keyframes heartBeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .favorite-button {
+    padding: 6px;
+  }
+
+  .favorite-button-small {
+    width: 28px;
+    height: 28px;
+  }
+
+  .favorite-button-medium {
+    width: 36px;
+    height: 36px;
+  }
+
+  .favorite-button-large {
+    width: 44px;
+    height: 44px;
+  }
+}

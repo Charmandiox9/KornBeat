@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { AuthContext } from '../context/authContext';
+import FavoriteButton from './FavoriteButton';
 import '../styles/SongList.css';
 
 const SongList = ({ songs, onSongSelect, currentSong, searchQuery, searchType }) => {
+  const { user } = useContext(AuthContext);
   
   const formatDuration = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -111,6 +114,13 @@ const SongList = ({ songs, onSongSelect, currentSong, searchQuery, searchType })
             </div>
             
             <div className="song-actions">
+              {user && user._id && (
+                <FavoriteButton 
+                  songId={song._id} 
+                  userId={user._id}
+                  size="medium"
+                />
+              )}
               <button 
                 className="play-btn"
                 onClick={(e) => {

@@ -1,3 +1,4 @@
+// frontend/src/components/Login.js
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
@@ -46,61 +47,87 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
-      <Link to="/" className="back-button">
-        &larr; Volver
-      </Link>
-      <div className="login-card">
-        <h2>Iniciar Sesión</h2>
+    <div className="login-wrapper">
+      {/* Navbar superior */}
+      <nav className="login-navbar">
+        <div className="login-nav-brand">
+          <Link to="/">
+            <h2>🎵 KornBeat</h2>
+          </Link>
+        </div>
+        <div className="login-nav-links">
+          <Link to="/register" className="nav-register-btn">
+            Registrate
+          </Link>
+          <Link to="/login" className="nav-login-btn">
+            Iniciar Sesión
+          </Link>
+        </div>
+      </nav>
 
-        {errors.submit && <div className="error-message">{errors.submit}</div>}
-
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              disabled={loading}
-              className={errors.email ? 'error' : ''}
-              placeholder="tu@email.com"
-            />
-            {errors.email && <span className="field-error">{errors.email}</span>}
+      {/* Contenedor principal con dos columnas */}
+      <div className="login-container">
+        {/* Columna izquierda - Mensaje de bienvenida */}
+        <div className="login-left">
+          <div className="welcome-content">
+            <h1>Qué bueno que volviste,<br />te estábamos esperando</h1>
+            <div className="search-decoration">
+              <span className="search-icon">🔍</span>
+              <input 
+                type="text" 
+                placeholder="Buscar música..." 
+                disabled 
+                className="search-input-decoration"
+              />
+            </div>
           </div>
+        </div>
 
-          <div className="form-group">
-            <label>Contraseña</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={loading}
-              className={errors.password ? 'error' : ''}
-              placeholder="Tu contraseña"
-            />
-            {errors.password && <span className="field-error">{errors.password}</span>}
+        {/* Columna derecha - Formulario de login */}
+        <div className="login-right">
+          <div className="login-card">
+            {errors.submit && <div className="error-message">{errors.submit}</div>}
+
+            <form onSubmit={handleSubmit} className="login-form">
+              <div className="form-group">
+                <label>Correo</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className={errors.email ? 'error' : ''}
+                  placeholder="tu@email.com"
+                />
+                {errors.email && <span className="field-error">{errors.email}</span>}
+              </div>
+
+              <div className="form-group">
+                <label>Contraseña</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className={errors.password ? 'error' : ''}
+                  placeholder="Tu contraseña"
+                />
+                {errors.password && <span className="field-error">{errors.password}</span>}
+              </div>
+
+              <button type="submit" disabled={loading} className="login-submit-btn">
+                {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+              </button>
+            </form>
+
+            <div className="login-links">
+              <Link to="/forgot-password" className="forgot-link">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </div>
-
-          <button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <span className="loading-spinner"></span>
-                Iniciando sesión...
-              </>
-            ) : (
-              'Iniciar Sesión'
-            )}
-          </button>
-        </form>
-
-        <div className="login-links">
-          <p>
-            ¿No tienes cuenta? <Link to="/register">Regístrate aquí</Link>
-          </p>
-          <Link to="/forgot-password"> ¿Olvidaste tu contraseña?</Link>
         </div>
       </div>
     </div>
