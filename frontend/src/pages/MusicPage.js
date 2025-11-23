@@ -239,32 +239,41 @@ const MusicPage = () => {
           </div>
 
           {/* Botones de Categorías */}
-          <div className="categories-section">
-            <h3>🎭 Explorar por Género</h3>
-            <div className="category-buttons">
-              <button onClick={() => handleCategorySearch('Rock')} className="category-btn rock">
-                🎸 Rock
-              </button>
-              <button onClick={() => handleCategorySearch('Metal')} className="category-btn metal">
-                🤘 Metal
-              </button>
-              <button onClick={() => handleCategorySearch('Grunge')} className="category-btn grunge">
-                🎤 Grunge
-              </button>
-              <button onClick={() => handleCategorySearch('Indie Rock')} className="category-btn indie">
-                🎧 Indie Rock
-              </button>
-              <button onClick={() => handleCategorySearch('Progressive Rock')} className="category-btn progressive">
-                🎹 Progressive Rock
-              </button>
-              <button onClick={() => handleCategorySearch('Alternative Rock')} className="category-btn alternative">
-                🎵 Alternative Rock
-              </button>
-              <button onClick={() => handleCategorySearch('Reggaeton')} className="category-btn reggaeton">
-                🔥 Reggaeton
-              </button>
+            <div className="categories-section">
+              <h3>🎭 Explorar por Género</h3>
+              <div className="category-buttons">
+                <button onClick={() => handleCategorySearch('Pop')} className="category-btn pop">
+                  🎤 Pop
+                </button>
+                <button onClick={() => handleCategorySearch('Rock')} className="category-btn rock">
+                  🎸 Rock
+                </button>
+                <button onClick={() => handleCategorySearch('Hip-Hop')} className="category-btn hiphop">
+                  🎧 Hip-Hop
+                </button>
+                <button onClick={() => handleCategorySearch('Jazz')} className="category-btn jazz">
+                  🎷 Jazz
+                </button>
+                <button onClick={() => handleCategorySearch('Electrónica')} className="category-btn electronica">
+                  🎹 Electrónica
+                </button>
+                <button onClick={() => handleCategorySearch('Reggaeton')} className="category-btn reggaeton">
+                  🔥 Reggaeton
+                </button>
+                <button onClick={() => handleCategorySearch('Clásica')} className="category-btn clasica">
+                  🎻 Clásica
+                </button>
+                <button onClick={() => handleCategorySearch('Country')} className="category-btn country">
+                  🪕 Country
+                </button>
+                <button onClick={() => handleCategorySearch('R&B')} className="category-btn rnb">
+                  🎵 R&B
+                </button>
+                <button onClick={() => handleCategorySearch('Metal')} className="category-btn metal">
+                  🤘 Metal
+                </button>
+              </div>
             </div>
-          </div>
           
           {isLoading ? (
             <SkeletonLoader count={8} />
