@@ -1,0 +1,9 @@
+# Ignorar node_modules del frontend
+frontend/node_modules
+frontend/.git
+frontend/build
+frontend/.env*
+frontend/coverage
+
+# Logs
+*.log

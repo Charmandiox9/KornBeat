@@ -1,0 +1,56 @@
+.page-bib{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: url('../images/smooth-purple.jpg') center/cover no-repeat fixed;
+}
+
+.bib-content {
+  flex: 1;
+  padding: 2rem;
+  padding-bottom: 200px;
+  overflow-y: auto;
+}
+
+.bib-content h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+}
+
+.bib-content::-webkit-scrollbar {
+  width: 12px;
+}
+
+.bib-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bib-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  .bib-content {
+    padding: 1.5rem 1rem;
+    padding-bottom: 220px;
+  }
+
+  .bib-content h1 {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 580px) {
+  .bib-content {
+    padding: 1rem;
+    padding-bottom: 240px;
+  }
+
+  .bib-content h1 {
+    font-size: 1.75rem;
+  }
+}
