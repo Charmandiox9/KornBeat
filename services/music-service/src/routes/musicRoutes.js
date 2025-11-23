@@ -1362,10 +1362,13 @@ router.get('/user/:userId/favorites/:songId/check', async (req, res) => {
 // Guardar última posición del usuario (última canción escuchada)
 router.post('/user/:userId/reel-position', async (req, res) => {
   try {
+
     const { userId } = req.params;
     const { songId, position, timestamp, progress, isPlaying, song } = req.body;
+    console.log(`[REEL] Intento de guardar posición:`, { userId, songId, position, timestamp, progress, isPlaying });
 
     if (!isValidObjectId(userId)) {
+      console.warn(`[REEL] ID de usuario inválido: ${userId}`);
       return res.status(400).json({ 
         success: false, 
         message: 'ID de usuario inválido' 
@@ -1373,26 +1376,35 @@ router.post('/user/:userId/reel-position', async (req, res) => {
     }
 
     if (!songId || position === undefined) {
+      console.warn(`[REEL] songId o position faltante:`, { songId, position });
       return res.status(400).json({ 
         success: false, 
         message: 'Se requiere songId y position' 
       });
     }
 
+    // Validar songId
+    if (!isValidObjectId(songId)) {
+      console.warn(`[REEL] songId inválido: ${songId}`);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'songId inválido' 
+      });
+    }
+
     // Verificar que la canción existe
     let songDetails = null;
-    if (isValidObjectId(songId)) {
-      const songDoc = await Song.findById(songId);
-      if (!songDoc) {
-        return res.status(404).json({ 
-          success: false, 
-          message: 'Canción no encontrada' 
-        });
-      }
-      // Obtener detalles completos de la canción si no se enviaron
-      if (!song) {
-        songDetails = await processSongCoverUrl(songDoc.toObject());
-      }
+    const songDoc = await Song.findById(songId);
+    if (!songDoc) {
+      console.warn(`[REEL] Canción no encontrada para songId: ${songId}`);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Canción no encontrada' 
+      });
+    }
+    // Obtener detalles completos de la canción si no se enviaron
+    if (!song) {
+      songDetails = await processSongCoverUrl(songDoc.toObject());
     }
 
     const reelPosition = {
@@ -1407,6 +1419,7 @@ router.post('/user/:userId/reel-position', async (req, res) => {
     const saved = await saveUserReelPosition(userId, reelPosition);
 
     if (!saved) {
+      console.error(`[REEL] Error al guardar en cache para usuario ${userId}`);
       return res.status(503).json({ 
         success: false, 
         message: 'Cache no disponible' 
@@ -1415,6 +1428,7 @@ router.post('/user/:userId/reel-position', async (req, res) => {
 
     // Agregar al historial de reproducción
     await addToReelHistory(userId, songId);
+    console.log(`[REEL] Última posición guardada correctamente para usuario ${userId}`);
 
     res.json({
       success: true,
@@ -1444,9 +1458,12 @@ router.get('/user/:userId/reel-position', async (req, res) => {
       });
     }
 
+
     const position = await getUserReelPosition(userId);
+    console.log(`[REEL] Intento de restaurar posición para usuario ${userId}`);
 
     if (!position) {
+      console.warn(`[REEL] No hay posición guardada para usuario ${userId}`);
       return res.json({
         success: true,
         hasPosition: false,
@@ -1458,14 +1475,17 @@ router.get('/user/:userId/reel-position', async (req, res) => {
     // Si ya tiene el objeto song guardado en Redis, usarlo directamente
     // Si no, obtener de la base de datos
     let songDetails = position.song || null;
-    
+
     if (!songDetails && position.songId && isValidObjectId(position.songId)) {
       const song = await Song.findById(position.songId);
       if (song) {
         songDetails = await processSongCoverUrl(song.toObject());
+      } else {
+        console.warn(`[REEL] songId guardado no corresponde a ninguna canción: ${position.songId}`);
       }
     }
 
+    console.log(`[REEL] Posición restaurada para usuario ${userId}:`, { position, songDetails });
     res.json({
       success: true,
       hasPosition: true,

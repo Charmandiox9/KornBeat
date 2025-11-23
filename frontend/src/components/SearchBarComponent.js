@@ -18,8 +18,16 @@ const SearchBarComponent = () => {
   const [showCategories, setShowCategories] = useState(false);
 
   const categories = [
-    'Rock', 'Metal', 'Grunge', 'Indie Rock', 
-    'Progressive Rock', 'Alternative Rock', 'Reggaeton'
+    'Pop',
+    'Rock',
+    'Hip-Hop',
+    'Jazz',
+    'Electrónica',
+    'Reggaeton',
+    'Clásica',
+    'Country',
+    'R&B',
+    'Metal'
   ];
 
   useEffect(() => {

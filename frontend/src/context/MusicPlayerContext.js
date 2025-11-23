@@ -82,6 +82,32 @@ export const MusicPlayerProvider = ({ children }) => {
   
   // Wrapper para detectar quién está reseteando currentSong (SIN guardar en localStorage)
   const setCurrentSong = useCallback((newValue) => {
+    // Guardar la posición de la canción actual antes de cambiar
+    if (user?._id && currentSong?._id && audioRef.current) {
+      const currentPos = Math.floor(audioRef.current.currentTime);
+      const position = {
+        songId: currentSong._id,
+        position: currentPos,
+        timestamp: Date.now(),
+        progress: duration > 0 ? (audioRef.current.currentTime / duration) * 100 : 0,
+        isPlaying: !audioRef.current.paused,
+        song: {
+          _id: currentSong._id,
+          title: currentSong.title || currentSong.titulo,
+          artist: currentSong.artist || currentSong.artista,
+          album: currentSong.album,
+          coverUrl: currentSong.coverUrl || currentSong.portada_url,
+          archivo_url: currentSong.archivo_url
+        }
+      };
+      cacheService.savePosition(user._id, position)
+        .then((result) => {
+          console.log('💾 [PRE-SWITCH SAVE] Guardado antes de cambiar de canción:', currentPos, 's -', result);
+        })
+        .catch(err => {
+          console.error('❌ [PRE-SWITCH SAVE] Error al guardar:', err);
+        });
+    }
     // Limpiar intervalo de auto-guardado al cambiar de canción
     if (autoSaveIntervalRef.current) {
       console.log('🧹 [AUTO-SAVE] Limpiando intervalo en setCurrentSong (cambio de canción)');
@@ -544,6 +570,16 @@ export const MusicPlayerProvider = ({ children }) => {
     }
     // Limpiar localStorage para que no vuelva a aparecer
     localStorage.removeItem('kornbeat_lastSong');
+    // Eliminar la última posición guardada en el backend
+    if (user?._id) {
+      cacheService.clearPosition(user._id)
+        .then((result) => {
+          console.log('🗑️ [RESET] Posición eliminada en backend:', result);
+        })
+        .catch(err => {
+          console.error('❌ [RESET] Error al eliminar posición en backend:', err);
+        });
+    }
     setCurrentSong(null);
     setIsPlaying(false);
     setCurrentTime(0);
@@ -564,7 +600,21 @@ export const MusicPlayerProvider = ({ children }) => {
         clearInterval(autoSaveIntervalRef.current);
         autoSaveIntervalRef.current = null;
       }
-      closePlayer();
+      // Limpiar solo el estado local, NO eliminar referencia en backend
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      localStorage.removeItem('kornbeat_lastSong');
+      setCurrentSong(null);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setError(null);
+      setIsExpanded(false);
+      setQueue([]);
+      setCurrentIndex(-1);
+      console.log('✅ [RESET] Reproductor limpiado (logout)');
     };
 
     window.addEventListener('logout-cleanup', handleLogoutCleanup);
@@ -708,28 +758,32 @@ export const MusicPlayerProvider = ({ children }) => {
       index,
       playing
     });
+    // Solo guardar si hay usuario y canción activa
     if (!userId) {
       console.log('❌ [SAVE] CANCELADO - falta userId');
       return;
     }
-    if (!song) {
-      console.log('❌ [SAVE] CANCELADO - falta song (currentSongRef es null)');
+    if (!song || !song._id) {
+      console.log('❌ [SAVE] CANCELADO - canción activa inválida:', song);
       return;
     }
-    if (!song._id) {
-      console.log('❌ [SAVE] CANCELADO - song existe pero NO tiene _id:', song);
+    // Definir actualTime antes de usarlo en la condición
+    const actualDuration = audio?.duration || 0;
+    const actualTime = audio?.currentTime || 0;
+    // Solo guardar si el usuario está interactuando (no al cerrar sesión, no al cargar la app)
+    if (!playing && actualTime === 0) {
+      console.log('❌ [SAVE] CANCELADO - no hay interacción del usuario');
       return;
     }
     try {
-      const actualDuration = audio?.duration || 0;
-      const actualTime = audio?.currentTime || 0;
       const progress = actualDuration > 0 ? Math.floor((actualTime / actualDuration) * 100) : 0;
       const position = {
         songId: song._id,
         position: actualTime,
         progress: progress,
         isPlaying: playing,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        song: song // Guardar el objeto completo
       };
       console.log('💾 [SAVE] Enviando a Redis:', {
         ...position,
