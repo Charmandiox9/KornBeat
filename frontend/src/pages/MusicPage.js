@@ -141,8 +141,14 @@ const MusicPage = () => {
   };
 
   const handleSongSelect = (song) => {
-    setCurrentSong(song);
-    toast.success(`🎵 Reproduciendo: ${song.titulo}`);
+    // Normalizar campos genre y categorias
+    const normalizedSong = {
+      ...song,
+      genre: song.genre || (song.categorias && song.categorias[0]) || '',
+      categorias: Array.isArray(song.categorias) ? song.categorias : (song.genre ? [song.genre] : [])
+    };
+    setCurrentSong(normalizedSong);
+    toast.success(`🎵 Reproduciendo: ${normalizedSong.title || normalizedSong.titulo}`);
   };
 
   return (
