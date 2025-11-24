@@ -1,2 +1,6 @@
 node_modules
 services/music-service/uploads/*
+uploads/music/*.mp3
+uploads/covers/**/*.png
+uploads/covers/**/*.jpg
+uploads/covers/**/*.jpeg

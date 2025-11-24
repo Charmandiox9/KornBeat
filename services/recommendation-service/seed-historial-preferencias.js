@@ -17,34 +17,17 @@ const USUARIOS = [
 
 // IDs de canciones (de tu colección songs)
 const CANCIONES = [
-  { id: '68f6fc6d28dda8f6b2996286', title: 'Back In Black', artist: 'AC/DC', artistId: '68f6fc6d28dda8f6b2996280', genre: 'Rock', duration: 255 },
-  { id: '68f6fc6d28dda8f6b2996289', title: 'Hells Bells', artist: 'AC/DC', artistId: '68f6fc6d28dda8f6b2996280', genre: 'Rock', duration: 312 },
-  { id: '68f6fc6d28dda8f6b299628f', title: 'Ru Mine', artist: 'Arctic Monkeys', artistId: '68f6fc6d28dda8f6b299628d', genre: 'Indie Rock', duration: 203 },
-  { id: '68f6fc6d28dda8f6b2996292', title: 'Wanna Be Yours', artist: 'Arctic Monkeys', artistId: '68f6fc6d28dda8f6b299628d', genre: 'Indie Rock', duration: 183 },
-  { id: '68f6fc6d28dda8f6b2996295', title: 'Wanna Know', artist: 'Arctic Monkeys', artistId: '68f6fc6d28dda8f6b299628d', genre: 'Indie Rock', duration: 271 },
-  { id: '68f6fc6d28dda8f6b2996298', title: 'Here Comes Sun', artist: 'The Beatles', artistId: '68f6fc6d28dda8f6b2996296', genre: 'Rock', duration: 185 },
-  { id: '68f6fc6d28dda8f6b299629b', title: 'Let It Be', artist: 'The Beatles', artistId: '68f6fc6d28dda8f6b2996296', genre: 'Rock', duration: 243 },
-  { id: '68f6fc6d28dda8f6b29962a4', title: 'Starman', artist: 'David Bowie', artistId: '68f6fc6d28dda8f6b29962a2', genre: 'Rock', duration: 256 },
-  { id: '68f6fc6d28dda8f6b29962a7', title: 'Ziggy Stardust', artist: 'David Bowie', artistId: '68f6fc6d28dda8f6b29962a2', genre: 'Rock', duration: 196 },
-  { id: '68f6fc6d28dda8f6b29962aa', title: 'Angel Para Un Final', artist: 'Kidd Voodoo', artistId: '68f6fc6d28dda8f6b29962a8', genre: 'Reggaeton', duration: 176 },
-  { id: '68f6fc6d28dda8f6b29962ad', title: 'Callao', artist: 'Kidd Voodoo', artistId: '68f6fc6d28dda8f6b29962a8', genre: 'Reggaeton', duration: 125 },
-  { id: '68f6fc6d28dda8f6b29962b0', title: 'Destello', artist: 'Kidd Voodoo', artistId: '68f6fc6d28dda8f6b29962a8', genre: 'Reggaeton', duration: 239 },
-  { id: '68f6fc6d28dda8f6b29962b3', title: 'Sol De Enero', artist: 'Kidd Voodoo', artistId: '68f6fc6d28dda8f6b29962a8', genre: 'Reggaeton', duration: 171 },
-  { id: '68f6fc6d28dda8f6b29962b6', title: 'Black Dog', artist: 'Led Zeppelin', artistId: '68f6fc6d28dda8f6b29962b4', genre: 'Rock', duration: 296 },
-  { id: '68f6fc6d28dda8f6b29962b9', title: 'Rock And Roll', artist: 'Led Zeppelin', artistId: '68f6fc6d28dda8f6b29962b4', genre: 'Rock', duration: 220 },
-  { id: '68f6fc6d28dda8f6b29962bc', title: 'Stairway', artist: 'Led Zeppelin', artistId: '68f6fc6d28dda8f6b29962b4', genre: 'Rock', duration: 482 },
-  { id: '68f6fc6d28dda8f6b29962bf', title: 'Battery', artist: 'Metallica', artistId: '68f6fc6d28dda8f6b29962bd', genre: 'Metal', duration: 312 },
-  { id: '68f6fc6d28dda8f6b29962c2', title: 'Master Of Puppets', artist: 'Metallica', artistId: '68f6fc6d28dda8f6b29962bd', genre: 'Metal', duration: 515 },
-  { id: '68f6fc6d28dda8f6b29962c5', title: 'Come As You Are', artist: 'Nirvana', artistId: '68f6fc6d28dda8f6b29962c3', genre: 'Grunge', duration: 219 },
-  { id: '68f6fc6d28dda8f6b29962c8', title: 'Lithium', artist: 'Nirvana', artistId: '68f6fc6d28dda8f6b29962c3', genre: 'Grunge', duration: 257 },
-  { id: '68f6fc6d28dda8f6b29962cb', title: 'Teen Spirit', artist: 'Nirvana', artistId: '68f6fc6d28dda8f6b29962c3', genre: 'Grunge', duration: 301 },
-  { id: '68f6fc6d28dda8f6b29962ce', title: 'Another Brick', artist: 'Pink Floyd', artistId: '68f6fc6d28dda8f6b29962cc', genre: 'Progressive Rock', duration: 359 },
-  { id: '68f6fc6d28dda8f6b29962d1', title: 'Comfortably Numb', artist: 'Pink Floyd', artistId: '68f6fc6d28dda8f6b29962cc', genre: 'Progressive Rock', duration: 382 },
-  { id: '68f6fc6d28dda8f6b29962d4', title: 'Time', artist: 'Pink Floyd', artistId: '68f6fc6d28dda8f6b29962cc', genre: 'Progressive Rock', duration: 413 },
-  { id: '68f6fc6d28dda8f6b29962dd', title: 'Karma Police', artist: 'Radiohead', artistId: '68f6fc6d28dda8f6b29962db', genre: 'Alternative Rock', duration: 262 },
-  { id: '68f6fc6d28dda8f6b29962e0', title: 'No Surprises', artist: 'Radiohead', artistId: '68f6fc6d28dda8f6b29962db', genre: 'Alternative Rock', duration: 228 },
-  { id: '68f6fc6d28dda8f6b29962e3', title: 'Paranoid Android', artist: 'Radiohead', artistId: '68f6fc6d28dda8f6b29962db', genre: 'Alternative Rock', duration: 383 },
-  { id: '68f6fc6d28dda8f6b29962e6', title: 'Brown Sugar', artist: 'The Rolling Stones', artistId: '68f6fc6d28dda8f6b29962e4', genre: 'Rock', duration: 228 }
+  { id: '692372ddb28c56cee1ad5da9', title: 'Shake It Off', artist: 'Taylor Swift', artistId: '692236c37363d46fb982316c', genre: 'Pop', duration: 172 },
+  { id: '692395142f3d093adffcf6c2', title: 'Love Me Like This', artist: 'NMIXX', artistId: '692394467cfbf21b63a676ab', genre: 'K-Pop', duration: 158 },
+  { id: '692372ddb28c56cee1ad5e97', title: 'For Those About to Rock', artist: 'AC/DC', artistId: '670000000000000000000006', genre: 'Rock', duration: 164 },
+  { id: '692372deb28c56cee1ad5fd7', title: 'Rompe', artist: 'Daddy Yankee', artistId: '692237549fffe0de2e132d97', genre: 'Reggaeton', duration: 226 },
+  { id: '692372ddb28c56cee1ad5db3', title: 'thank u next', artist: 'Ariana Grande', artistId: '692236c37363d46fb982316e', genre: 'Pop', duration: 189 },
+  { id: '692372ddb28c56cee1ad5dc7', title: 'Dont Start Now', artist: 'Dua Lipa', artistId: '692236c37363d46fb982316f', genre: 'Rock', duration: 274 },
+  { id: '692395142f3d093adffcf686', title: 'Kyouran Hey Kids!!', artist: 'The Oral Cigarettes', artistId: '692394467cfbf21b63a67698', genre: 'J-Rock', duration: 161 },
+  { id: '692372ddb28c56cee1ad5ebb', title: 'In My Feelings', artist: 'Drake', artistId: '692237549fffe0de2e132d4e', genre: 'Hip Hop', duration: 201 },
+  { id: '692372ddb28c56cee1ad5ee7', title: 'Wet Dreamz', artist: 'J. Cole', artistId: '692237549fffe0de2e132d51', genre: 'Hip Hop', duration: 257 },
+  { id: '69239862f47a84883126faa1', title: 'Destello', artist: 'Kidd Voodoo', artistId: '670000000000000000000011', genre: 'Urbano', duration: 238 },
+  { id: '692395142f3d093adffcf6b6', title: 'I Cant Stop Me', artist: 'TWICE', artistId: '692394467cfbf21b63a676aa', genre: 'K-Pop', duration: 233 },
 ];
 
 // Función para generar fecha aleatoria en los últimos N días
@@ -63,22 +46,22 @@ function wasCompleted(duracionEscuchada, duracionTotal) {
 // Perfiles de escucha para cada usuario
 const PERFILES_ESCUCHA = {
   '68e3100be43b261541ce5f4c': { // Usuario Demo - ES
-    generos_preferidos: ['Rock', 'Progressive Rock', 'Alternative Rock'],
+    generos_preferidos: ['Rock', 'K-Pop', 'J-Pop'],
     probabilidad_completar: 0.85,
     canciones_por_dia: 8
   },
   '6914a0330e0611774625c4e5': { // Pedro - CO
-    generos_preferidos: ['Reggaeton', 'Rock', 'Alternative Rock'],
+    generos_preferidos: ['Reggaeton', 'Rock', 'Pop'],
     probabilidad_completar: 0.75,
     canciones_por_dia: 12
   },
   '6914a54f0e0611774625c4f0': { // Nicolás - CL
-    generos_preferidos: ['Reggaeton', 'Metal', 'Rock'],
+    generos_preferidos: ['Hip Hop', 'J-Rock', 'Rock'],
     probabilidad_completar: 0.90,
     canciones_por_dia: 15
   },
   '691fbf4800e25b4f70a35440': { // Daniel - UK
-    generos_preferidos: ['Grunge', 'Alternative Rock', 'Indie Rock'],
+    generos_preferidos: ['K-Pop', 'Urbano', 'Hip Hop'],
     probabilidad_completar: 0.80,
     canciones_por_dia: 10
   }

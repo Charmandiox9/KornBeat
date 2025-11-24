@@ -211,7 +211,7 @@ async function processMP3File(filePath) {
       artist = metadata.common.artist;
       album = metadata.common.album || '';
       genre = metadata.common.genre?.[0] || '';
-      duration = Math.round(metadata.format.duration || 0);
+      duration = metadata.format.duracion_segundos || 0;
       stats.withMetadata++;
       console.log(`   ${colors.green}✓${colors.reset} Con metadatos: "${title}" - ${artist}`);
     } else {
