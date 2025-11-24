@@ -10,8 +10,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:80',
-    'http://localhost',
-    '*'
+    'http://localhost'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

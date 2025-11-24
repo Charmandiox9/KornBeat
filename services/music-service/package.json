@@ -17,7 +17,10 @@
     "mongoose": "^7.6.1",
     "music-metadata": "^11.9.0",
     "passport": "^0.6.0",
-    "redis": "^4.7.1"
+    "redis": "^4.7.1",
+    "ytdl-core": "^4.11.5",
+    "yt-search": "^2.11.0",
+    "fluent-ffmpeg": "^2.1.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
