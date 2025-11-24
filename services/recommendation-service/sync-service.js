@@ -347,34 +347,62 @@ async function syncHistorialReciente() {
   const session = neo4jDriver.session();
   
   try {
-    // Solo sincronizar los últimos 30 días
     const hace30Dias = new Date();
     hace30Dias.setDate(hace30Dias.getDate() - 30);
     
-    const historial = await getCollection('historial')
+    // Usar el nombre correcto de la colección según config
+    const collectionName = config.collections.historial || 'historial_reproducciones';
+    
+    const historial = await mongoDb.collection(collectionName)
       .find({
         fecha_reproduccion: { $gte: hace30Dias }
       })
-      .limit(50000) // Límite de seguridad
+      .limit(50000)
       .toArray();
     
-    for (const registro of historial) {
-      await session.run(`
-        MATCH (u:Usuario {id: $usuario_id})
-        MATCH (c:Cancion {id: $cancion_id})
-        MERGE (u)-[r:REPRODUJO {fecha: datetime($fecha)}]->(c)
-        SET r.duracion_escuchada = $duracion,
-            r.completada = $completada
-      `, {
-        usuario_id: registro.metadata.usuario_id.toString(),
-        cancion_id: registro.metadata.cancion_id.toString(),
-        fecha: registro.fecha_reproduccion.toISOString(),
-        duracion: neo4j.int(registro.metadata.duracion_escuchada || 0),
-        completada: registro.metadata.completada || false
-      });
+    console.log(`  📊 Encontrados ${historial.length} registros de historial`);
+    
+    if (historial.length === 0) {
+      console.log('  ⚠️  No se encontraron registros de historial');
+      return;
     }
     
-    console.log(`✅ ${historial.length} registros de historial sincronizados`);
+    let sincronizados = 0;
+    let errores = 0;
+    
+    for (const registro of historial) {
+      try {
+        // Validar que existan los campos necesarios
+        if (!registro.metadata?.usuario_id || !registro.metadata?.cancion_id) {
+          console.log(`  ⚠️  Registro sin usuario_id o cancion_id, saltando`);
+          continue;
+        }
+        
+        await session.run(`
+          MATCH (u:Usuario {id: $usuario_id})
+          MATCH (c:Cancion {id: $cancion_id})
+          MERGE (u)-[r:REPRODUJO {fecha: datetime($fecha)}]->(c)
+          SET r.duracion_escuchada = $duracion,
+              r.completada = $completada,
+              r.last_update = datetime()
+        `, {
+          usuario_id: registro.metadata.usuario_id.toString(),
+          cancion_id: registro.metadata.cancion_id.toString(),
+          fecha: registro.fecha_reproduccion.toISOString(),
+          duracion: neo4j.int(registro.metadata.duracion_escuchada || 0),
+          completada: registro.metadata.completada || false
+        });
+        
+        sincronizados++;
+      } catch (regError) {
+        errores++;
+        if (errores <= 3) { // Solo mostrar los primeros 3 errores
+          console.error(`  ❌ Error en registro:`, regError.message);
+        }
+      }
+    }
+    
+    console.log(`✅ ${sincronizados} registros de historial sincronizados (${errores} errores)`);
   } catch (error) {
     console.error('❌ Error sincronizando historial:', error);
   } finally {

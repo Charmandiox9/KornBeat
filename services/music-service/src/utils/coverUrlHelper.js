@@ -18,15 +18,9 @@ function processSongCoverUrl(song, req) {
     // Normalizar el path (remover covers/ si ya lo tiene)
     const cleanPath = coverPath.replace(/^covers\//, '');
     
-    // Solo agregar URL si cleanPath no está vacío
-    if (cleanPath && cleanPath.trim() !== '') {
-      // Construir URL completa
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      songObj.coverUrl = `${baseUrl}/api/music/covers/${cleanPath}`;
-    } else {
-      // Path vacío, no hay cover válido
-      songObj.coverUrl = null;
-    }
+    // Construir URL completa
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    songObj.coverUrl = `${baseUrl}/api/music/covers/${cleanPath}`;
     
     // Remover portada_url si existe
     delete songObj.portada_url;

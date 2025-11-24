@@ -8,9 +8,8 @@ COPY frontend/package*.json ./
 # Instalar dependencias
 RUN npm ci
 
-# Copiar archivos fuente (excluyendo node_modules)
-COPY frontend/public ./public
-COPY frontend/src ./src
+# Copiar TODO el contenido del frontend (incluyendo public/)
+COPY frontend/ .
 
 # Ejecutar el build
 RUN npm run build

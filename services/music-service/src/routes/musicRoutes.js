@@ -966,14 +966,6 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
   try {
     let coverPath = req.params.coverPath;
     
-    // Validar que coverPath no esté vacío
-    if (!coverPath || coverPath.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cover path inválido'
-      });
-    }
-    
     // Normalizar el path (asegurar que tenga covers/ al inicio)
     if (!coverPath.startsWith('covers/')) {
       coverPath = `covers/${coverPath}`;
@@ -1013,18 +1005,7 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
       const path = require('path');
       const localPath = path.join(__dirname, '..', '..', 'uploads', coverPath);
       
-      // Verificar que existe y NO es un directorio
       if (fs.existsSync(localPath)) {
-        const stats = fs.statSync(localPath);
-        
-        if (stats.isDirectory()) {
-          console.warn('⚠️  Path es un directorio, no un archivo:', coverPath);
-          return res.status(404).json({
-            success: false,
-            message: 'Path inválido'
-          });
-        }
-        
         const ext = path.extname(localPath).toLowerCase();
         const contentType = ext === '.png' ? 'image/png' : 
                            ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 
@@ -1036,15 +1017,7 @@ router.get('/covers/:coverPath(*)', async (req, res) => {
         res.setHeader('Cache-Control', 'public, max-age=86400');
         res.setHeader('Access-Control-Allow-Origin', '*');
         
-        // Crear stream con manejo de errores
-        const stream = fs.createReadStream(localPath);
-        stream.on('error', (err) => {
-          console.error('❌ Error leyendo cover:', err);
-          if (!res.headersSent) {
-            res.status(500).end();
-          }
-        });
-        stream.pipe(res);
+        fs.createReadStream(localPath).pipe(res);
       } else {
         console.warn('⚠️  Cover no encontrado:', coverPath);
         return res.status(404).json({
@@ -1362,13 +1335,10 @@ router.get('/user/:userId/favorites/:songId/check', async (req, res) => {
 // Guardar última posición del usuario (última canción escuchada)
 router.post('/user/:userId/reel-position', async (req, res) => {
   try {
-
     const { userId } = req.params;
-    const { songId, position, timestamp, progress, isPlaying, song } = req.body;
-    console.log(`[REEL] Intento de guardar posición:`, { userId, songId, position, timestamp, progress, isPlaying });
+    const { songId, position, timestamp, progress, isPlaying } = req.body;
 
     if (!isValidObjectId(userId)) {
-      console.warn(`[REEL] ID de usuario inválido: ${userId}`);
       return res.status(400).json({ 
         success: false, 
         message: 'ID de usuario inválido' 
@@ -1376,35 +1346,21 @@ router.post('/user/:userId/reel-position', async (req, res) => {
     }
 
     if (!songId || position === undefined) {
-      console.warn(`[REEL] songId o position faltante:`, { songId, position });
       return res.status(400).json({ 
         success: false, 
         message: 'Se requiere songId y position' 
       });
     }
 
-    // Validar songId
-    if (!isValidObjectId(songId)) {
-      console.warn(`[REEL] songId inválido: ${songId}`);
-      return res.status(400).json({ 
-        success: false, 
-        message: 'songId inválido' 
-      });
-    }
-
     // Verificar que la canción existe
-    let songDetails = null;
-    const songDoc = await Song.findById(songId);
-    if (!songDoc) {
-      console.warn(`[REEL] Canción no encontrada para songId: ${songId}`);
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Canción no encontrada' 
-      });
-    }
-    // Obtener detalles completos de la canción si no se enviaron
-    if (!song) {
-      songDetails = await processSongCoverUrl(songDoc.toObject());
+    if (isValidObjectId(songId)) {
+      const song = await Song.findById(songId);
+      if (!song) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Canción no encontrada' 
+        });
+      }
     }
 
     const reelPosition = {
@@ -1412,14 +1368,12 @@ router.post('/user/:userId/reel-position', async (req, res) => {
       position: parseInt(position),
       timestamp: timestamp || Date.now(),
       progress: progress || 0,
-      isPlaying: isPlaying !== undefined ? isPlaying : false,
-      song: song || songDetails // Guardar el objeto completo de la canción
+      isPlaying: isPlaying !== undefined ? isPlaying : false
     };
 
     const saved = await saveUserReelPosition(userId, reelPosition);
 
     if (!saved) {
-      console.error(`[REEL] Error al guardar en cache para usuario ${userId}`);
       return res.status(503).json({ 
         success: false, 
         message: 'Cache no disponible' 
@@ -1428,7 +1382,6 @@ router.post('/user/:userId/reel-position', async (req, res) => {
 
     // Agregar al historial de reproducción
     await addToReelHistory(userId, songId);
-    console.log(`[REEL] Última posición guardada correctamente para usuario ${userId}`);
 
     res.json({
       success: true,
@@ -1458,12 +1411,9 @@ router.get('/user/:userId/reel-position', async (req, res) => {
       });
     }
 
-
     const position = await getUserReelPosition(userId);
-    console.log(`[REEL] Intento de restaurar posición para usuario ${userId}`);
 
     if (!position) {
-      console.warn(`[REEL] No hay posición guardada para usuario ${userId}`);
       return res.json({
         success: true,
         hasPosition: false,
@@ -1472,20 +1422,15 @@ router.get('/user/:userId/reel-position', async (req, res) => {
       });
     }
 
-    // Si ya tiene el objeto song guardado en Redis, usarlo directamente
-    // Si no, obtener de la base de datos
-    let songDetails = position.song || null;
-
-    if (!songDetails && position.songId && isValidObjectId(position.songId)) {
+    // Obtener información de la canción si existe
+    let songDetails = null;
+    if (position.songId && isValidObjectId(position.songId)) {
       const song = await Song.findById(position.songId);
       if (song) {
         songDetails = await processSongCoverUrl(song.toObject());
-      } else {
-        console.warn(`[REEL] songId guardado no corresponde a ninguna canción: ${position.songId}`);
       }
     }
 
-    console.log(`[REEL] Posición restaurada para usuario ${userId}:`, { position, songDetails });
     res.json({
       success: true,
       hasPosition: true,
