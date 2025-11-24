@@ -97,15 +97,44 @@ export const MusicPlayerProvider = ({ children }) => {
           artist: currentSong.artist || currentSong.artista,
           album: currentSong.album,
           coverUrl: currentSong.coverUrl || currentSong.portada_url,
-          archivo_url: currentSong.archivo_url
+          archivo_url: currentSong.archivo_url,
+          genre: currentSong.genre,
+          categorias: currentSong.categorias
         }
       };
       cacheService.savePosition(user._id, position)
         .then((result) => {
-          console.log('💾 [PRE-SWITCH SAVE] Guardado antes de cambiar de canción:', currentPos, 's -', result);
+          console.log('💾 [PRE-SWITCH SAVE] Guardado antes de cambiar de canción:', currentPos, 's -', result, '\n[SONG]', position.song, '\n[GÉNERO]', position.song.genre, '\n[CATEGORÍAS]', position.song.categorias);
         })
         .catch(err => {
           console.error('❌ [PRE-SWITCH SAVE] Error al guardar:', err);
+        });
+    }
+    // Guardar la referencia de la nueva canción inmediatamente al cambiar
+    if (user?._id && newValue?._id && audioRef.current) {
+      const position = {
+        songId: newValue._id,
+        position: 0,
+        timestamp: Date.now(),
+        progress: 0,
+        isPlaying: false,
+        song: {
+          _id: newValue._id,
+          title: newValue.title || newValue.titulo,
+          artist: newValue.artist || newValue.artista,
+          album: newValue.album,
+          coverUrl: newValue.coverUrl || newValue.portada_url,
+          archivo_url: newValue.archivo_url,
+          genre: newValue.genre,
+          categorias: newValue.categorias
+        }
+      };
+      cacheService.savePosition(user._id, position)
+        .then((result) => {
+          console.log('💾 [IMMEDIATE SAVE] Guardado inmediato al cambiar de canción:', position.song.title, '-', result, '\n[SONG]', position.song, '\n[GÉNERO]', position.song.genre, '\n[CATEGORÍAS]', position.song.categorias);
+        })
+        .catch(err => {
+          console.error('❌ [IMMEDIATE SAVE] Error al guardar nueva canción:', err);
         });
     }
     // Limpiar intervalo de auto-guardado al cambiar de canción
@@ -570,8 +599,8 @@ export const MusicPlayerProvider = ({ children }) => {
     }
     // Limpiar localStorage para que no vuelva a aparecer
     localStorage.removeItem('kornbeat_lastSong');
-    // Eliminar la última posición guardada en el backend
-    if (user?._id) {
+    // Eliminar la última posición guardada en el backend SOLO si hay canción activa
+    if (user?._id && currentSong?._id) {
       cacheService.clearPosition(user._id)
         .then((result) => {
           console.log('🗑️ [RESET] Posición eliminada en backend:', result);
