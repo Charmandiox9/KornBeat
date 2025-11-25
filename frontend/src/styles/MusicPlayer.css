@@ -195,7 +195,6 @@
   border-radius: 3px;
   outline: none;
   cursor: pointer;
-  -webkit-appearance: none;
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -249,3 +248,4 @@
     font-size: 1.2rem;
   }
 }
+

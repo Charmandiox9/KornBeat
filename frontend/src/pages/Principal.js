@@ -11,7 +11,7 @@ import '../styles/Principal.css';
 const API_BASE_MUSIC = 'http://localhost:3002/api/music';
 const API_BASE_RECOMMENDATIONS = 'http://localhost:3003/api/recommendations';
 
-const PrincipalContent = () => {
+const Principal = () => {
   const { user } = useContext(AuthContext);
   const { searchResults, searchQuery } = useMusicSearch();
   const { playNow, addMultipleToQueue, clearQueue, playFromQueue } = useMusicPlayer();
@@ -366,25 +366,6 @@ const PrincipalContent = () => {
       </main>
       <BottomBar />
     </div>
-  );
-};
-
-const Principal = () => {
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!user) navigate('/login');
-  }, [user, navigate]);
-
-  if (!user) return null;
-
-  return (
-    <MusicPlayerProvider>
-      <MusicSearchProvider>
-        <PrincipalContent />
-      </MusicSearchProvider>
-    </MusicPlayerProvider>
   );
 };
 

@@ -1,4 +1,12 @@
 /* Estilos específicos para la página de Perfil */
+.principal-container{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: url('../../images/smooth-purple.jpg') center/cover no-repeat fixed;
+}
+
 .profile-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
