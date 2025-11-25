@@ -17,17 +17,17 @@ const USUARIOS = [
 
 // IDs de canciones (de tu colección songs)
 const CANCIONES = [
-  { id: '692372ddb28c56cee1ad5da9', title: 'Shake It Off', artist: 'Taylor Swift', artistId: '692236c37363d46fb982316c', genre: 'Pop', duration: 172 },
-  { id: '692395142f3d093adffcf6c2', title: 'Love Me Like This', artist: 'NMIXX', artistId: '692394467cfbf21b63a676ab', genre: 'K-Pop', duration: 158 },
-  { id: '692372ddb28c56cee1ad5e97', title: 'For Those About to Rock', artist: 'AC/DC', artistId: '670000000000000000000006', genre: 'Rock', duration: 164 },
-  { id: '692372deb28c56cee1ad5fd7', title: 'Rompe', artist: 'Daddy Yankee', artistId: '692237549fffe0de2e132d97', genre: 'Reggaeton', duration: 226 },
-  { id: '692372ddb28c56cee1ad5db3', title: 'thank u next', artist: 'Ariana Grande', artistId: '692236c37363d46fb982316e', genre: 'Pop', duration: 189 },
-  { id: '692372ddb28c56cee1ad5dc7', title: 'Dont Start Now', artist: 'Dua Lipa', artistId: '692236c37363d46fb982316f', genre: 'Rock', duration: 274 },
-  { id: '692395142f3d093adffcf686', title: 'Kyouran Hey Kids!!', artist: 'The Oral Cigarettes', artistId: '692394467cfbf21b63a67698', genre: 'J-Rock', duration: 161 },
-  { id: '692372ddb28c56cee1ad5ebb', title: 'In My Feelings', artist: 'Drake', artistId: '692237549fffe0de2e132d4e', genre: 'Hip Hop', duration: 201 },
-  { id: '692372ddb28c56cee1ad5ee7', title: 'Wet Dreamz', artist: 'J. Cole', artistId: '692237549fffe0de2e132d51', genre: 'Hip Hop', duration: 257 },
-  { id: '69239862f47a84883126faa1', title: 'Destello', artist: 'Kidd Voodoo', artistId: '670000000000000000000011', genre: 'Urbano', duration: 238 },
-  { id: '692395142f3d093adffcf6b6', title: 'I Cant Stop Me', artist: 'TWICE', artistId: '692394467cfbf21b63a676aa', genre: 'K-Pop', duration: 233 },
+  { id: '6925479a8438297720122bb6', title: 'Shake It Off', artist: 'Taylor Swift', artistId: '69254792d7f5de377874872d', genre: 'Pop', duration: 172 },
+  { id: '6925479b8438297720122ea8', title: 'Love Me Like This', artist: 'NMIXX', artistId: '69254793d7f5de3778748805', genre: 'K-Pop', duration: 158 },
+  { id: '6925479a8438297720122ca4', title: 'For Those About to Rock', artist: 'AC/DC', artistId: '69254792d7f5de3778748751', genre: 'Rock', duration: 164 },
+  { id: '6925479b8438297720122de4', title: 'Rompe', artist: 'Daddy Yankee', artistId: '69254792d7f5de37787487bc', genre: 'Reggaeton', duration: 226 },
+  { id: '6925479a8438297720122bc0', title: 'thank u next', artist: 'Ariana Grande', artistId: '69254792d7f5de377874872f', genre: 'Pop', duration: 189 },
+  { id: '6925479a8438297720122bd4', title: 'Dont Start Now', artist: 'Dua Lipa', artistId: '69254792d7f5de3778748730', genre: 'Rock', duration: 274 },
+  { id: '6925479b8438297720122e60', title: 'Kyouran Hey Kids!!', artist: 'The Oral Cigarettes', artistId: '69254793d7f5de37787487f2', genre: 'J-Rock', duration: 161 },
+  { id: '6925479a8438297720122cc8', title: 'In My Feelings', artist: 'Drake', artistId: '69254792d7f5de3778748773', genre: 'Hip Hop', duration: 201 },
+  { id: '6925479a8438297720122cf4', title: 'Wet Dreamz', artist: 'J. Cole', artistId: '69254792d7f5de3778748776', genre: 'Hip Hop', duration: 257 },
+  { id: '6925479b8438297720122ec8', title: 'Destello', artist: 'Kidd Voodoo', artistId: '69254793d7f5de377874881c', genre: 'Urbano', duration: 238 },
+  { id: '6925479b8438297720122e90', title: 'I Cant Stop Me', artist: 'TWICE', artistId: '69254793d7f5de3778748804', genre: 'K-Pop', duration: 233 },
 ];
 
 // Función para generar fecha aleatoria en los últimos N días

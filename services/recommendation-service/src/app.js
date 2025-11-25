@@ -84,7 +84,7 @@ const verifyConnection = async () => {
     // Auto-sync on start si está configurado
     if (process.env.AUTO_SYNC_ON_START === 'true') {
       console.log('🔄 Ejecutando sincronización inicial...');
-      const { sincronizacionCompleta } = require('./sync-service');
+      const { sincronizacionCompleta } = require('./../sync-service');
       setTimeout(() => {
         sincronizacionCompleta().catch(err => 
           console.error('Error en sync inicial:', err)
@@ -459,59 +459,84 @@ app.get('/api/recommendations/collaborative/:userId', async (req, res) => {
   }
 });
 
-// 7. Descubrir nuevos artistas del país del usuario (⚠️ Limitado)
-app.get('/api/recommendations/discover-local/:userId', async (req, res) => {
+// 7. Descubrir artistas emergentes con canciones virales
+app.get('/api/recommendations/discover-emerging/:userId', async (req, res) => {
   const session = driver.session();
   try {
     const { userId } = req.params;
     const { limit = 25 } = req.query;
     
+    // Buscar artistas con pocos oyentes mensuales pero con canciones muy reproducidas
     const result = await session.run(`
       MATCH (u:Usuario {id: $userId})
       MATCH (a:Artista)<-[:PERFORMED_BY]-(c:Cancion)
-      WHERE a.country = u.country
-        AND NOT EXISTS((u)-[:REPRODUJO]->(c))
+      WHERE NOT EXISTS((u)-[:REPRODUJO]->(c))
         AND NOT EXISTS((u)-[:SIGUE]->(a))
         AND c.disponible = true
+        AND a.oyentes_mensuales < 2000000
+        AND c.reproducciones > 50000
       
-      WITH c, a
-      ORDER BY a.oyentes_mensuales DESC, c.reproducciones DESC
+      // Calcular el "factor viral" (ratio de reproducciones vs oyentes del artista)
+      WITH c, a, 
+           CASE 
+             WHEN a.oyentes_mensuales > 0 
+             THEN toFloat(c.reproducciones) / toFloat(a.oyentes_mensuales)
+             ELSE toFloat(c.reproducciones)
+           END as factor_viral
+      
+      // Opcionalmente, incluir información de géneros
+      OPTIONAL MATCH (c)-[:HAS_GENRE]->(g:Genero)
+      
+      WITH c, a, factor_viral, COLLECT(DISTINCT g.nombre) as generos
       
       RETURN DISTINCT c.id as id,
              c.titulo as titulo,
              c.artista as artista,
              c.portada_url as portada_url,
-             c.reproducciones as reproducciones_totales,
+             c.reproducciones as reproducciones,
              c.duracion_segundos as duracion,
              a.nombre_artistico as artista_nombre,
-             a.oyentes_mensuales as oyentes_artista
+             a.oyentes_mensuales as oyentes_artista,
+             factor_viral,
+             generos
+      ORDER BY factor_viral DESC, c.reproducciones DESC
       LIMIT $limit
     `, { 
       userId,
       limit: neo4j.int(parseInt(limit))
     });
 
-    const descubrimientos = result.records.map(record => ({
-      id: record.get('id'),
-      titulo: record.get('titulo'),
-      artista: record.get('artista'),
-      artista_nombre: record.get('artista_nombre'),
-      portada_url: record.get('portada_url'),
-      reproducciones: record.get('reproducciones_totales')?.toNumber() || 0,
-      duracion: record.get('duracion')?.toNumber() || 0,
-      oyentes_artista: record.get('oyentes_artista')?.toNumber() || 0,
-      razon: 'Nuevo talento local para descubrir'
-    }));
+    const descubrimientos = result.records.map(record => {
+      const factorViral = record.get('factor_viral');
+      const reproducciones = record.get('reproducciones')?.toNumber() || 0;
+      const oyentesArtista = record.get('oyentes_artista')?.toNumber() || 0;
+      
+      return {
+        id: record.get('id'),
+        titulo: record.get('titulo'),
+        artista: record.get('artista'),
+        artista_nombre: record.get('artista_nombre'),
+        portada_url: record.get('portada_url'),
+        reproducciones: reproducciones,
+        duracion: record.get('duracion')?.toNumber() || 0,
+        oyentes_artista: oyentesArtista,
+        generos: record.get('generos'),
+        factor_viral: factorViral,
+        razon: oyentesArtista < 10000 
+          ? '🚀 Hit viral de artista emergente'
+          : '💎 Joya escondida de artista indie'
+      };
+    });
 
     res.json({ 
       success: true, 
       data: descubrimientos,
       usuario_id: userId,
       total: descubrimientos.length,
-      warning: descubrimientos.length === 0 ? 'No hay artistas con información de país disponible' : null
+      info: 'Artistas con menos de 100k oyentes pero con canciones exitosas (+50k reproducciones)'
     });
   } catch (error) {
-    console.error('Error en discover-local:', error);
+    console.error('Error en discover-emerging:', error);
     res.status(500).json({ success: false, error: error.message });
   } finally {
     await session.close();
@@ -588,6 +613,73 @@ app.get('/api/recommendations/trending', async (req, res) => {
     });
   } catch (error) {
     console.error('Error en trending:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    await session.close();
+  }
+});
+
+// 9. Últimas canciones escuchadas por el usuario (historial reciente)
+app.get('/api/recommendations/recent-history/:userId', async (req, res) => {
+  const session = driver.session();
+  try {
+    const { userId } = req.params;
+    const { limit = 20 } = req.query;
+    
+    // Obtener las últimas canciones reproducidas sin repetir
+    // Solo muestra la reproducción más reciente de cada canción
+    const result = await session.run(`
+      MATCH (u:Usuario {id: $userId})-[r:REPRODUJO]->(c:Cancion)
+      WHERE c.disponible = true
+      
+      // Agrupar por canción y obtener solo la reproducción más reciente
+      WITH c, r
+      ORDER BY r.fecha DESC
+      WITH c, COLLECT(r)[0] as ultima_reproduccion
+      
+      // Obtener información adicional
+      MATCH (c)-[:PERFORMED_BY]->(a:Artista)
+      OPTIONAL MATCH (c)-[:HAS_GENRE]->(g:Genero)
+      
+      RETURN DISTINCT c.id as id,
+             c.titulo as titulo,
+             c.artista as artista,
+             c.portada_url as portada_url,
+             c.reproducciones as reproducciones,
+             c.duracion_segundos as duracion,
+             ultima_reproduccion.fecha as fecha_reproduccion,
+             ultima_reproduccion.duracion_escuchada as duracion_escuchada,
+             ultima_reproduccion.completada as completada,
+             COLLECT(DISTINCT g.nombre) as generos
+      ORDER BY ultima_reproduccion.fecha DESC
+      LIMIT $limit
+    `, { 
+      userId,
+      limit: neo4j.int(parseInt(limit))
+    });
+
+    const historial = result.records.map(record => ({
+      id: record.get('id'),
+      titulo: record.get('titulo'),
+      artista: record.get('artista'),
+      portada_url: record.get('portada_url'),
+      reproducciones: record.get('reproducciones')?.toNumber() || 0,
+      duracion: record.get('duracion')?.toNumber() || 0,
+      fecha_reproduccion: record.get('fecha_reproduccion'),
+      duracion_escuchada: record.get('duracion_escuchada')?.toNumber() || 0,
+      completada: record.get('completada') || false,
+      generos: record.get('generos'),
+      razon: 'Escuchado recientemente'
+    }));
+
+    res.json({ 
+      success: true, 
+      data: historial,
+      usuario_id: userId,
+      total: historial.length 
+    });
+  } catch (error) {
+    console.error('Error en recent-history:', error);
     res.status(500).json({ success: false, error: error.message });
   } finally {
     await session.close();
