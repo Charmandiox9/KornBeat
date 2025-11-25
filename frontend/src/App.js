@@ -1,16 +1,15 @@
-/* eslint-disable */
-// App.js - Adaptado para tu estructura con /principal
+// App.js - Adaptado con Providers Globales
 import React, { useContext, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthContext } from './context/authContext';
-import { useMusicPlayer } from './context/MusicPlayerContext';
+import { MusicPlayerProvider, useMusicPlayer } from './context/MusicPlayerContext';
+import { MusicSearchProvider } from './context/MusicSearchContext';
 import ResumeDialog from './components/ResumeDialog';
 import './App.css';
 
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import UsuarioPage from './pages/UsuarioPage';
 import MusicPage from './pages/MusicPage';
 import Library from './components/Library';
 import Information from './components/Information';
@@ -29,8 +28,8 @@ import PerfilPage from './pages/settings/Perfil';
 import ConfiguracionPage from './pages/settings/Configuracion';
 import EstadisticasPage from './pages/settings/Estadistica';
 
-
-function App() {
+// Componente interno que usa los hooks del MusicPlayer
+function AppContent() {
   const { initialLoading, user } = useContext(AuthContext);
   const { 
     showResumeDialog, 
@@ -65,34 +64,32 @@ function App() {
       console.log('🧹 Limpiando interval de guardado');
       clearInterval(saveInterval);
     };
-  }, [user?._id]);
+  }, [user?._id, saveCurrentPosition]);
 
   // Guardar posición al cambiar estado de reproducción o al cambiar de canción
   useEffect(() => {
     if (user?._id && currentSong?._id) {
-      // Pequeño delay para asegurar que el estado esté completamente actualizado
       const timer = setTimeout(() => {
         console.log('💾 Guardando por cambio de estado/canción:', {
           song: currentSong.title || currentSong.titulo,
           isPlaying
         });
         saveCurrentPosition(user._id);
-      }, 100); // 100ms delay
+      }, 100);
       
       return () => clearTimeout(timer);
     }
-  }, [isPlaying, currentSong?._id, user?._id]);
+  }, [isPlaying, currentSong?._id, user?._id, saveCurrentPosition]);
 
   // Guardar posición al cerrar/desmontar
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (user && user._id && currentSong) {
-        // Usar sendBeacon para garantizar que se envíe antes de cerrar
         const position = {
           songId: currentSong._id,
           position: 0,
           progress: Math.floor((currentTime / (currentSong.duration || 1)) * 100),
-          isPlaying: false, // Siempre pausado al cerrar
+          isPlaying: false,
           timestamp: Date.now()
         };
 
@@ -111,10 +108,6 @@ function App() {
     return <InitialLoading />;
   }
 
-  if (initialLoading) {
-    return <InitialLoading />;
-  }
-
   return (
     <>
       {/* Diálogo de reanudar reproducción */}
@@ -127,29 +120,37 @@ function App() {
       )}
 
       <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/principal" element={<Principal/>} />
-      <Route path="/music" element={<MusicPage />} /> 
-      <Route path="/library" element={<Library />} />
-      <Route path="/information" element={<Information />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/search" element={<SearchBarComponent />} />
-      <Route path="/search-results" element={<SearchBarResultsComponent />} />
-      <Route path='/usuario' element={<UsuarioPage/>}/>
-      
-      <Route path="/biblioteca" element={<Biblioteca />} />
-      <Route path="/favoritos" element={<Favoritos />} />
-      <Route path="/playlist" element={<Playlist />} />
-      <Route path="/albumes" element={<Album />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/principal" element={<Principal />} />
+        <Route path="/music" element={<MusicPage />} /> 
+        <Route path="/library" element={<Library />} />
+        <Route path="/information" element={<Information />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/search" element={<SearchBarComponent />} />
+        <Route path="/search-results" element={<SearchBarResultsComponent />} />
+        
+        <Route path="/biblioteca" element={<Biblioteca />} />
+        <Route path="/favoritos" element={<Favoritos />} />
+        <Route path="/playlist" element={<Playlist />} />
+        <Route path="/albumes" element={<Album />} />
 
-      {/* RUTAS CORREGIDAS con componentes importados */}
-      <Route path="/perfil" element={<PerfilPage />} />
-      <Route path="/configuracion" element={<ConfiguracionPage />} />
-      <Route path="/estadisticas" element={<EstadisticasPage />} />
-    </Routes>
+        <Route path="/perfil" element={<PerfilPage />} />
+        <Route path="/configuracion" element={<ConfiguracionPage />} />
+        <Route path="/estadisticas" element={<EstadisticasPage />} />
+      </Routes>
     </>
+  );
+}
+
+function App() {
+  return (
+    <MusicPlayerProvider>
+      <MusicSearchProvider>
+        <AppContent />
+      </MusicSearchProvider>
+    </MusicPlayerProvider>
   );
 }
 

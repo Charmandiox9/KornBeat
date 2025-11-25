@@ -4,18 +4,29 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 99;
-}
-
-/* Navegación inferior */
-.bottom-navigation {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  padding: 1rem 2rem;
+  z-index: 1000;
   background: rgba(15, 12, 41, 0.95);
   backdrop-filter: blur(10px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Contenedor principal que divide en 2 sectores */
+.bottom-bar-container {
+  display: flex;
+  align-items: stretch;
+  min-height: 80px;
+}
+
+/* Sector 1: Navegación inferior (Izquierda) */
+.bottom-navigation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  flex: 0 0 auto;
+  min-width: 300px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-item {
@@ -30,6 +41,7 @@
   transition: all 0.3s ease;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -38,11 +50,58 @@
   transform: translateY(-2px);
 }
 
+/* Sector 2: Reproductor (Derecha) */
+.bottom-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Ajustes al MiniPlayer para que se integre correctamente */
+.bottom-player .mini-player {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  width: 100%;
+  border-top: none;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
 /* ==================== RESPONSIVE ==================== */
-@media (max-width: 968px) {
+@media (max-width: 1200px) {
   .bottom-navigation {
+    min-width: 250px;
+    padding: 1rem 1.5rem;
+    gap: 0.75rem;
+  }
+
+  .nav-item {
+    padding: 0.5rem 1rem;
+  }
+}
+
+@media (max-width: 968px) {
+  .bottom-bar-container {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .bottom-navigation {
+    min-width: auto;
+    width: 100%;
     padding: 0.75rem 1rem;
     gap: 0.5rem;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    order: 2; /* Navegación abajo */
+  }
+
+  .bottom-player {
+    order: 1; /* Reproductor arriba */
   }
 
   .nav-item {
@@ -55,6 +114,7 @@
   .bottom-navigation {
     flex-wrap: wrap;
     justify-content: space-around;
+    padding: 0.5rem;
   }
 
   .nav-item span {
@@ -63,5 +123,6 @@
 
   .nav-item {
     padding: 0.5rem;
+    min-width: 60px;
   }
 }

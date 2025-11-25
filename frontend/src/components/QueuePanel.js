@@ -8,10 +8,45 @@ const QueuePanel = ({ isOpen, onClose }) => {
     queue,
     currentIndex,
     history,
+    currentSong,
     playFromQueue,
     removeFromQueue,
     clearQueue
   } = useMusicPlayer();
+
+  // Función para obtener la URL de la portada
+  const getCoverUrl = (song) => {
+    if (!song) return null;
+    
+    if (song._id) {
+      return `http://localhost:3002/api/music/covers/${song._id}.png`;
+    }
+    if (song.coverUrl) {
+      return song.coverUrl;
+    }
+    return null;
+  };
+
+  // Función para obtener el título de la canción
+  const getSongTitle = (song) => {
+    return song?.titulo || song?.title || 'Sin título';
+  };
+
+  // Función para obtener los artistas
+  const getArtists = (song) => {
+    if (song?.artistas && Array.isArray(song.artistas)) {
+      return song.artistas.map(a => a.nombre).join(', ');
+    }
+    if (song?.artist) {
+      return song.artist;
+    }
+    return 'Artista desconocido';
+  };
+
+  // Función para obtener la duración
+  const getDuration = (song) => {
+    return song?.duracion_segundos || song?.duration || 0;
+  };
 
   const formatDuration = (seconds) => {
     if (!seconds || seconds < 0) return '0:00';
@@ -19,6 +54,14 @@ const QueuePanel = ({ isOpen, onClose }) => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  console.log('🎵 QueuePanel - Estado:', {
+    isOpen,
+    queueLength: queue.length,
+    currentIndex,
+    currentSong: currentSong ? getSongTitle(currentSong) : 'ninguna',
+    queue: queue.map(s => getSongTitle(s))
+  });
 
   if (!isOpen) return null;
 
@@ -41,16 +84,19 @@ const QueuePanel = ({ isOpen, onClose }) => {
 
         <div className="queue-panel-content">
           {/* Reproduciendo ahora */}
-          {currentIndex >= 0 && queue[currentIndex] && (
+          {currentSong && (
             <div className="queue-section">
               <h4 className="queue-section-title">Reproduciendo ahora</h4>
               <div className="queue-item current-playing">
                 <div className="queue-item-cover">
-                  {queue[currentIndex].album_info?.portada_url ? (
+                  {getCoverUrl(currentSong) ? (
                     <img 
-                      src={queue[currentIndex].album_info.portada_url}
-                      alt={queue[currentIndex].titulo}
+                      src={getCoverUrl(currentSong)}
+                      alt={getSongTitle(currentSong)}
                       className="queue-cover-image"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
                     />
                   ) : (
                     <Music size={20} />
@@ -62,71 +108,84 @@ const QueuePanel = ({ isOpen, onClose }) => {
                   </div>
                 </div>
                 <div className="queue-item-info">
-                  <p className="queue-item-title">{queue[currentIndex].titulo}</p>
-                  <p className="queue-item-artist">
-                    {queue[currentIndex].artistas?.map(a => a.nombre).join(', ')}
-                  </p>
+                  <p className="queue-item-title">{getSongTitle(currentSong)}</p>
+                  <p className="queue-item-artist">{getArtists(currentSong)}</p>
                 </div>
                 <span className="queue-item-duration">
-                  {formatDuration(queue[currentIndex].duracion_segundos)}
+                  {formatDuration(getDuration(currentSong))}
                 </span>
               </div>
             </div>
           )}
 
           {/* Siguiente en cola */}
-          {queue.length > 0 && (
+          {queue.length > 0 ? (
             <div className="queue-section">
               <h4 className="queue-section-title">
                 Siguiente ({queue.length} {queue.length === 1 ? 'canción' : 'canciones'})
               </h4>
               <div className="queue-list">
                 {queue.map((song, index) => {
-                  if (index === currentIndex) return null;
+                  // Saltar la canción actual si está en la cola
+                  if (currentSong && song._id === currentSong._id && index === currentIndex) {
+                    return null;
+                  }
+                  
+                  const isPlayed = index < currentIndex;
                   
                   return (
                     <div
                       key={`${song._id}-${index}`}
-                      className={`queue-item ${index < currentIndex ? 'played' : ''}`}
+                      className={`queue-item ${isPlayed ? 'played' : ''}`}
                     >
                       <div className="queue-item-drag">
                         <GripVertical size={16} className="drag-icon" />
                       </div>
                       
-                      <div className="queue-item-cover">
-                        {song.album_info?.portada_url ? (
+                      <div 
+                        className="queue-item-cover"
+                        onClick={() => playFromQueue(index)}
+                      >
+                        {getCoverUrl(song) ? (
                           <img 
-                            src={song.album_info.portada_url}
-                            alt={song.titulo}
+                            src={getCoverUrl(song)}
+                            alt={getSongTitle(song)}
                             className="queue-cover-image"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
                           />
                         ) : (
                           <Music size={20} />
                         )}
                         <button
-                          onClick={() => playFromQueue(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            playFromQueue(index);
+                          }}
                           className="queue-play-overlay"
-                          aria-label={`Reproducir ${song.titulo}`}
+                          aria-label={`Reproducir ${getSongTitle(song)}`}
                         >
                           <Play size={16} />
                         </button>
                       </div>
 
                       <div className="queue-item-info">
-                        <p className="queue-item-title">{song.titulo}</p>
-                        <p className="queue-item-artist">
-                          {song.artistas?.map(a => a.nombre).join(', ') || 'Artista desconocido'}
-                        </p>
+                        <p className="queue-item-title">{getSongTitle(song)}</p>
+                        <p className="queue-item-artist">{getArtists(song)}</p>
                       </div>
 
                       <span className="queue-item-duration">
-                        {formatDuration(song.duracion_segundos)}
+                        {formatDuration(getDuration(song))}
                       </span>
 
                       <button
-                        onClick={() => removeFromQueue(index)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFromQueue(index);
+                        }}
                         className="queue-item-remove"
-                        aria-label={`Eliminar ${song.titulo} de la cola`}
+                        aria-label={`Eliminar ${getSongTitle(song)} de la cola`}
                       >
                         <X size={16} />
                       </button>
@@ -135,6 +194,16 @@ const QueuePanel = ({ isOpen, onClose }) => {
                 })}
               </div>
             </div>
+          ) : (
+            !currentSong && (
+              <div className="queue-empty">
+                <Music size={48} className="queue-empty-icon" />
+                <p className="queue-empty-title">La cola está vacía</p>
+                <p className="queue-empty-subtitle">
+                  Agrega canciones a la cola para empezar a escuchar
+                </p>
+              </div>
+            )
           )}
 
           {/* Historial reciente */}
@@ -145,39 +214,29 @@ const QueuePanel = ({ isOpen, onClose }) => {
                 {history.slice(0, 10).map((song, index) => (
                   <div key={`history-${song._id}-${index}`} className="queue-item history-item">
                     <div className="queue-item-cover">
-                      {song.album_info?.portada_url ? (
+                      {getCoverUrl(song) ? (
                         <img 
-                          src={song.album_info.portada_url}
-                          alt={song.titulo}
+                          src={getCoverUrl(song)}
+                          alt={getSongTitle(song)}
                           className="queue-cover-image"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
                         />
                       ) : (
                         <Music size={20} />
                       )}
                     </div>
                     <div className="queue-item-info">
-                      <p className="queue-item-title">{song.titulo}</p>
-                      <p className="queue-item-artist">
-                        {song.artistas?.map(a => a.nombre).join(', ')}
-                      </p>
+                      <p className="queue-item-title">{getSongTitle(song)}</p>
+                      <p className="queue-item-artist">{getArtists(song)}</p>
                     </div>
                     <span className="queue-item-duration">
-                      {formatDuration(song.duracion_segundos)}
+                      {formatDuration(getDuration(song))}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Estado vacío */}
-          {queue.length === 0 && history.length === 0 && (
-            <div className="queue-empty">
-              <Music size={48} className="queue-empty-icon" />
-              <p className="queue-empty-title">La cola está vacía</p>
-              <p className="queue-empty-subtitle">
-                Agrega canciones a la cola para empezar a escuchar
-              </p>
             </div>
           )}
         </div>

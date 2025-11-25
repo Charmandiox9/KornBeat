@@ -1,6 +1,8 @@
 import React, { useContext } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { AuthContext } from '../../context/authContext';
+import TopBar from "../../components/TopBar";
+import BottomBar from "../../components/BottomBar";
 import '../../styles/settingscss/Perfil.css';
 
 const PerfilPage = () => {
@@ -20,19 +22,7 @@ const PerfilPage = () => {
 
   return (
     <div className="principal-container">
-      <nav className="principal-nav">
-        <div className="nav-brand">
-          <Link to="/principal">
-            <h2>Mi Aplicación</h2>
-          </Link>
-        </div>
-        <div className="nav-links">
-          <span className="user-info">{user.name || user.email}</span>
-          <Link to="/principal" className="home-link">Área Principal</Link>
-          <button onClick={handleLogout} className="logout-btn">Cerrar Sesión</button>
-        </div>
-      </nav>
-      
+      <TopBar />
       <main className="principal-content">
         <div className="container">
           <h1>Mi Perfil</h1>
@@ -42,15 +32,7 @@ const PerfilPage = () => {
               <p><strong>Nombre:</strong> {user.name || 'No especificado'}</p>
               <p><strong>Email:</strong> {user.email}</p>
               <p><strong>Miembro desde:</strong> {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Fecha no disponible'}</p>
-            </div>
-            
-            <div className="profile-card">
-              <h3>Preferencias Musicales</h3>
-              <p><strong>Géneros favoritos:</strong> Rock, Pop, Electronic</p>
-              <p><strong>Artistas seguidos:</strong> 15</p>
-              <p><strong>Playlists creadas:</strong> 8</p>
-            </div>
-            
+            </div>      
             <div className="profile-actions">
               <button className="card-btn">Editar Perfil</button>
               <button className="card-btn">Cambiar Contraseña</button>
@@ -58,6 +40,7 @@ const PerfilPage = () => {
           </div>
         </div>
       </main>
+      <BottomBar />
     </div>
   );
 };
