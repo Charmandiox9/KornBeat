@@ -18,8 +18,16 @@ const SearchBarComponent = () => {
   const [showCategories, setShowCategories] = useState(false);
 
   const categories = [
-    'Pop', 'Rock', 'Hip-Hop', 'Jazz', 'Electrónica', 
-    'Reggaeton', 'Clásica', 'Country', 'R&B', 'Metal'
+    'Pop',
+    'Rock',
+    'Hip-Hop',
+    'Jazz',
+    'Electrónica',
+    'Reggaeton',
+    'Clásica',
+    'Country',
+    'R&B',
+    'Metal'
   ];
 
   useEffect(() => {

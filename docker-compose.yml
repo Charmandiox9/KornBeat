@@ -168,6 +168,8 @@ services:
       - MINIO_SECRET_KEY=minioadmin
     ports:
       - "3002:3002"
+    volumes:
+      - ./services/music-service/uploads:/app/uploads
     depends_on:
       mongodb:
         condition: service_healthy

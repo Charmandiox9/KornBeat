@@ -75,7 +75,6 @@ const TopBar = () => {
         <button className="navbar-icon-btn" title="Configuración">
           <Settings size={22} />
         </button>
-
       </div>
     </nav>
   );
