@@ -56,9 +56,13 @@ const TopBar = () => {
 
           {showUserMenu && (
             <div className="user-dropdown">
-              <Link to="/usuario" className="dropdown-item">
+              <Link to="/perfil" className="dropdown-item">
                 <User size={18} />
                 Perfil
+              </Link>
+              <Link to="/music" className="dropdown-item">
+                <Menu size={18} />
+                Mi Música
               </Link>
               <hr className="dropdown-divider" />
               <button onClick={handleLogout} className="dropdown-item logout">
@@ -71,6 +75,7 @@ const TopBar = () => {
         <button className="navbar-icon-btn" title="Configuración">
           <Settings size={22} />
         </button>
+
       </div>
     </nav>
   );
