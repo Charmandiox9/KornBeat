@@ -1,13 +1,16 @@
-import React from 'react';
-import { Music, X, ChevronUp, Heart, ListMusic } from 'lucide-react';
+import React, { useContext } from 'react';
+import { Music, X, ChevronUp, ListMusic } from 'lucide-react';
+import { AuthContext } from '../context/authContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import PlayerControls from './PlayerControls';
 import ProgressBar from './ProgressBar';
 import VolumeControl from './VolumeControl';
 import QueuePanel from './QueuePanel';
+import FavoriteButton from './FavoriteButton';
 import '../styles/MiniPlayer.css';
 
 const MiniPlayer = () => {
+  const { user } = useContext(AuthContext);
   const {
     currentSong,
     isExpanded,
@@ -63,13 +66,14 @@ const MiniPlayer = () => {
               </p>
             </div>
 
-            <button
-              className="mini-player-action-btn like-btn"
-              aria-label="Me gusta"
-              title="Me gusta"
-            >
-              <Heart size={18} />
-            </button>
+            {/* 🆕 Botón de favoritos funcional */}
+            {user && currentSong._id && (
+              <FavoriteButton 
+                songId={currentSong._id} 
+                userId={user._id}
+                size="small"
+              />
+            )}
           </div>
 
           {/* Controles de reproducción */}
@@ -84,7 +88,6 @@ const MiniPlayer = () => {
 
           {/* Controles adicionales */}
           <div className="mini-player-extra-controls">
-            {/* 🆕 Botón de cola con onClick */}
             <button
               onClick={toggleQueue}
               className={`mini-player-action-btn queue-btn ${isQueueOpen ? 'active' : ''}`}
@@ -150,7 +153,6 @@ const MiniPlayer = () => {
         )}
       </div>
 
-      {/* 🆕 Panel de cola */}
       <QueuePanel isOpen={isQueueOpen} onClose={toggleQueue} />
     </>
   );

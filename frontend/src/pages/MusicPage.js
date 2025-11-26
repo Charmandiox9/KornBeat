@@ -6,6 +6,7 @@ import MusicPlayer from '../components/MusicPlayer';
 import SkeletonLoader from '../components/SkeletonLoader';
 import toast, { Toaster } from 'react-hot-toast';
 import '../styles/MusicPage.css';
+import TopBar from '../components/TopBar';
 
 const MusicPage = () => {
   const { user, logout } = useContext(AuthContext);
@@ -169,19 +170,8 @@ const MusicPage = () => {
           },
         }}
       />
-      <nav className="music-nav">
-        <div className="nav-brand">
-          <Link to="/principal">
-            <h2>KornBeat</h2>
-          </Link>
-        </div>
-        <div className="nav-links">
-          <span className="user-info">{user.name || user.email}</span>
-          <Link to="/principal" className="home-link">Área Principal</Link>
-          <button onClick={handleLogout} className="logout-btn">Cerrar Sesión</button>
-        </div>
-      </nav>
-
+      
+      <TopBar />
       <main className="music-content">
         <div className="container">
           <h1>🎵 Mi Biblioteca Musical</h1>
