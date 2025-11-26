@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import favoritesService from '../services/favoritesService';
 import '../styles/FavoriteButton.css';
 
-const FavoriteButton = ({ songId, userId, size = 'medium' }) => {
+const FavoriteButton = ({ songId, userId, size = 'medium', onToggle }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -17,9 +17,10 @@ const FavoriteButton = ({ songId, userId, size = 'medium' }) => {
   const checkFavorite = async () => {
     try {
       const response = await favoritesService.checkFavorite(userId, songId);
+      console.log('✅ Check favorite response:', response);
       setIsFavorite(response.isFavorite);
     } catch (error) {
-      console.error('Error al verificar favorito:', error);
+      console.error('❌ Error al verificar favorito:', error);
     }
   };
 
@@ -32,16 +33,24 @@ const FavoriteButton = ({ songId, userId, size = 'medium' }) => {
     setIsAnimating(true);
 
     try {
+      console.log('🔄 Toggle favorito:', { userId, songId, isFavorite });
       const response = await favoritesService.toggleFavorite(userId, songId, isFavorite);
+      
+      console.log('✅ Toggle response:', response);
       
       if (response.success) {
         setIsFavorite(!isFavorite);
         
         // Animación completada
         setTimeout(() => setIsAnimating(false), 600);
+        
+        // 🆕 Llamar callback si existe
+        if (onToggle) {
+          onToggle(!isFavorite);
+        }
       }
     } catch (error) {
-      console.error('Error al toggle favorito:', error);
+      console.error('❌ Error al toggle favorito:', error);
       setIsAnimating(false);
     } finally {
       setIsLoading(false);

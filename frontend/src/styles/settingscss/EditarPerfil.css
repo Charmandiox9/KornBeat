@@ -1,0 +1,91 @@
+/* ==================== CONTENEDOR PRINCIPAL ==================== */
+.edit-profile-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: url('../../images/smooth-purple.jpg') center/cover no-repeat fixed;
+}
+
+/* ==================== TARJETA ==================== */
+.edit-profile-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e5e9;
+  width: 100%;
+  max-width: 500px; 
+  text-align: left;
+}
+
+/* ==================== TÍTULO ==================== */
+.edit-profile-title {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #111111;
+  text-align: center;
+}
+
+/* ==================== FORMULARIO ==================== */
+.edit-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.edit-form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2937; 
+}
+
+/* ==================== INPUTS ==================== */
+.edit-form-group input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  font-size: 1rem;
+  color: #222;               /* Texto oscuro */
+  background: #ffffff;
+  border: 2px solid #4b5563; /* Borde gris oscuro visible */
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.edit-form-group input::placeholder {
+  color: #6b7280; /* Gris medio */
+}
+
+/* ==================== FOCUS ==================== */
+.edit-form-group input:focus {
+  border-color: #001f5c;
+  box-shadow: 0 0 0 3px rgba(0, 31, 92, 0.18);
+}
+
+/* ==================== BOTÓN ==================== */
+.edit-profile-btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: #3f35c3;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.edit-profile-btn:hover {
+  background: #000;
+}
+
+/* ==================== MENSAJE DE ERROR ==================== */
+.edit-field-error {
+  margin-top: 4px;
+  color: #dc2626;
+  font-size: 0.8rem;
+}
+
