@@ -10,7 +10,7 @@ import "../styles/Favoritos.css";
 
 const Favoritos = () => {
   const { user } = useContext(AuthContext);
-  const { playSong, currentSong } = useMusicPlayer();
+  const { playNow, addMultipleToQueue, clearQueue, playFromQueue, currentSong } = useMusicPlayer();
   const [favorites, setFavorites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -27,8 +27,23 @@ const Favoritos = () => {
       setIsLoading(true);
       const response = await favoritesService.getFavorites(user._id, page, 20);
       
+      console.log('🔍 Respuesta de favoritos:', response);
+      
       if (response.success) {
-        const newFavorites = response.favorites.map(fav => fav.song);
+        // 🔧 Manejar diferentes formatos de respuesta
+        let newFavorites = [];
+        
+        if (response.favorites && Array.isArray(response.favorites)) {
+          // Extraer las canciones del array de favoritos
+          newFavorites = response.favorites.map(fav => {
+            // Puede ser fav.song o directamente fav si ya es una canción
+            return fav.song || fav;
+          });
+        } else if (response.data && Array.isArray(response.data)) {
+          newFavorites = response.data;
+        }
+        
+        console.log('🎵 Canciones procesadas:', newFavorites);
         
         if (page === 1) {
           setFavorites(newFavorites);
@@ -39,23 +54,29 @@ const Favoritos = () => {
         setHasMore(response.total > page * 20);
         
         if (page === 1) {
-          toast.success(`❤️ ${response.total} favoritos cargados`);
+          toast.success(`❤️ ${response.total || newFavorites.length} favoritos cargados`);
         }
+      } else {
+        console.error('❌ Error en respuesta:', response);
+        toast.error('❌ Error al cargar favoritos');
       }
     } catch (error) {
-      console.error('Error al cargar favoritos:', error);
+      console.error('❌ Error al cargar favoritos:', error);
       toast.error('❌ Error al cargar favoritos');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSongSelect = (song) => {
-    playSong(song);
+  const handleSongSelect = (song, index) => {
+    // Reproducir desde este índice en adelante
+    const songsFromIndex = favorites.slice(index);
+    clearQueue();
+    addMultipleToQueue(songsFromIndex);
+    playFromQueue(0);
   };
 
-  const handleRemoveFavorite = async (songId) => {
-    // La eliminación se maneja en el FavoriteButton
+  const handleRemoveFavorite = () => {
     // Recargar la lista después de eliminar
     setTimeout(() => {
       setPage(1);
@@ -64,9 +85,23 @@ const Favoritos = () => {
   };
 
   const formatDuration = (seconds) => {
+    if (!seconds || seconds < 0) return '0:00';
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // 🔧 Función auxiliar para obtener datos de la canción (compatibilidad español/inglés)
+  const getSongData = (song) => {
+    return {
+      id: song._id || song.id,
+      title: song.titulo || song.title || 'Sin título',
+      artist: song.artistas?.map(a => a.nombre).join(', ') || song.artist || 'Artista desconocido',
+      album: song.album_info?.titulo || song.album || '',
+      genre: song.categorias?.[0] || song.genre || '',
+      duration: song.duracion_segundos || song.duration || 0,
+      coverUrl: song._id ? `http://localhost:3002/api/music/covers/${song._id}.png` : (song.coverUrl || null)
+    };
   };
 
   return (
@@ -93,53 +128,65 @@ const Favoritos = () => {
         ) : (
           <>
             <div className="fav-list">
-              {favorites.map((song, index) => (
-                <div 
-                  key={song._id}
-                  className={`fav-item ${currentSong?._id === song._id ? 'active' : ''}`}
-                  onClick={() => handleSongSelect(song)}
-                >
-                  <div className="fav-number">{index + 1}</div>
-                  
-                  {song.coverUrl && (
-                    <div className="fav-cover">
-                      <img src={song.coverUrl} alt={song.title} />
+              {favorites.map((song, index) => {
+                const songData = getSongData(song);
+                const isPlaying = currentSong?._id === songData.id;
+
+                return (
+                  <div 
+                    key={songData.id}
+                    className={`fav-item ${isPlaying ? 'active' : ''}`}
+                    onClick={() => handleSongSelect(song, index)}
+                  >
+                    <div className="fav-number">{index + 1}</div>
+                    
+                    {songData.coverUrl && (
+                      <div className="fav-cover">
+                        <img 
+                          src={songData.coverUrl} 
+                          alt={songData.title}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="fav-info">
+                      <h4 className="fav-title">{songData.title}</h4>
+                      <p className="fav-artist">{songData.artist}</p>
+                      {songData.album && (
+                        <span className="fav-album">📀 {songData.album}</span>
+                      )}
                     </div>
-                  )}
-                  
-                  <div className="fav-info">
-                    <h4 className="fav-title">{song.title}</h4>
-                    <p className="fav-artist">{song.artist}</p>
-                    {song.album && (
-                      <span className="fav-album">📀 {song.album}</span>
-                    )}
+                    
+                    <div className="fav-meta">
+                      {songData.genre && (
+                        <span className="fav-genre">🎭 {songData.genre}</span>
+                      )}
+                      <span className="fav-duration">⏱️ {formatDuration(songData.duration)}</span>
+                    </div>
+                    
+                    <div className="fav-actions" onClick={(e) => e.stopPropagation()}>
+                      <FavoriteButton 
+                        songId={songData.id} 
+                        userId={user._id}
+                        size="medium"
+                        onToggle={handleRemoveFavorite}
+                      />
+                      <button 
+                        className="fav-play-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSongSelect(song, index);
+                        }}
+                      >
+                        {isPlaying ? '⏸️' : '▶️'}
+                      </button>
+                    </div>
                   </div>
-                  
-                  <div className="fav-meta">
-                    {song.genre && (
-                      <span className="fav-genre">🎭 {song.genre}</span>
-                    )}
-                    <span className="fav-duration">⏱️ {formatDuration(song.duration)}</span>
-                  </div>
-                  
-                  <div className="fav-actions">
-                    <FavoriteButton 
-                      songId={song._id} 
-                      userId={user._id}
-                      size="medium"
-                    />
-                    <button 
-                      className="fav-play-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSongSelect(song);
-                      }}
-                    >
-                      {currentSong?._id === song._id ? '⏸️' : '▶️'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {hasMore && (

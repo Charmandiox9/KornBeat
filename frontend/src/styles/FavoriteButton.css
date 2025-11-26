@@ -138,6 +138,16 @@
   flex-shrink: 0;
 }
 
+/* 🆕 Integración con SearchBarResults */
+.song-actions .favorite-button {
+  margin: 0;
+}
+
+.song-actions > div {
+  display: flex;
+  align-items: center;
+}
+
 /* Modo oscuro / claro */
 @media (prefers-color-scheme: light) {
   .favorite-button {

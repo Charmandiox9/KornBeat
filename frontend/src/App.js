@@ -25,8 +25,7 @@ import Album from './pages/Album';
 import Principal from './pages/Principal';
 
 import PerfilPage from './pages/settings/Perfil';
-import ConfiguracionPage from './pages/settings/Configuracion';
-import EstadisticasPage from './pages/settings/Estadistica';
+import EditarPerfilPage from "./pages/settings/EditarPerfilPage";
 
 // Componente interno que usa los hooks del MusicPlayer
 function AppContent() {
@@ -137,8 +136,7 @@ function AppContent() {
         <Route path="/albumes" element={<Album />} />
 
         <Route path="/perfil" element={<PerfilPage />} />
-        <Route path="/configuracion" element={<ConfiguracionPage />} />
-        <Route path="/estadisticas" element={<EstadisticasPage />} />
+        <Route path="/editar-perfil" element={<EditarPerfilPage />} />
       </Routes>
     </>
   );

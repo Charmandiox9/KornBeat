@@ -273,6 +273,7 @@
   transition: all 0.2s ease;
   box-sizing: border-box;
   background-color: #fafafa;
+  color: #131313 !important;
 }
 
 .form-group input:focus,
@@ -300,11 +301,11 @@
 
 .username-input:focus {
   background-color: white;
-  border-color: #001f5c;
+  border-color: #1b1b1c;
 }
 
 .input-help {
-  color: #6b7280;
+  color: #212121;
   font-size: 0.75rem;
   margin-top: 0.25rem;
   display: block;
@@ -324,7 +325,7 @@
 
 /* Input de fecha */
 input[type="date"] {
-  color: #4a5568;
+  color: #1c1c1d;
   background-color: #fafafa;
 }
 

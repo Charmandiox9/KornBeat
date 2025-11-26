@@ -5,6 +5,7 @@
   flex-direction: column;
   position: relative;
   background: url('../../images/smooth-purple.jpg') center/cover no-repeat fixed;
+  color: #141516;
 }
 
 .profile-info {
@@ -20,6 +21,9 @@
   padding: 2rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid #e1e5e9;
+  width: 100%;
+  max-width: 500px; 
+  text-align: left;
 }
 
 .profile-card h3 {
@@ -41,11 +45,9 @@
 }
 
 .profile-actions {
-  grid-column: 1 / -1;
+  margin-top: 2rem;
   display: flex;
-  gap: 1rem;
   justify-content: center;
-  margin-top: 1rem;
 }
 
 .profile-actions .card-btn {
