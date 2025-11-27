@@ -29,6 +29,10 @@ const getPlaylistsCollection = () => {
   return mongoose.connection.db.collection('playlists');
 };
 
+const getSongsCollection = () => {
+  return mongoose.connection.db.collection('canciones'); // o 'songs' según tu BD
+};
+
 // ========== ENDPOINTS DE PLAYLISTS ==========
 
 // Obtener todas las playlists de un usuario
@@ -342,102 +346,171 @@ router.delete('/playlists/:playlistId', async (req, res) => {
   }
 });
 
-// Agregar canción a playlist
-router.post('/playlists/:playlistId/songs', async (req, res) => {
+const getSongById = async (songId) => {
   try {
-    const { playlistId } = req.params;
-    const { cancion_id, userId } = req.body;
-
-    if (!isValidObjectId(playlistId) || !isValidObjectId(cancion_id)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'IDs inválidos' 
+    // Intentar en 'canciones' primero
+    let cancion = await mongoose.connection.db.collection('canciones').findOne({
+      _id: new mongoose.Types.ObjectId(songId)
+    });
+    
+    // Si no se encuentra, buscar en 'songs'
+    if (!cancion) {
+      cancion = await mongoose.connection.db.collection('songs').findOne({
+        _id: new mongoose.Types.ObjectId(songId)
       });
     }
+    
+    return cancion;
+  } catch (error) {
+    console.error('Error al buscar canción:', error);
+    return null;
+  }
+};
 
-    // Verificar que la canción existe
-    const song = await Song.findById(cancion_id);
-    if (!song) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Canción no encontrada' 
+// ✅ Agregar canción a playlist
+router.post('/playlists/:playlistId/songs/:songId', async (req, res) => {
+  try {
+    const { playlistId, songId } = req.params;
+    const { userId } = req.body;
+
+    console.log('📝 Agregando canción a playlist:', { playlistId, songId, userId });
+
+    if (!isValidObjectId(playlistId) || !isValidObjectId(songId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'IDs inválidos'
       });
     }
 
     const playlistsCollection = getPlaylistsCollection();
 
+    // 1. Verificar que la playlist existe
     const playlist = await playlistsCollection.findOne({
       _id: new mongoose.Types.ObjectId(playlistId)
     });
 
     if (!playlist) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Playlist no encontrada' 
+      console.log('❌ Playlist no encontrada:', playlistId);
+      return res.status(404).json({
+        success: false,
+        message: 'Playlist no encontrada'
       });
     }
 
-    // Verificar si la canción ya está en la playlist
-    const songExists = playlist.canciones.some(
-      c => c.cancion_id.toString() === cancion_id
+    console.log('✅ Playlist encontrada:', playlist.titulo);
+
+    // 2. Verificar permisos
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const isOwner = playlist.usuario_creador_id.equals(userObjectId);
+    const isCollaborator = playlist.es_colaborativa === true;
+
+    if (!isOwner && !isCollaborator) {
+      console.log('❌ Usuario sin permisos');
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para modificar esta playlist'
+      });
+    }
+
+    // 3. Verificar que la canción no esté ya en la playlist
+    const existe = playlist.canciones?.some(
+      c => c.cancion_id.toString() === songId
     );
 
-    if (songExists) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'La canción ya está en la playlist' 
+    if (existe) {
+      console.log('⚠️ La canción ya está en la playlist');
+      return res.status(400).json({
+        success: false,
+        message: 'La canción ya está en la playlist'
       });
     }
 
-    // Crear objeto de canción para la playlist
+    // 4. Obtener información de la canción (buscar en ambas colecciones)
+    console.log('🔍 Buscando canción en ambas colecciones...');
+    const cancion = await getSongById(songId);
+
+    if (!cancion) {
+      console.log('❌ Canción no encontrada en ninguna colección:', songId);
+      return res.status(404).json({
+        success: false,
+        message: 'Canción no encontrada'
+      });
+    }
+
+    console.log('🎵 Canción encontrada:', cancion.titulo || cancion.title);
+
+    // 5. Preparar objeto de canción
+    const duracionSegundos = cancion.duracion_segundos || cancion.duration || 0;
+    const titulo = cancion.titulo || cancion.title || 'Sin título';
+    const artistas = cancion.artistas || (cancion.artist ? [{ nombre: cancion.artist }] : []);
+
     const nuevaCancion = {
-      cancion_id: new mongoose.Types.ObjectId(cancion_id),
-      titulo: song.title,
-      artistas: [song.artist],
-      duracion: song.duration,
-      orden: playlist.canciones.length + 1,
+      cancion_id: new mongoose.Types.ObjectId(songId),
+      titulo: titulo,
+      artistas: artistas,
+      duracion: duracionSegundos,
+      orden: (playlist.canciones?.length || 0) + 1,
       fecha_agregada: new Date(),
-      agregada_por_usuario_id: userId ? new mongoose.Types.ObjectId(userId) : playlist.usuario_creador_id
+      agregada_por_usuario_id: new mongoose.Types.ObjectId(userId)
     };
 
-    // Actualizar playlist
-    const result = await playlistsCollection.findOneAndUpdate(
+    console.log('💾 Agregando canción a BD...');
+
+    // 6. Actualizar playlist
+    const result = await playlistsCollection.updateOne(
       { _id: new mongoose.Types.ObjectId(playlistId) },
-      { 
+      {
         $push: { canciones: nuevaCancion },
         $inc: { 
           total_canciones: 1,
-          duracion_total: song.duration || 0
+          duracion_total: duracionSegundos
         },
         $set: { fecha_actualizacion: new Date() }
-      },
-      { returnDocument: 'after' }
+      }
     );
+
+    if (result.modifiedCount === 0) {
+      console.error('⚠️ No se modificó la playlist');
+      return res.status(500).json({
+        success: false,
+        message: 'No se pudo agregar la canción'
+      });
+    }
+
+    console.log('✅ Canción agregada exitosamente');
 
     res.json({
       success: true,
-      message: 'Canción agregada a la playlist',
-      playlist: result.value
+      message: `Canción "${titulo}" agregada a la playlist`,
+      playlist: {
+        _id: playlistId,
+        total_canciones: (playlist.total_canciones || 0) + 1,
+        duracion_total: (playlist.duracion_total || 0) + duracionSegundos
+      }
     });
+
   } catch (error) {
-    console.error('Error al agregar canción:', error);
-    res.status(500).json({ 
-      success: false, 
+    console.error('❌ Error al agregar canción:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      success: false,
       message: 'Error al agregar canción',
-      error: error.message 
+      error: error.message
     });
   }
 });
 
-// Eliminar canción de playlist
-router.delete('/playlists/:playlistId/songs/:cancionId', async (req, res) => {
+// ✅ Eliminar canción de playlist
+router.delete('/playlists/:playlistId/songs/:songId', async (req, res) => {
   try {
-    const { playlistId, cancionId } = req.params;
+    const { playlistId, songId } = req.params;
 
-    if (!isValidObjectId(playlistId) || !isValidObjectId(cancionId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'IDs inválidos' 
+    console.log('🗑️ Eliminando canción de playlist:', { playlistId, songId });
+
+    if (!isValidObjectId(playlistId) || !isValidObjectId(songId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'IDs inválidos'
       });
     }
 
@@ -448,55 +521,61 @@ router.delete('/playlists/:playlistId/songs/:cancionId', async (req, res) => {
     });
 
     if (!playlist) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Playlist no encontrada' 
+      return res.status(404).json({
+        success: false,
+        message: 'Playlist no encontrada'
       });
     }
 
-    // Buscar la canción para obtener su duración
-    const cancionAEliminar = playlist.canciones.find(
-      c => c.cancion_id.toString() === cancionId
+    const cancionAEliminar = playlist.canciones?.find(
+      c => c.cancion_id.toString() === songId
     );
 
     if (!cancionAEliminar) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Canción no encontrada en la playlist' 
+      return res.status(404).json({
+        success: false,
+        message: 'Canción no encontrada en la playlist'
       });
     }
 
-    // Eliminar canción
-    const cancionesFiltradas = playlist.canciones
-      .filter(c => c.cancion_id.toString() !== cancionId)
-      .map((c, index) => ({ ...c, orden: index + 1 })); // Reordenar
+    const duracionARestar = cancionAEliminar.duracion || 0;
 
-    const result = await playlistsCollection.findOneAndUpdate(
+    const result = await playlistsCollection.updateOne(
       { _id: new mongoose.Types.ObjectId(playlistId) },
-      { 
-        $set: { 
-          canciones: cancionesFiltradas,
-          fecha_actualizacion: new Date()
+      {
+        $pull: { 
+          canciones: { 
+            cancion_id: new mongoose.Types.ObjectId(songId) 
+          } 
         },
         $inc: { 
           total_canciones: -1,
-          duracion_total: -(cancionAEliminar.duracion || 0)
-        }
-      },
-      { returnDocument: 'after' }
+          duracion_total: -duracionARestar
+        },
+        $set: { fecha_actualizacion: new Date() }
+      }
     );
+
+    if (result.modifiedCount === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'No se pudo eliminar la canción'
+      });
+    }
+
+    console.log('✅ Canción eliminada exitosamente');
 
     res.json({
       success: true,
-      message: 'Canción eliminada de la playlist',
-      playlist: result.value
+      message: 'Canción eliminada de la playlist'
     });
+
   } catch (error) {
-    console.error('Error al eliminar canción:', error);
-    res.status(500).json({ 
-      success: false, 
+    console.error('❌ Error al eliminar canción:', error);
+    res.status(500).json({
+      success: false,
       message: 'Error al eliminar canción',
-      error: error.message 
+      error: error.message
     });
   }
 });

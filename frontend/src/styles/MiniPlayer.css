@@ -4,6 +4,17 @@
   width: 100%;
   background: transparent;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 100;
+  
+}
+
+.mini-player-song-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  position: relative; /* ← Importante para que el dropdown se posicione correctamente */
 }
 
 .mini-player.expanded {
@@ -48,12 +59,7 @@
 }
 
 /* Song Info Section */
-.mini-player-song-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
+
 
 .song-cover-mini {
   width: 56px;
@@ -324,5 +330,32 @@
 
   .mini-player-expanded-info {
     padding-top: 12px;
+  }
+}
+
+/* En MiniPlayer.css */
+
+/* Contenedor de botones de acción rápida */
+.mini-player-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* Ajustar si es necesario en modo expandido */
+.mini-player.expanded .mini-player-quick-actions {
+  gap: 12px;
+}
+
+/* Asegurar que los dropdowns se posicionen bien */
+.mini-player-song-info {
+  position: relative; /* Importante para el dropdown de playlist */
+}
+
+/* Ajustar espaciado si se ve apretado */
+@media (max-width: 768px) {
+  .mini-player-quick-actions {
+    gap: 4px;
   }
 }
