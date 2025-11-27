@@ -47,9 +47,8 @@ const EditarPerfilPage = () => {
   };
 
   return (
-    <div className="principal-container">
+    <div className="principal-containe2">
       <TopBar />
-
       <main className="principal-content">
         <div className="edit-profile-wrapper">
           <div className="edit-profile-card">

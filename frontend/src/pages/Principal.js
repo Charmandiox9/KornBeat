@@ -1,9 +1,9 @@
+// Principal.js
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
 import { useMusicSearch } from '../context/MusicSearchContext';
 import {useMusicPlayer } from '../context/MusicPlayerContext';
-import QueuePanel from "../components/QueuePanel";
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
@@ -18,7 +18,7 @@ const Principal = () => {
   const { playNow, addMultipleToQueue, clearQueue, playFromQueue } = useMusicPlayer();
   const navigate = useNavigate();
 
-  const [notifications] = useState(3);
+  const [notifications] = useState(1);
   const [topGlobal, setTopGlobal] = useState([]);
   const [topCountry, setTopCountry] = useState([]);
   const [forYou, setForYou] = useState([]);
@@ -346,7 +346,7 @@ const Principal = () => {
   return (
     <div className="principal-wrapper">
       <TopBar notifications={notifications} />
-      <main className="principal-content">
+      <main className="principal-contents">
         {hasSearchResults && (
           <div className="search-results-section">
             <SearchBarResultsComponent />
@@ -363,12 +363,15 @@ const Principal = () => {
                 padding: '32px',
                 color: 'white',
                 marginBottom: '32px',
-                textAlign: 'center'
+                textAlign: 'center',
+                maxWidth: '600px',
+                marginLeft: 'auto',
+                marginRight: 'auto'
               }}>
                 <h2 style={{ fontSize: '28px', marginBottom: '12px' }}>
                   👋 ¡Bienvenido a tu app de música!
                 </h2>
-                <p style={{ fontSize: '16px', opacity: 0.9 }}>
+                <p style={{ fontSize: '16px', color: 'white', opacity: 1 }}>
                   Empieza a escuchar música para recibir recomendaciones personalizadas
                 </p>
               </section>
@@ -475,10 +478,11 @@ const Principal = () => {
                             ? 'rgba(220, 38, 38, 0.9)' 
                             : 'rgba(139, 92, 246, 0.9)',
                           color: '#fff',
-                          padding: '4px 8px',
+                          padding: '6px 10px',
                           borderRadius: '4px',
                           fontSize: '11px',
-                          fontWeight: 'bold'
+                          fontWeight: 'bold',
+                          letterSpacing: '0.5px'
                         }}>
                           {getEmergingEmoji(song.oyentes_artista)} EMERGENTE
                         </div>
@@ -488,24 +492,46 @@ const Principal = () => {
                           right: '8px',
                           backgroundColor: 'rgba(0, 0, 0, 0.8)',
                           color: '#fff',
-                          padding: '4px 8px',
+                          padding: '5px 10px',
                           borderRadius: '4px',
-                          fontSize: '10px'
+                          fontSize: '10px',
+                          letterSpacing: '0.3px'
                         }}>
                           {formatOyentes(song.oyentes_artista)} oyentes
                         </div>
                       </div>
-                      <p className="card-artist" style={{ color: '#888', fontSize: '14px', marginTop: '8px' }}>
+                      <p className="card-artist" style={{ 
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontSize: '14px', 
+                        marginTop: '12px',
+                        lineHeight: '1.4'
+                      }}>
                         {song.artista_nombre || song.artista}
                       </p>
-                      <p className="card-title" style={{ fontWeight: 'bold' }}>
+                      <p className="card-title" style={{ 
+                        fontWeight: 'bold',
+                        marginTop: '6px',
+                        lineHeight: '1.3',
+                        color: '#fff'
+                      }}>
                         {song.titulo}
                       </p>
-                      <p style={{ color: '#666', fontSize: '11px', marginTop: '4px' }}>
+                      <p style={{ 
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontSize: '11px', 
+                        marginTop: '8px',
+                        lineHeight: '1.4'
+                      }}>
                         {(song.reproducciones / 1000).toFixed(0)}k reproducciones
                       </p>
                       {song.generos && song.generos.length > 0 && (
-                        <p style={{ color: '#999', fontSize: '10px', marginTop: '2px', fontStyle: 'italic' }}>
+                        <p style={{ 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '10px', 
+                          marginTop: '6px', 
+                          fontStyle: 'italic',
+                          lineHeight: '1.4'
+                        }}>
                           {song.generos.slice(0, 2).join(', ')}
                         </p>
                       )}

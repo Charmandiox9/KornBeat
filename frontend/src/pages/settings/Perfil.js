@@ -23,7 +23,7 @@ const PerfilPage = () => {
   return (
     <div className="principal-container">
       <TopBar />
-      <main className="principal-content">
+      <main className="principal-content1">
         <div className="container">
           <h1>Mi Perfil</h1>
             <div className="profile-info">

@@ -1,20 +1,20 @@
-/* Estilos específicos para la página de Perfil */
-.principal-container{
+/* Contenedor centrado */
+.principal-container {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  position: relative;
+  flex-direction: column; /* ← IMPORTANTE */
   background: url('../../images/smooth-purple.jpg') center/cover no-repeat fixed;
-  color: #141516;
 }
 
-.profile-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin-top: 2rem;
+.principal-content1 {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* centra horizontal */
+  padding-top: 80px; /* evita que TopBar tape */
+  padding-bottom: 80px; /* deja espacio para BottomBar */
 }
 
+/* Card centrada */
 .profile-card {
   background: #fff;
   border-radius: 12px;
@@ -22,7 +22,7 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid #e1e5e9;
   width: 100%;
-  max-width: 500px; 
+  max-width: 500px;
   text-align: left;
 }
 
@@ -39,18 +39,14 @@
   line-height: 1.6;
 }
 
-.profile-card strong {
-  color: #2c3e50;
-  font-weight: 600;
-}
-
+/* Botón dentro del card */
 .profile-actions {
   margin-top: 2rem;
   display: flex;
   justify-content: center;
 }
 
-.profile-actions .card-btn {
+.card-btn {
   background: #6c5ce7;
   color: white;
   border: none;
@@ -61,19 +57,17 @@
   transition: background-color 0.2s;
 }
 
-.profile-actions .card-btn:hover {
+.card-btn:hover {
   background: #5a4fcf;
 }
 
-/* Responsive para móviles */
+/* Responsive */
 @media (max-width: 768px) {
-  .profile-info {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  .profile-card {
+    width: 90%;
   }
   
-  .profile-actions {
-    flex-direction: column;
-    align-items: center;
+  .profile-info {
+    padding: 1rem;
   }
 }

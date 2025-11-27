@@ -1,22 +1,27 @@
 /* ==================== CONTENEDOR PRINCIPAL ==================== */
-.edit-profile-wrapper {
+.principal-containe2 {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
-  position: relative;
+  flex-direction: column; /* ← IMPORTANTE */
   background: url('../../images/smooth-purple.jpg') center/cover no-repeat fixed;
+}
+
+.principal-content{
+  width: 100%;
+  display: flex;
+  justify-content: center; /* centra horizontal */
+  padding-top: 80px; /* evita que TopBar tape */
+  padding-bottom: 80px; /* deja espacio para BottomBar */
 }
 
 /* ==================== TARJETA ==================== */
 .edit-profile-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e1e5e9;
+  background: white;
   width: 100%;
-  max-width: 500px; 
-  text-align: left;
+  max-width: 500px;
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
 }
 
 /* ==================== TÍTULO ==================== */
@@ -24,7 +29,7 @@
   font-size: 1.7rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #111111;
+  color: #111827;
   text-align: center;
 }
 
@@ -38,7 +43,7 @@
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1f2937; 
+  color: #1f2937;
 }
 
 /* ==================== INPUTS ==================== */
@@ -46,16 +51,17 @@
   width: 100%;
   padding: 0.9rem 1rem;
   font-size: 1rem;
-  color: #222;               /* Texto oscuro */
+  color: #222;
   background: #ffffff;
-  border: 2px solid #4b5563; /* Borde gris oscuro visible */
+  border: 2px solid #4b5563;
   border-radius: 8px;
   outline: none;
   transition: all 0.25s ease;
+  box-sizing: border-box;
 }
 
 .edit-form-group input::placeholder {
-  color: #6b7280; /* Gris medio */
+  color: #6b7280;
 }
 
 /* ==================== FOCUS ==================== */
@@ -68,7 +74,26 @@
 .edit-profile-btn {
   width: 100%;
   padding: 0.9rem 1.5rem;
-  background: #3f35c3;
+  background: #001f5c;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.edit-profile-btn:hover {
+  background: #000;
+}
+
+/* ==================== BOTÓN VOLVER ==================== */
+.back-btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: #6b7280;
   color: white;
   border: none;
   border-radius: 10px;
@@ -78,8 +103,8 @@
   transition: 0.3s ease;
 }
 
-.edit-profile-btn:hover {
-  background: #000;
+.back-btn:hover {
+  background: #4b5563;
 }
 
 /* ==================== MENSAJE DE ERROR ==================== */
@@ -87,5 +112,16 @@
   margin-top: 4px;
   color: #dc2626;
   font-size: 0.8rem;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .edit-profile-wrapper {
+    padding: 1rem;
+  }
+  
+  .edit-profile-card {
+    padding: 2rem 1.5rem;
+  }
 }
 
