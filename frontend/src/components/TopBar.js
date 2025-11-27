@@ -124,42 +124,9 @@ const TopBar = ({ notifications = 0 }) => {
           )}
         </div>
         
-        {/* ← ACTUALIZADO: Menú de tema con funcionalidad real */}
-        <div className="settings-menu-container">
-          <button
-            className="navbar-icon-btn"
-            title="Cambiar tema"
-            onClick={() => {
-              setShowSettingsMenu(!showSettingsMenu);
-              setShowUserMenu(false);
-              setShowNotificationsMenu(false);
-            }}
-          >
-            {isDark ? <Moon size={22} /> : <Sun size={22} />}
-          </button>
-
-          {showSettingsMenu && (
-            <div className="user-dropdown theme-dropdown">
-              <button 
-                className={`dropdown-item theme-option ${theme === 'light' ? 'active' : ''}`}
-                onClick={() => handleThemeChange('light')}
-              >
-                <Sun size={18} />
-                <span>Modo Claro</span>
-                {theme === 'light' && <span className="checkmark">✓</span>}
-              </button>
-
-              <button 
-                className={`dropdown-item theme-option ${theme === 'dark' ? 'active' : ''}`}
-                onClick={() => handleThemeChange('dark')}
-              >
-                <Moon size={18} />
-                <span>Modo Oscuro</span>
-                {theme === 'dark' && <span className="checkmark">✓</span>}
-              </button>
-            </div>
-          )}
-        </div>
+        <button className="navbar-icon-btn" title="Configuración">
+          <Settings size={22} />
+        </button>
       </div>
     </nav>
   );

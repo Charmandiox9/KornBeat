@@ -6,6 +6,7 @@ const redis = require('redis');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs').promises;
+const { exec } = require('child_process');
 
 const { initializeBucket, minioClient, bucketName } = require('./minio');
 const cacheHelper = require('./utils/cacheHelper');
@@ -44,7 +45,22 @@ redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
   }
 })();
 
-const isRedisAvailable = () => redisClient && redisClient.isOpen;
+const isRedisAvailable = () => {
+  try {
+    if (!redisClient) {
+      console.error('❌ Redis client no está inicializado.');
+      return false;
+    }
+    if (!redisClient.isOpen) {
+      console.error('❌ Redis client no está conectado.');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('❌ Error al verificar disponibilidad de Redis:', error);
+    return false;
+  }
+};
 
 // ============= FUNCIONES DE CACHE =============
 const cacheSong = async (songId, songData) => {
@@ -281,6 +297,89 @@ async function importMusicOnStartup() {
   }
 }
 
+async function importMusicInBatches(batchSize = 10) {
+  try {
+    const { parseFile } = await import('music-metadata');
+
+    await fs.access(musicDir);
+    const files = await fs.readdir(musicDir);
+    const mp3Files = files.filter(file => file.toLowerCase().endsWith('.mp3'));
+
+    console.log(`📁 Encontrados ${mp3Files.length} archivos MP3`);
+
+    for (let i = 0; i < mp3Files.length; i += batchSize) {
+      const batch = mp3Files.slice(i, i + batchSize);
+      console.log(`🔄 Procesando lote ${i / batchSize + 1} de ${Math.ceil(mp3Files.length / batchSize)}`);
+
+      await Promise.all(batch.map(async (file) => {
+        const filePath = path.join(musicDir, file);
+
+        const exists = await Song.findOne({ fileName: file });
+        if (exists) {
+          console.log(`⏭️  Ya existe: ${file}`);
+          return;
+        }
+
+        try {
+          const minioExists = await minioClient.statObject(bucketName, file)
+            .then(() => true)
+            .catch(() => false);
+
+          if (!minioExists) {
+            await minioClient.fPutObject(bucketName, file, filePath);
+            console.log(`☁️  Subido a MinIO: ${file}`);
+          }
+        } catch (err) {
+          console.error(`❌ Error subiendo a MinIO: ${file}`, err.message);
+          return;
+        }
+
+        let title = file.replace(/\.[^/.]+$/, '');
+        let artist = 'Desconocido';
+        let album = '';
+        let genre = '';
+        let duration = 0;
+
+        try {
+          const metadata = await parseFile(filePath);
+          title = metadata.common.title || title;
+          artist = metadata.common.artist || artist;
+          album = metadata.common.album || '';
+          genre = metadata.common.genre?.[0] || '';
+          duration = Math.round(metadata.format.duration || 0);
+        } catch (metaErr) {
+          console.warn(`⚠️  No se pudieron leer metadatos de: ${file}`);
+        }
+
+        const fileStats = await fs.stat(filePath);
+        const fileSize = fileStats.size;
+
+        const song = new Song({
+          title,
+          artist,
+          album,
+          genre,
+          duration,
+          fileName: file,
+          fileSize,
+          playCount: 0
+        });
+
+        await song.save();
+        console.log(`✅ Registrada: ${title} - ${artist}`);
+      }));
+    }
+
+    console.log('🎉 Importación completada');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.log('⚠️  La carpeta uploads/music no existe.');
+    } else {
+      console.error('❌ Error al importar música:', err.message);
+    }
+  }
+}
+
 // ============= CONEXIÓN A MONGODB E INICIALIZACIÓN =============
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -292,12 +391,13 @@ mongoose.connect(process.env.MONGODB_URI, {
   // ⭐ IMPORTANTE: Exponer la conexión de la base de datos
   app.locals.db = mongoose.connection.db;
   console.log('✅ Base de datos disponible en app.locals.db');
-  
   try {
     await initializeBucket();
     console.log('✅ MinIO inicializado');
-    
-    await importMusicOnStartup();
+    // Usar la nueva función de importación por lotes
+    importMusicInBatches()
+      .then(() => console.log('🎉 Poblado de música completado'))
+      .catch(err => console.error('❌ Error en poblado de música:', err));
   } catch (err) {
     console.error('❌ Error en inicialización:', err);
   }
@@ -348,6 +448,32 @@ app.post('/api/music/admin/sync-counters', async (req, res) => {
     });
   }
 });
+
+// Ejecutar scripts de inicialización automáticamente
+const runInitializationScripts = () => {
+  console.log('🔄 Ejecutando scripts de inicialización...');
+
+  const scripts = [
+    'node downloadMusic',
+    'node migrateCancionesToSongs',
+    'node migrateToMinio',
+    'node migrateCoverArt'
+  ];
+
+  scripts.forEach((script, index) => {
+    exec(script, { cwd: __dirname }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`❌ Error al ejecutar el script ${index + 1}:`, error);
+        return;
+      }
+      console.log(`✅ Script ${index + 1} ejecutado con éxito:\n`, stdout);
+      if (stderr) console.warn(`⚠️ Advertencia en el script ${index + 1}:\n`, stderr);
+    });
+  });
+};
+
+// Llamar a la función al iniciar el servicio
+runInitializationScripts();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
