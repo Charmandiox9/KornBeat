@@ -1,0 +1,248 @@
+/* src/styles/theme.css */
+
+/* ========================================
+   VARIABLES DE TEMA
+======================================== */
+
+:root {
+  /* Transiciones suaves para cambios de tema */
+  --theme-transition: background-color 0.3s ease, 
+                      color 0.3s ease, 
+                      border-color 0.3s ease,
+                      box-shadow 0.3s ease;
+}
+
+/* ========================================
+   MODO CLARO (por defecto)
+======================================== */
+.light-theme {
+  /* Colores de fondo */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f5;
+  --bg-hover: #e9ecef;
+  
+  /* Colores de texto */
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-tertiary: #6c757d;
+  --text-disabled: #adb5bd;
+  
+  /* Colores de acento */
+  --accent-primary: #667eea;
+  --accent-secondary: #764ba2;
+  --accent-hover: #5568d3;
+  
+  /* Bordes y divisores */
+  --border-color: #dee2e6;
+  --border-light: #e9ecef;
+  --divider-color: #f1f3f5;
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  
+  /* Cards */
+  --card-bg: #ffffff;
+  --card-border: #e9ecef;
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  
+  /* Input/Forms */
+  --input-bg: #ffffff;
+  --input-border: #ced4da;
+  --input-focus-border: #667eea;
+  --input-placeholder: #adb5bd;
+  
+  /* Navbar/Sidebar */
+  --navbar-bg: #ffffff;
+  --navbar-border: #e9ecef;
+  --sidebar-bg: #f8f9fa;
+  
+  /* Player */
+  --player-bg: #ffffff;
+  --player-border: #e9ecef;
+  --progress-bg: #e9ecef;
+  --progress-fill: #667eea;
+  
+  /* Estados */
+  --success: #28a745;
+  --warning: #ffc107;
+  --error: #dc3545;
+  --info: #17a2b8;
+  
+  /* Overlay */
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --modal-bg: #ffffff;
+}
+
+/* ========================================
+   MODO OSCURO
+======================================== */
+.dark-theme {
+  /* Colores de fondo */
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
+  --bg-hover: #1e3a5f;
+  
+  /* Colores de texto */
+  --text-primary: #e9ecef;
+  --text-secondary: #ced4da;
+  --text-tertiary: #adb5bd;
+  --text-disabled: #6c757d;
+  
+  /* Colores de acento */
+  --accent-primary: #7c8ff0;
+  --accent-secondary: #8b5cf6;
+  --accent-hover: #6d7ce8;
+  
+  /* Bordes y divisores */
+  --border-color: #2d3748;
+  --border-light: #1e3a5f;
+  --divider-color: #0f3460;
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  
+  /* Cards */
+  --card-bg: #16213e;
+  --card-border: #2d3748;
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  
+  /* Input/Forms */
+  --input-bg: #0f3460;
+  --input-border: #2d3748;
+  --input-focus-border: #7c8ff0;
+  --input-placeholder: #6c757d;
+  
+  /* Navbar/Sidebar */
+  --navbar-bg: #16213e;
+  --navbar-border: #2d3748;
+  --sidebar-bg: #1a1a2e;
+  
+  /* Player */
+  --player-bg: #16213e;
+  --player-border: #2d3748;
+  --progress-bg: #2d3748;
+  --progress-fill: #7c8ff0;
+  
+  /* Estados */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --info: #3b82f6;
+  
+  /* Overlay */
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --modal-bg: #16213e;
+}
+
+/* ========================================
+   APLICAR VARIABLES GLOBALMENTE
+======================================== */
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: var(--theme-transition);
+}
+
+/* Cards genéricos */
+.card,
+.card-placeholder {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  transition: var(--theme-transition);
+}
+
+.card:hover,
+.card-placeholder:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Textos */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+/* Inputs y forms */
+input,
+textarea,
+select {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+  transition: var(--theme-transition);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--input-focus-border);
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--input-placeholder);
+}
+
+/* Botones */
+button {
+  transition: var(--theme-transition);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Divisores */
+hr {
+  border-color: var(--border-color);
+}
+
+/* Loading states */
+.loading-message {
+  color: var(--text-tertiary);
+}
+
+/* Scrollbar (opcional pero mejora la experiencia) */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-secondary);
+}
