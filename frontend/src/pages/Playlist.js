@@ -1,3 +1,4 @@
+// Playlist.js
 import React, { useState, useEffect, useContext } from "react";
 import { Music, Play, Plus, MoreVertical, Trash2, Edit2, Lock, Users, Clock } from "lucide-react";
 import TopBar from "../components/TopBar";
@@ -9,8 +10,8 @@ import { AuthContext } from '../context/authContext';
 import "../styles/Playlist.css";
 
 const PlaylistContent = () => {
-  const { playNow, addMultipleToQueue, clearQueue } = useMusicPlayer();
-  const { user } = useContext(AuthContext); // 🔐 Obtener usuario del contexto
+  const { playFromQueue, addMultipleToQueue, clearQueue } = useMusicPlayer();
+  const { user } = useContext(AuthContext);
   const [playlists, setPlaylists] = useState([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [playlistSongs, setPlaylistSongs] = useState([]);
@@ -22,7 +23,6 @@ const PlaylistContent = () => {
 
   const API_BASE = 'http://localhost:3002/api/music';
 
-  // 🔐 Verificar que el usuario esté autenticado
   if (!user) {
     return (
       <div className="page-play">
@@ -39,9 +39,8 @@ const PlaylistContent = () => {
     );
   }
 
-  const userId = user._id || user.id; // 🎯 Obtener ID del usuario
+  const userId = user._id || user.id;
 
-  // Cargar playlists del usuario
   useEffect(() => {
     fetchUserPlaylists();
   }, []);
@@ -54,6 +53,7 @@ const PlaylistContent = () => {
       const data = await response.json();
       
       if (data.success) {
+        console.log('✅ Playlists cargadas:', data.playlists.length);
         setPlaylists(data.playlists);
         if (data.playlists.length > 0 && !selectedPlaylist) {
           loadPlaylistDetails(data.playlists[0]._id);
@@ -61,7 +61,7 @@ const PlaylistContent = () => {
       }
     } catch (err) {
       setError('Error al cargar las playlists');
-      console.error(err);
+      console.error('❌ Error al cargar playlists:', err);
     } finally {
       setIsLoading(false);
     }
@@ -74,13 +74,18 @@ const PlaylistContent = () => {
       const data = await response.json();
       
       if (data.success) {
+        console.log('✅ Detalles de playlist cargados:', data.playlist.titulo);
         setSelectedPlaylist(data.playlist);
-        // Extraer las canciones completas
-        const songs = data.playlist.canciones.map(item => item.cancion_completa);
+
+        const songs = data.playlist.canciones
+          .map(item => item.cancion_completa)
+          .filter(song => song !== null && song !== undefined);
+        
+        console.log('🎵 Canciones en playlist:', songs.length);
         setPlaylistSongs(songs);
       }
     } catch (err) {
-      console.error('Error al cargar detalles de playlist:', err);
+      console.error('❌ Error al cargar detalles de playlist:', err);
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +93,7 @@ const PlaylistContent = () => {
 
   const createPlaylist = async (formData) => {
     try {
+      console.log('📝 Creando playlist:', formData.titulo);
       const response = await fetch(`${API_BASE}/user/${userId}/playlists`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,11 +102,14 @@ const PlaylistContent = () => {
       
       const data = await response.json();
       if (data.success) {
+        console.log('✅ Playlist creada:', data.playlist._id);
         await fetchUserPlaylists();
         setShowCreateModal(false);
+      } else {
+        console.error('❌ Error al crear playlist:', data.message);
       }
     } catch (err) {
-      console.error('Error al crear playlist:', err);
+      console.error('❌ Error al crear playlist:', err);
     }
   };
 
@@ -108,12 +117,14 @@ const PlaylistContent = () => {
     if (!window.confirm('¿Estás seguro de eliminar esta playlist?')) return;
     
     try {
+      console.log('🗑️ Eliminando playlist:', playlistId);
       const response = await fetch(`${API_BASE}/playlists/${playlistId}`, {
         method: 'DELETE'
       });
       
       const data = await response.json();
       if (data.success) {
+        console.log('✅ Playlist eliminada');
         await fetchUserPlaylists();
         if (selectedPlaylist?._id === playlistId) {
           setSelectedPlaylist(null);
@@ -121,22 +132,51 @@ const PlaylistContent = () => {
         }
       }
     } catch (err) {
-      console.error('Error al eliminar playlist:', err);
+      console.error('❌ Error al eliminar playlist:', err);
     }
   };
 
   const playPlaylist = () => {
-    if (playlistSongs.length === 0) return;
+    if (playlistSongs.length === 0) {
+      console.warn('⚠️ No hay canciones en la playlist');
+      return;
+    }
+
+    console.log('🎵 Reproduciendo playlist completa:', {
+      nombre: selectedPlaylist.titulo,
+      totalCanciones: playlistSongs.length,
+      canciones: playlistSongs.map(s => s.titulo).slice(0, 3)
+    });
+
     clearQueue();
     addMultipleToQueue(playlistSongs);
-    playNow(playlistSongs[0]);
     
-    // Incrementar contador de reproducciones
+    setTimeout(() => {
+      playFromQueue(0);
+    }, 100);
+
     if (selectedPlaylist) {
       fetch(`${API_BASE}/playlists/${selectedPlaylist._id}/play`, {
         method: 'POST'
-      });
+      }).catch(err => console.error('Error al incrementar reproducciones:', err));
     }
+  };
+
+  //Reproducir canción individual desde la playlist
+  const playSongFromPlaylist = (song, index) => {
+    console.log(`🎵 Reproduciendo desde posición ${index + 1}/${playlistSongs.length}:`, song.titulo);
+    
+    // Reproducir desde este índice en adelante
+    const songsFromIndex = playlistSongs.slice(index);
+    
+    console.log('📋 Cola de reproducción:', songsFromIndex.map(s => s.titulo));
+    
+    clearQueue();
+    addMultipleToQueue(songsFromIndex);
+    
+    setTimeout(() => {
+      playFromQueue(0);
+    }, 50);
   };
 
   const formatDuration = (seconds) => {
@@ -184,6 +224,7 @@ const PlaylistContent = () => {
               <button 
                 className="create-playlist-btn"
                 onClick={() => setShowCreateModal(true)}
+                title="Crear nueva playlist"
               >
                 <Plus size={20} />
               </button>
@@ -206,11 +247,7 @@ const PlaylistContent = () => {
                     onClick={() => loadPlaylistDetails(playlist._id)}
                   >
                     <div className="playlist-item-cover">
-                      {playlist.canciones.length > 0 ? (
-                        <Music size={24} />
-                      ) : (
-                        <Music size={24} />
-                      )}
+                      <Music size={24} />
                     </div>
                     <div className="playlist-item-info">
                       <h3>{playlist.titulo}</h3>
@@ -237,7 +274,10 @@ const PlaylistContent = () => {
                           Editar
                         </button>
                         <button 
-                          onClick={() => deletePlaylist(playlist._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePlaylist(playlist._id);
+                          }}
                           className="delete-btn"
                         >
                           <Trash2 size={16} />
@@ -311,11 +351,7 @@ const PlaylistContent = () => {
                         <div
                           key={`${song._id}-${index}`}
                           className="song-row"
-                          onClick={() => {
-                            clearQueue();
-                            addMultipleToQueue(playlistSongs);
-                            playNow(song);
-                          }}
+                          onClick={() => playSongFromPlaylist(song, index)}
                         >
                           <div className="col-number">
                             <span className="track-number">{index + 1}</span>
@@ -466,9 +502,8 @@ const CreatePlaylistModal = ({ onClose, onCreate }) => {
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL - Aquí se integra todo
 const Playlist = () => {
-  return <PlaylistContent />;  {/* 📋 Todo el contenido de la página */}
+  return <PlaylistContent />;
 };
 
 export default Playlist;

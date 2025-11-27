@@ -1,11 +1,12 @@
+// Favoritos.js
 import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from '../context/authContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import TopBar from "../components/TopBar";
 import BottomBar from "../components/BottomBar";
 import FavoriteButton from "../components/FavoriteButton";
+import AddToPlaylistButton from "../components/AddToPlaylistButton";
 import favoritesService from '../services/favoritesService';
-import QueuePanel from "../components/QueuePanel";
 import toast, { Toaster } from 'react-hot-toast';
 import "../styles/Favoritos.css";
 
@@ -17,7 +18,7 @@ const Favoritos = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
-  const [showQueuePanel, setShowQueuePanel] = useState(false);
+  const [showQueuePanel, setShowQueuePanel] = useState(false); // ← AGREGAR ESTADO
 
   useEffect(() => {
     if (user && user._id) {
@@ -29,53 +30,25 @@ const Favoritos = () => {
   const loadFavorites = async () => {
     try {
       setIsLoading(true);
-      console.log('═══════════════════════════════════════');
-      console.log('📡 FRONTEND: Solicitando favoritos');
-      console.log('👤 User ID:', user._id);
-      console.log('📄 Página:', page);
+      console.log('📡 Solicitando favoritos - Página:', page);
       
       const response = await favoritesService.getFavorites(user._id, page, 20);
       
-      console.log('📦 FRONTEND: Respuesta recibida');
-      console.log('   - Success:', response.success);
-      console.log('   - Has favorites array?', !!response.favorites);
-      console.log('   - Favorites length:', response.favorites?.length);
-      console.log('   - Total:', response.total);
-      console.log('   - Full response:', JSON.stringify(response, null, 2));
+      console.log('📦 Respuesta recibida:', response.success ? 'OK' : 'ERROR');
       
       if (response.success) {
-        // Extraer las canciones correctamente
         let newFavorites = [];
         
         if (response.favorites && Array.isArray(response.favorites)) {
-          console.log('🔍 FRONTEND: Procesando array de favoritos');
-          
-          newFavorites = response.favorites.map((fav, idx) => {
-            console.log(`   Favorito ${idx}:`, {
-              hasSong: !!fav.song,
-              hasId: !!fav._id,
-              keys: Object.keys(fav)
-            });
-            
-            // Si tiene la estructura song anidada
+          newFavorites = response.favorites.map(fav => {
             if (fav.song) {
               return fav.song;
             }
-            // Si ya es una canción directa
             return fav;
-          }).filter(song => {
-            const isValid = song && song._id;
-            if (!isValid) {
-              console.warn('⚠️ Canción inválida filtrada:', song);
-            }
-            return isValid;
-          });
+          }).filter(song => song && song._id);
         }
         
-        console.log('✅ FRONTEND: Canciones procesadas:', newFavorites.length);
-        if (newFavorites.length > 0) {
-          console.log('   Primera canción:', newFavorites[0]);
-        }
+        console.log('✅ Canciones procesadas:', newFavorites.length);
         
         if (page === 1) {
           setFavorites(newFavorites);
@@ -89,16 +62,11 @@ const Favoritos = () => {
         if (page === 1) {
           toast.success(`❤️ ${response.total || newFavorites.length} favoritos cargados`);
         }
-        
-        console.log('═══════════════════════════════════════\n');
       } else {
-        console.error('❌ FRONTEND: Respuesta no exitosa:', response);
         toast.error(response.message || '❌ Error al cargar favoritos');
       }
     } catch (error) {
-      console.error('❌❌❌ FRONTEND: ERROR ❌❌❌');
-      console.error('Error completo:', error);
-      console.error('═══════════════════════════════════════\n');
+      console.error('❌ Error al cargar favoritos:', error);
       toast.error('❌ Error de conexión al cargar favoritos');
     } finally {
       setIsLoading(false);
@@ -106,8 +74,7 @@ const Favoritos = () => {
   };
 
   const handleSongSelect = (song, index) => {
-    console.log('▶️ Reproduciendo canción:', song.title);
-    // Reproducir desde este índice en adelante
+    console.log('▶️ Reproduciendo desde favoritos:', song.title);
     const songsFromIndex = favorites.slice(index);
     clearQueue();
     addMultipleToQueue(songsFromIndex);
@@ -116,7 +83,6 @@ const Favoritos = () => {
 
   const handleRemoveFavorite = () => {
     console.log('🗑️ Favorito eliminado, recargando lista...');
-    // Recargar la lista después de eliminar
     setTimeout(() => {
       setPage(1);
       loadFavorites();
@@ -130,26 +96,21 @@ const Favoritos = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Función auxiliar para obtener coverUrl
   const getCoverUrl = (song) => {
     if (!song) return null;
     
-    // Si ya tiene una URL completa
     if (song.coverUrl && song.coverUrl.startsWith('http')) {
       return song.coverUrl;
     }
     
-    // Si tiene coverUrl relativa
     if (song.coverUrl) {
       return `http://localhost:3002/api/music/covers/${song.coverUrl.replace(/^covers\//, '')}`;
     }
     
-    // Si tiene portada_url
     if (song.portada_url) {
       return `http://localhost:3002/api/music/covers/${song.portada_url.replace(/^covers\//, '')}`;
     }
     
-    // Intentar construir desde ID
     if (song._id) {
       return `http://localhost:3002/api/music/covers/${song._id}.png`;
     }
@@ -219,7 +180,6 @@ const Favoritos = () => {
                           src={coverUrl} 
                           alt={song.title || 'Portada'}
                           onError={(e) => {
-                            console.log('❌ Error al cargar imagen:', coverUrl);
                             e.target.style.display = 'none';
                           }}
                         />
@@ -250,12 +210,19 @@ const Favoritos = () => {
                         size="medium"
                         onToggle={handleRemoveFavorite}
                       />
+                      
+                      <AddToPlaylistButton 
+                        songId={song._id}
+                        songTitle={song.title || 'Sin título'}
+                      />
+                      
                       <button 
                         className="fav-play-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSongSelect(song, index);
                         }}
+                        title={isPlaying ? 'Pausar' : 'Reproducir'}
                       >
                         {isPlaying ? '⏸️' : '▶️'}
                       </button>

@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo, useContext } from 'react';
-import { Music, Search, Loader2, Play, MoreVertical, ListPlus, PlayCircle } from 'lucide-react';
+import { Music, Search, Loader2, Play, MoreVertical, ListPlus, PlayCircle, ListMusic } from 'lucide-react';
 import { AuthContext } from '../context/authContext';
 import { useMusicSearch } from '../context/MusicSearchContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import FavoriteButton from './FavoriteButton';
+import AddToPlaylistButton from './AddToPlaylistButton';
 import '../styles/SearchBarResults.css';
 
 const SearchBarResultsComponent = () => {
@@ -12,6 +13,7 @@ const SearchBarResultsComponent = () => {
   const { playNow, addToQueue, playNextInQueue, addMultipleToQueue, queue, clearQueue, playFromQueue, currentSong } = useMusicPlayer();
   const [imageErrors, setImageErrors] = useState(new Set());
   const [activeMenu, setActiveMenu] = useState(null);
+  const [activePlaylistMenu, setActivePlaylistMenu] = useState(null); // 🆕 Estado para el menú de playlist
 
   const formatDuration = useCallback((seconds) => {
     if (!seconds || seconds < 0) return '0:00';
@@ -61,6 +63,13 @@ const SearchBarResultsComponent = () => {
     setActiveMenu(null);
   }, [playNextInQueue]);
 
+  // 🆕 Handler para abrir el menú de playlist
+  const handleAddToPlaylistMenu = useCallback((e, song) => {
+    e.stopPropagation();
+    setActivePlaylistMenu(song._id);
+    setActiveMenu(null); // Cerrar el menú de opciones
+  }, []);
+
   const resultsText = useMemo(() => {
     const count = searchResults.length;
     return `${count} ${count === 1 ? 'canción encontrada' : 'canciones encontradas'}`;
@@ -68,12 +77,15 @@ const SearchBarResultsComponent = () => {
 
   // Cerrar menú al hacer click fuera
   React.useEffect(() => {
-    const handleClickOutside = () => setActiveMenu(null);
-    if (activeMenu) {
+    const handleClickOutside = () => {
+      setActiveMenu(null);
+      setActivePlaylistMenu(null);
+    };
+    if (activeMenu || activePlaylistMenu) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [activeMenu]);
+  }, [activeMenu, activePlaylistMenu]);
 
   if (isLoading && searchResults.length === 0) {
     return (
@@ -123,7 +135,6 @@ const SearchBarResultsComponent = () => {
 
       <div className="results-list" role="list">
         {searchResults.map((song) => {
-          // Compatibilidad con ambos formatos (español e inglés)
           const songTitle = song.titulo || song.title || 'Sin título';
           const artistName = song.artistas?.map(a => a.nombre).join(', ') || 
                            song.artist || 
@@ -183,7 +194,7 @@ const SearchBarResultsComponent = () => {
                     {formatDuration(songDuration)}
                   </span>
 
-                  {/* 🆕 Reemplazar botón de like por FavoriteButton */}
+                  {/* Botón de favoritos */}
                   {user && song._id && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <FavoriteButton 
@@ -193,7 +204,7 @@ const SearchBarResultsComponent = () => {
                       />
                     </div>
                   )}
-
+                  
                   <div className="more-options-wrapper">
                     <button
                       onClick={(e) => handleMoreOptions(e, song._id)}
@@ -207,27 +218,28 @@ const SearchBarResultsComponent = () => {
 
                     {activeMenu === song._id && (
                       <div className="options-menu">
-                        <button
-                          onClick={(e) => handlePlayNow(e, song)}
-                          className="menu-option"
-                        >
+                        <button onClick={(e) => handlePlayNow(e, song)} className="menu-option">
                           <PlayCircle size={16} />
                           <span>Reproducir ahora</span>
                         </button>
-                        <button
-                          onClick={(e) => handlePlayNext(e, song)}
-                          className="menu-option"
-                        >
+                        <button onClick={(e) => handlePlayNext(e, song)} className="menu-option">
                           <Play size={16} />
                           <span>Reproducir siguiente</span>
                         </button>
-                        <button
-                          onClick={(e) => handleAddToQueue(e, song)}
-                          className="menu-option"
-                        >
+                        <button onClick={(e) => handleAddToQueue(e, song)} className="menu-option">
                           <ListPlus size={16} />
                           <span>Agregar a la cola</span>
                         </button>
+                        {/* 🆕 Opción de agregar a playlist */}
+                        {user && (
+                          <button 
+                            onClick={(e) => handleAddToPlaylistMenu(e, song)} 
+                            className="menu-option"
+                          >
+                            <ListMusic size={16} />
+                            <span>Agregar a playlist</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
