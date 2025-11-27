@@ -600,15 +600,27 @@ export const MusicPlayerProvider = ({ children }) => {
     setIsExpanded(prev => !prev);
   }, []);
 
-  // Cerrar reproductor
-  const closePlayer = useCallback(() => {
-    console.log('🔴 [RESET] Cerrando reproductor completamente...');
+  // Helper function para resetear el estado del reproductor
+  const resetPlayerState = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
     }
-    // Limpiar localStorage para que no vuelva a aparecer
     localStorage.removeItem('kornbeat_lastSong');
+    _setCurrentSong(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setError(null);
+    setIsExpanded(false);
+    setQueue([]);
+    setCurrentIndex(-1);
+    setIsQueueOpen(false);
+  }, []);
+
+  // Cerrar reproductor
+  const closePlayer = useCallback(() => {
+    console.log('🔴 [RESET] Cerrando reproductor completamente...');
     // Eliminar la última posición guardada en el backend SOLO si hay canción activa
     if (user?._id && currentSong?._id) {
       cacheService.clearPosition(user._id)
@@ -619,35 +631,15 @@ export const MusicPlayerProvider = ({ children }) => {
           console.error('❌ [RESET] Error al eliminar posición en backend:', err);
         });
     }
-    setCurrentSong(null);
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setError(null);
-    setIsExpanded(false);
-    setQueue([]);
-    setCurrentIndex(-1);
+    resetPlayerState();
     console.log('✅ [RESET] Reproductor limpiado');
-  }, []);
+  }, [user?._id, currentSong?._id, resetPlayerState]);
 
   // Escuchar evento de logout para limpiar el reproductor
   useEffect(() => {
     const handleLogoutCleanup = () => {
       console.log('🔐 [LOGOUT] Evento de logout detectado, limpiando reproductor...');
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = '';
-      }
-      localStorage.removeItem('kornbeat_lastSong');
-      _setCurrentSong(null);
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-      setError(null);
-      setIsExpanded(false);
-      setQueue([]);
-      setCurrentIndex(-1);
-      setIsQueueOpen(false);
+      resetPlayerState();
       console.log('✅ [LOGOUT] Reproductor limpiado por logout');
     };
 
@@ -656,7 +648,7 @@ export const MusicPlayerProvider = ({ children }) => {
     return () => {
       window.removeEventListener('logout-cleanup', handleLogoutCleanup);
     };
-  }, []);
+  }, [resetPlayerState]);
 
   // Funciones de caché (sin cambios)
   const loadLastPosition = useCallback(async (userId) => {
