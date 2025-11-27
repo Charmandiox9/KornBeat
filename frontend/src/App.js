@@ -1,10 +1,11 @@
-// App.js - Adaptado con Providers Globales
+// App.js - Sin Providers duplicados (están en index.js)
 import React, { useContext, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthContext } from './context/authContext';
-import { MusicPlayerProvider, useMusicPlayer } from './context/MusicPlayerContext';
-import { MusicSearchProvider } from './context/MusicSearchContext';
+import { useMusicPlayer } from './context/MusicPlayerContext';
 import ResumeDialog from './components/ResumeDialog';
+
+import './styles/theme.css';
 import './App.css';
 
 import HomePage from './pages/HomePage';
@@ -27,8 +28,7 @@ import Principal from './pages/Principal';
 import PerfilPage from './pages/settings/Perfil';
 import EditarPerfilPage from "./pages/settings/EditarPerfilPage";
 
-// Componente interno que usa los hooks del MusicPlayer
-function AppContent() {
+function App() {
   const { initialLoading, user } = useContext(AuthContext);
   const { 
     showResumeDialog, 
@@ -139,16 +139,6 @@ function AppContent() {
         <Route path="/editar-perfil" element={<EditarPerfilPage />} />
       </Routes>
     </>
-  );
-}
-
-function App() {
-  return (
-    <MusicPlayerProvider>
-      <MusicSearchProvider>
-        <AppContent />
-      </MusicSearchProvider>
-    </MusicPlayerProvider>
   );
 }
 

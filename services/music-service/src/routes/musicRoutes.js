@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Song = require('../models/Song');
+const Cancion = require('../models/Cancion');
 const LikeCancion = require('../models/LikeCancion');
 const { minioClient, bucketName } = require('../minio'); 
 const mongoose = require('mongoose');
+const { Long } = require('mongodb');
 const { processSongCoverUrl, processSongsCoverUrls } = require('../utils/coverUrlHelper');
 
 // Importar funciones de caché de reels
@@ -143,59 +145,108 @@ router.get('/playlists/:playlistId', async (req, res) => {
   }
 });
 
-// Crear nueva playlist
+// Crear nueva playlist - SOLUCIÓN CORRECTA
 router.post('/user/:userId/playlists', async (req, res) => {
   try {
     const { userId } = req.params;
     const { titulo, descripcion, es_privada, es_colaborativa } = req.body;
 
+    console.log('📝 Creando playlist para usuario:', userId);
+    console.log('📋 Datos recibidos:', { titulo, descripcion, es_privada, es_colaborativa });
+
     if (!isValidObjectId(userId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ID de usuario inválido' 
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
       });
     }
 
-    if (!titulo || titulo.trim() === '') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'El título es requerido' 
+    if (!titulo || titulo.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: 'El título es obligatorio'
       });
     }
 
     const playlistsCollection = getPlaylistsCollection();
 
-    const newPlaylist = {
-      titulo: titulo.trim(),
-      descripcion: descripcion?.trim() || '',
+    // ✅ SOLUCIÓN: Importar Long del paquete BSON directamente
+    const BSON = require('bson');
+    
+    // ✅ DOCUMENTO CON TIPOS CORRECTOS
+    const nuevaPlaylist = {
+      // Campos obligatorios
       usuario_creador_id: new mongoose.Types.ObjectId(userId),
-      es_privada: es_privada || false,
-      es_colaborativa: es_colaborativa || false,
+      titulo: titulo.trim(),
+      
+      // Campos opcionales
+      descripcion: descripcion?.trim() || "",
+      es_privada: !!es_privada,
+      es_colaborativa: !!es_colaborativa,
       canciones: [],
+      
+      // Números enteros normales
       total_canciones: 0,
       duracion_total: 0,
-      seguidores: 0,
-      reproducciones: 0,
+      
+      // ✅ CORRECTO: Long de BSON 5.x
+      seguidores: BSON.Long.fromNumber(0),
+      reproducciones: BSON.Long.fromNumber(0),
+      
+      // Fechas
       fecha_creacion: new Date(),
       fecha_actualizacion: new Date()
     };
 
-    const result = await playlistsCollection.insertOne(newPlaylist);
+    console.log('💾 Insertando documento...');
 
-    res.status(201).json({
+    const result = await playlistsCollection.insertOne(nuevaPlaylist);
+
+    console.log('✅ Playlist creada con ID:', result.insertedId);
+
+    // Convertir Long a número para la respuesta JSON
+    const playlistResponse = {
+      _id: result.insertedId,
+      usuario_creador_id: nuevaPlaylist.usuario_creador_id,
+      titulo: nuevaPlaylist.titulo,
+      descripcion: nuevaPlaylist.descripcion,
+      es_privada: nuevaPlaylist.es_privada,
+      es_colaborativa: nuevaPlaylist.es_colaborativa,
+      canciones: nuevaPlaylist.canciones,
+      total_canciones: nuevaPlaylist.total_canciones,
+      duracion_total: nuevaPlaylist.duracion_total,
+      seguidores: 0, // Convertir a número
+      reproducciones: 0, // Convertir a número
+      fecha_creacion: nuevaPlaylist.fecha_creacion,
+      fecha_actualizacion: nuevaPlaylist.fecha_actualizacion
+    };
+
+    res.json({
       success: true,
-      message: 'Playlist creada exitosamente',
-      playlist: {
-        _id: result.insertedId,
-        ...newPlaylist
-      }
+      message: 'Playlist creada con éxito',
+      playlist: playlistResponse
     });
+
   } catch (error) {
-    console.error('Error al crear playlist:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al crear playlist',
-      error: error.message 
+    console.error("❌ Error al crear playlist:", error);
+    console.error("Stack completo:", error.stack);
+    
+    // Detalles del error de validación
+    if (error.code === 121) {
+      console.error("💥 Error de validación de MongoDB:");
+      console.error("Detalles:", JSON.stringify(error.errInfo, null, 2));
+      
+      return res.status(400).json({
+        success: false,
+        message: "El documento no cumple con las reglas de validación de MongoDB",
+        details: error.errInfo?.details
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: "Error interno al crear playlist",
+      error: error.message
     });
   }
 });
@@ -1083,109 +1134,203 @@ router.get('/songs/:id/cover-url', async (req, res) => {
 router.get('/user/:userId/favorites', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { limit = 50, skip = 0, sort = 'recent' } = req.query;
+    const { page = 1, limit = 20, sort = 'recent' } = req.query;
+
+    console.log('═══════════════════════════════════════');
+    console.log('🎯 INICIO - Obtener Favoritos');
+    console.log('👤 Usuario ID:', userId);
+    console.log('📄 Query params:', { page, limit, sort });
 
     if (!isValidObjectId(userId)) {
+      console.log('❌ ID de usuario inválido');
       return res.status(400).json({ 
         success: false, 
         message: 'ID de usuario inválido' 
       });
     }
 
-    // Determinar ordenamiento
-    let sortOptions = {};
-    switch(sort) {
-      case 'recent':
-        sortOptions = { fecha_like: -1 };
-        break;
-      case 'oldest':
-        sortOptions = { fecha_like: 1 };
-        break;
-      case 'title':
-        sortOptions = { 'songDetails.title': 1 };
-        break;
-      default:
-        sortOptions = { fecha_like: -1 };
-    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Obtener likes con información de canciones
-    const favorites = await LikeCancion.aggregate([
-      {
-        $match: { 
-          usuario_id: new mongoose.Types.ObjectId(userId) 
-        }
-      },
-      {
-        $lookup: {
-          from: 'songs',
-          localField: 'cancion_id',
-          foreignField: '_id',
-          as: 'songDetails'
-        }
-      },
-      {
-        $unwind: '$songDetails'
-      },
-      {
-        $sort: sortOptions
-      },
-      {
-        $skip: parseInt(skip)
-      },
-      {
-        $limit: parseInt(limit)
-      },
-      {
-        $project: {
-          _id: 1,
-          usuario_id: 1,
-          cancion_id: 1,
-          fecha_like: 1,
-          song: {
-            _id: '$songDetails._id',
-            title: '$songDetails.title',
-            artist: '$songDetails.artist',
-            album: '$songDetails.album',
-            duration: '$songDetails.duration',
-            genre: '$songDetails.genre',
-            coverUrl: '$songDetails.coverUrl',
-            portada_url: '$songDetails.portada_url',
-            fileName: '$songDetails.fileName',
-            playCount: '$songDetails.playCount',
-            likes: '$songDetails.likes'
-          }
-        }
-      }
-    ]);
-
-    // Procesar URLs de portadas
-    const favoritesWithUrls = await processSongsCoverUrls(
-      favorites.map(f => f.song)
-    );
-
-    const result = favorites.map((fav, index) => ({
-      ...fav,
-      song: favoritesWithUrls[index]
-    }));
-
-    // Obtener total de favoritos
-    const total = await LikeCancion.countDocuments({ 
+    // Verificar cuántos likes tiene el usuario
+    const likesCount = await LikeCancion.countDocuments({ 
       usuario_id: new mongoose.Types.ObjectId(userId) 
     });
+    console.log('💾 Total de likes en BD:', likesCount);
 
-    res.json({
-      success: true,
-      count: result.length,
-      total,
-      favorites: result
+    if (likesCount === 0) {
+      console.log('⚠️ Usuario no tiene favoritos');
+      return res.json({
+        success: true,
+        count: 0,
+        total: 0,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: 0,
+        favorites: []
+      });
+    }
+
+    // Obtener likes del usuario con ordenamiento
+    let sortOption = { fecha_like: -1 };
+    if (sort === 'oldest') sortOption = { fecha_like: 1 };
+    
+    const userLikes = await LikeCancion.find({ 
+      usuario_id: new mongoose.Types.ObjectId(userId) 
+    })
+    .sort(sortOption)
+    .skip(skip)
+    .limit(parseInt(limit));
+
+    console.log('📋 Likes obtenidos:', userLikes.length);
+
+    // Extraer los IDs de las canciones
+    const songIds = userLikes.map(like => like.cancion_id);
+    console.log('🎵 IDs de canciones a buscar:', songIds.length);
+    console.log('   IDs:', songIds.map(id => id.toString()));
+
+    // 🔥 Buscar en AMBAS colecciones
+    const [songsFromSongs, songsFromCanciones] = await Promise.all([
+      Song.find({ _id: { $in: songIds } }).lean(),
+      mongoose.connection.db.collection('canciones').find({ 
+        _id: { $in: songIds } 
+      }).toArray()
+    ]);
+
+    console.log('📚 Encontradas en "songs":', songsFromSongs.length);
+    console.log('📚 Encontradas en "canciones":', songsFromCanciones.length);
+
+    // Crear un mapa unificado de canciones
+    const songsMap = {};
+
+    // Procesar canciones de la colección 'songs' (formato inglés)
+    songsFromSongs.forEach(song => {
+      songsMap[song._id.toString()] = {
+        _id: song._id,
+        title: song.title,
+        artist: song.artist,
+        album: song.album || '',
+        duration: song.duration,
+        genre: song.genre || '',
+        coverUrl: song.coverUrl,
+        fileName: song.fileName,
+        playCount: song.playCount || 0,
+        likes: song.likes || 0,
+        source: 'songs' // Para debugging
+      };
     });
 
+    // Procesar canciones de la colección 'canciones' (formato español)
+    songsFromCanciones.forEach(cancion => {
+      // Convertir formato español a inglés para unificar
+      songsMap[cancion._id.toString()] = {
+        _id: cancion._id,
+        title: cancion.titulo,
+        artist: cancion.artistas?.[0]?.nombre || 'Artista desconocido',
+        album: cancion.album_info?.titulo || '',
+        duration: cancion.duracion_segundos,
+        genre: cancion.categorias?.[0] || '',
+        coverUrl: cancion.album_info?.portada_url || cancion.portada_url,
+        fileName: cancion.archivo_url || cancion.fileName,
+        playCount: Number(cancion.reproducciones) || 0,
+        likes: Number(cancion.likes) || 0,
+        source: 'canciones' // Para debugging
+      };
+    });
+
+    console.log('✅ Total de canciones en mapa:', Object.keys(songsMap).length);
+
+    // Combinar likes con datos de canciones (manteniendo el orden de los likes)
+    const favorites = userLikes.map((like, index) => {
+      const songId = like.cancion_id.toString();
+      const song = songsMap[songId];
+      
+      if (!song) {
+        console.warn(`⚠️ Canción no encontrada para ID: ${songId}`);
+        return null;
+      }
+
+      console.log(`✓ Canción ${index + 1}: ${song.title} (${song.source})`);
+
+      return {
+        _id: like._id,
+        usuario_id: like.usuario_id,
+        cancion_id: like.cancion_id,
+        fecha_like: like.fecha_like,
+        song: song
+      };
+    }).filter(fav => fav !== null); // Filtrar nulls
+
+    console.log('📦 Favoritos con datos completos:', favorites.length);
+
+    // Procesar URLs de portadas
+    const favoritesWithUrls = favorites.map(fav => {
+      const song = { ...fav.song };
+      
+      // Construir URL completa de la portada
+      if (song.coverUrl) {
+        const coverPath = song.coverUrl;
+        // Si no es una URL completa, construirla
+        if (!coverPath.startsWith('http')) {
+          // Limpiar el path (remover /uploads si existe)
+          const cleanPath = coverPath.replace(/^\/uploads\//, '').replace(/^covers\//, '');
+          song.coverUrl = `${req.protocol}://${req.get('host')}/api/music/covers/${cleanPath}`;
+        }
+      }
+
+      // También asegurar que fileName tenga el formato correcto para streaming
+      if (song.fileName) {
+        // Limpiar el path del archivo
+        const cleanFileName = song.fileName.replace(/^\/uploads\/music\//, '');
+        song.streamUrl = `${req.protocol}://${req.get('host')}/api/music/songs/${fav.cancion_id}/stream`;
+      }
+      
+      return {
+        ...fav,
+        song
+      };
+    });
+
+    const total = likesCount;
+
+    const response = {
+      success: true,
+      count: favoritesWithUrls.length,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      favorites: favoritesWithUrls
+    };
+
+    console.log('📤 RESPUESTA FINAL:');
+    console.log('   - Success:', response.success);
+    console.log('   - Count:', response.count);
+    console.log('   - Total:', response.total);
+    console.log('   - Favorites enviados:', response.favorites.length);
+    
+    if (response.favorites.length > 0) {
+      const first = response.favorites[0];
+      console.log('   - Primera canción:');
+      console.log('     · Título:', first.song?.title);
+      console.log('     · Artista:', first.song?.artist);
+      console.log('     · Cover URL:', first.song?.coverUrl);
+      console.log('     · Source:', first.song?.source);
+    }
+    console.log('═══════════════════════════════════════\n');
+
+    res.json(response);
+
   } catch (error) {
-    console.error('Error al obtener favoritos:', error);
+    console.error('❌❌❌ ERROR EN FAVORITOS ❌❌❌');
+    console.error('Error completo:', error);
+    console.error('Stack:', error.stack);
+    console.error('═══════════════════════════════════════\n');
+    
     res.status(500).json({ 
       success: false, 
       message: 'Error al obtener canciones favoritas',
-      error: error.message 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
