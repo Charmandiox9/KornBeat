@@ -630,6 +630,34 @@ export const MusicPlayerProvider = ({ children }) => {
     console.log('✅ [RESET] Reproductor limpiado');
   }, []);
 
+  // Escuchar evento de logout para limpiar el reproductor
+  useEffect(() => {
+    const handleLogoutCleanup = () => {
+      console.log('🔐 [LOGOUT] Evento de logout detectado, limpiando reproductor...');
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      localStorage.removeItem('kornbeat_lastSong');
+      _setCurrentSong(null);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setError(null);
+      setIsExpanded(false);
+      setQueue([]);
+      setCurrentIndex(-1);
+      setIsQueueOpen(false);
+      console.log('✅ [LOGOUT] Reproductor limpiado por logout');
+    };
+
+    window.addEventListener('logout-cleanup', handleLogoutCleanup);
+
+    return () => {
+      window.removeEventListener('logout-cleanup', handleLogoutCleanup);
+    };
+  }, []);
+
   // Funciones de caché (sin cambios)
   const loadLastPosition = useCallback(async (userId) => {
     if (!userId) return;
