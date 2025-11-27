@@ -1,15 +1,18 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Bell, Settings, User } from 'lucide-react';
+import { Menu, Bell, Settings, User, Sun, Moon } from 'lucide-react';
 import { AuthContext } from '../context/authContext';
+import { useTheme } from '../context/ThemeContext'; // ← NUEVO
 import SearchBarComponent from './SearchBarComponent';
 import '../styles/TopBar.css';
 
-const TopBar = () => {
+const TopBar = ({ notifications = 0 }) => {
   const { user, logout } = useContext(AuthContext);
+  const { theme, setTheme, isDark } = useTheme(); // ← NUEVO
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [notifications, setNotifications] = useState(3);
+  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -18,6 +21,12 @@ const TopBar = () => {
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
+  };
+
+  // ← NUEVA función para cambiar tema
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    setShowSettingsMenu(false);
   };
 
   return (
@@ -36,17 +45,60 @@ const TopBar = () => {
       </div>
 
       <div className="navbar-right">
-        <button className="navbar-icon-btn" title="Notificaciones">
-          <Bell size={22} />
-          {notifications > 0 && (
-            <span className="notification-badge">{notifications}</span>
-          )}
-        </button>
+        {/* Notificaciones */}
+        <div className="notifications-menu-container">
+          <button
+            className="navbar-icon-btn"
+            title="Notificaciones"
+            onClick={() => {
+              setShowNotificationsMenu(!showNotificationsMenu);
+              setShowUserMenu(false);
+              setShowSettingsMenu(false);
+            }}
+          >
+            <Bell size={22} />
+            {notifications > 0 && (
+              <span className="notification-badge">{notifications}</span>
+            )}
+          </button>
 
+          {showNotificationsMenu && (
+            <div className="notifications-dropdown">
+              <div className="dropdown-header">
+                <h3>Notificaciones</h3>
+                {notifications > 0 && (
+                  <span className="notifications-count">{notifications}</span>
+                )}
+              </div>
+              {notifications === 0 ? (
+                <div className="empty-notifications">
+                  <Bell size={48} style={{ opacity: 0.3 }} />
+                  <p>No hay notificaciones por el momento</p>
+                </div>
+              ) : (
+                <div className="notifications-list">
+                  <div className="notification-item">
+                    <span className="notification-icon">🎵</span>
+                    <div className="notification-content">
+                      <p className="notification-title">Nueva canción disponible</p>
+                      <p className="notification-time">Hace 5 minutos</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Perfil */}
         <div className="user-menu-container">
           <button
             className="user-menu-btn"
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={() => {
+              setShowUserMenu(!showUserMenu);
+              setShowNotificationsMenu(false);
+              setShowSettingsMenu(false);
+            }}
           >
             <div className="user-avatar">
               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}

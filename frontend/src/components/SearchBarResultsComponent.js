@@ -1,13 +1,15 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Music, Search, Loader2, Play, Heart, MoreVertical, ListPlus, PlayCircle } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useContext } from 'react';
+import { Music, Search, Loader2, Play, MoreVertical, ListPlus, PlayCircle } from 'lucide-react';
+import { AuthContext } from '../context/authContext';
 import { useMusicSearch } from '../context/MusicSearchContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
+import FavoriteButton from './FavoriteButton';
 import '../styles/SearchBarResults.css';
 
 const SearchBarResultsComponent = () => {
+  const { user } = useContext(AuthContext);
   const { searchResults, isLoading, error, searchQuery } = useMusicSearch();
   const { playNow, addToQueue, playNextInQueue, addMultipleToQueue, queue, clearQueue, playFromQueue, currentSong } = useMusicPlayer();
-  const [likedSongs, setLikedSongs] = useState(new Set());
   const [imageErrors, setImageErrors] = useState(new Set());
   const [activeMenu, setActiveMenu] = useState(null);
 
@@ -16,19 +18,6 @@ const SearchBarResultsComponent = () => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-
-  const handleLike = useCallback((songId, e) => {
-    e.stopPropagation();
-    setLikedSongs(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(songId)) {
-        newSet.delete(songId);
-      } else {
-        newSet.add(songId);
-      }
-      return newSet;
-    });
   }, []);
 
   const handleImageError = useCallback((songId) => {
@@ -48,8 +37,6 @@ const SearchBarResultsComponent = () => {
   }, [activeMenu]);
 
   const handlePlayNow = useCallback((e, song) => {
-    e.stopPropagation();
-    // En la página de inicio, simular playlist: limpiar cola, agregar todos los resultados y reproducir la seleccionada
     e.stopPropagation();
     clearQueue();
     addMultipleToQueue(searchResults);
@@ -143,10 +130,8 @@ const SearchBarResultsComponent = () => {
                            'Artista desconocido';
           const albumName = song.album_info?.titulo || song.album || '';
           const songDuration = song.duracion_segundos || song.duration || 0;
-          const coverUrl = song.album_info?.portada_url || song.coverUrl || '';
           
           const hasImageError = imageErrors.has(song._id);
-          const isLiked = likedSongs.has(song._id);
           const isPlaying = currentSong?._id === song._id;
 
           return (
@@ -198,24 +183,22 @@ const SearchBarResultsComponent = () => {
                     {formatDuration(songDuration)}
                   </span>
 
-                  <button
-                    onClick={(e) => handleLike(song._id, e)}
-                    className="action-button"
-                    aria-label={isLiked ? 'Quitar de me gusta' : 'Agregar a me gusta'}
-                    aria-pressed={isLiked}
-                  >
-                    <Heart
-                      className={`action-icon ${isLiked ? 'liked' : ''}`}
-                      fill={isLiked ? 'currentColor' : 'none'}
-                      aria-hidden="true"
-                    />
-                  </button>
+                  {/* 🆕 Reemplazar botón de like por FavoriteButton */}
+                  {user && song._id && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <FavoriteButton 
+                        songId={song._id} 
+                        userId={user._id}
+                        size="small"
+                      />
+                    </div>
+                  )}
 
                   <div className="more-options-wrapper">
                     <button
                       onClick={(e) => handleMoreOptions(e, song._id)}
                       className="action-button"
-                      aria-label={`Más opciones para ${song.titulo}`}
+                      aria-label={`Más opciones para ${songTitle}`}
                       aria-haspopup="true"
                       aria-expanded={activeMenu === song._id}
                     >

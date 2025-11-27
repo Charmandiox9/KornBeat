@@ -6,18 +6,21 @@ import App from './App';
 import { AuthProvider } from './context/authContext';
 import { MusicPlayerProvider } from './context/MusicPlayerContext';
 import { MusicSearchProvider } from './context/MusicSearchContext';
+import { ThemeProvider } from './context/ThemeContext'; // ← NUEVO
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <MusicSearchProvider>
-          <MusicPlayerProvider>
-            <App />
+      <ThemeProvider>           
+        <AuthProvider>           
+          <MusicPlayerProvider>  
+            <MusicSearchProvider> 
+              <App />             
+            </MusicSearchProvider>
           </MusicPlayerProvider>
-        </MusicSearchProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

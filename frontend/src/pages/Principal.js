@@ -1,8 +1,9 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
-import { MusicSearchProvider, useMusicSearch } from '../context/MusicSearchContext';
-import { MusicPlayerProvider, useMusicPlayer } from '../context/MusicPlayerContext';
+import { useMusicSearch } from '../context/MusicSearchContext';
+import {useMusicPlayer } from '../context/MusicPlayerContext';
+import QueuePanel from "../components/QueuePanel";
 import SearchBarResultsComponent from '../components/SearchBarResultsComponent';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
@@ -29,6 +30,7 @@ const Principal = () => {
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [loadingDiscover, setLoadingDiscover] = useState(true);
   const [userCountry, setUserCountry] = useState('CL');
+  const [showQueuePanel, setShowQueuePanel] = useState(false);
 
   useEffect(() => {
     if (!user) navigate('/login');
@@ -139,7 +141,7 @@ const Principal = () => {
     fetchRecentlyPlayed();
   }, [user]);
 
-  // 👇 ACTUALIZADO: Cargar artistas emergentes
+  // Cargar artistas emergentes
   useEffect(() => {
     const fetchDiscoverNew = async () => {
       if (!user?._id) return;
@@ -164,6 +166,11 @@ const Principal = () => {
   }, [user]);
 
   const hasSearchResults = searchResults.length > 0 || searchQuery;
+
+  // 🆕 Variables para determinar si mostrar cada sección
+  const shouldShowRecent = !loadingRecent && recentlyPlayed.length > 0;
+  const shouldShowForYou = !loadingForYou && forYou.length > 0;
+  const shouldShowDiscover = !loadingDiscover && discoverNew.length > 0;
 
   // Función para formatear canciones del TOP al formato del player
   const formatSongForPlayer = useCallback((song) => {
@@ -279,7 +286,7 @@ const Principal = () => {
     }
   }, [recentlyPlayed, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
-  // 👇 ACTUALIZADA: Función para reproducir desde descubrimientos (artistas emergentes)
+  // Función para reproducir desde descubrimientos (artistas emergentes)
   const handlePlayFromDiscover = useCallback((e, song, index) => {
     e.stopPropagation();
     const songsFromIndex = discoverNew.slice(index);
@@ -320,7 +327,7 @@ const Principal = () => {
     });
   };
 
-  // 👇 NUEVA: Función auxiliar para formatear número de oyentes
+  // Función auxiliar para formatear número de oyentes
   const formatOyentes = (oyentes) => {
     if (!oyentes) return '0';
     if (oyentes >= 1000000) return `${(oyentes / 1000000).toFixed(1)}M`;
@@ -328,7 +335,7 @@ const Principal = () => {
     return oyentes.toString();
   };
 
-  // 👇 NUEVA: Función para determinar emoji según oyentes
+  // Función para determinar emoji según oyentes
   const getEmergingEmoji = (oyentes) => {
     if (oyentes < 10000) return '🚀';
     if (oyentes < 50000) return '💎';
@@ -348,19 +355,32 @@ const Principal = () => {
 
         {!hasSearchResults && (
           <>
-            {/* SECCIÓN: Escuchados recientemente */}
-            <section className="content-section">
-              <div className="section-header">
-                <h2>🕐 Escuchados recientemente</h2>
-                <button className="see-all-btn">Ver todo →</button>
-              </div>
-              {loadingRecent ? (
-                <div className="loading-message">Cargando...</div>
-              ) : recentlyPlayed.length === 0 ? (
-                <div className="loading-message">
-                  Aún no has escuchado ninguna canción 🎵
+            {/* 🆕 MENSAJE DE BIENVENIDA para usuarios nuevos */}
+            {!shouldShowRecent && !shouldShowForYou && !loadingRecent && !loadingForYou && (
+              <section className="content-section welcome-section" style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '16px',
+                padding: '32px',
+                color: 'white',
+                marginBottom: '32px',
+                textAlign: 'center'
+              }}>
+                <h2 style={{ fontSize: '28px', marginBottom: '12px' }}>
+                  👋 ¡Bienvenido a tu app de música!
+                </h2>
+                <p style={{ fontSize: '16px', opacity: 0.9 }}>
+                  Empieza a escuchar música para recibir recomendaciones personalizadas
+                </p>
+              </section>
+            )}
+
+            {/* SECCIÓN: Escuchados recientemente - SOLO SI HAY DATOS */}
+            {shouldShowRecent && (
+              <section className="content-section">
+                <div className="section-header">
+                  <h2>🕐 Escuchados recientemente</h2>
+                  <button className="see-all-btn">Ver todo →</button>
                 </div>
-              ) : (
                 <div className="cards-grid compact">
                   {recentlyPlayed.map((song, index) => (
                     <div 
@@ -415,22 +435,16 @@ const Principal = () => {
                     </div>
                   ))}
                 </div>
-              )}
-            </section>
+              </section>
+            )}
 
-            {/* 👇 SECCIÓN ACTUALIZADA: Descubre nueva música - Artistas Emergentes */}
-            <section className="content-section">
-              <div className="section-header">
-                <h2>🔍 Descubre artistas emergentes</h2>
-                <button className="see-all-btn">Ver todo →</button>
-              </div>
-              {loadingDiscover ? (
-                <div className="loading-message">Cargando...</div>
-              ) : discoverNew.length === 0 ? (
-                <div className="loading-message">
-                  No hay artistas emergentes disponibles 🎵
+            {/* SECCIÓN: Descubre artistas emergentes - SOLO SI HAY DATOS */}
+            {shouldShowDiscover && (
+              <section className="content-section">
+                <div className="section-header">
+                  <h2>🔍 Descubre artistas emergentes</h2>
+                  <button className="see-all-btn">Ver todo →</button>
                 </div>
-              ) : (
                 <div className="cards-grid discover">
                   {discoverNew.map((song, index) => (
                     <div 
@@ -453,7 +467,6 @@ const Principal = () => {
                             e.target.style.display = 'none';
                           }}
                         />
-                        {/* Badge con emoji dinámico según oyentes */}
                         <div style={{
                           position: 'absolute',
                           top: '8px',
@@ -469,7 +482,6 @@ const Principal = () => {
                         }}>
                           {getEmergingEmoji(song.oyentes_artista)} EMERGENTE
                         </div>
-                        {/* Info de oyentes del artista */}
                         <div style={{
                           position: 'absolute',
                           bottom: '8px',
@@ -500,22 +512,16 @@ const Principal = () => {
                     </div>
                   ))}
                 </div>
-              )}
-            </section>
+              </section>
+            )}
 
-            {/* SECCIÓN: Creado para ti */}
-            <section className="content-section">
-              <div className="section-header">
-                <h2>💝 Creado para ti</h2>
-                <button className="see-all-btn">Ver todo →</button>
-              </div>
-              {loadingForYou ? (
-                <div className="loading-message">Cargando tus recomendaciones...</div>
-              ) : forYou.length === 0 ? (
-                <div className="loading-message">
-                  Escucha más canciones para recibir recomendaciones personalizadas 🎵
+            {/* SECCIÓN: Creado para ti - SOLO SI HAY DATOS */}
+            {shouldShowForYou && (
+              <section className="content-section">
+                <div className="section-header">
+                  <h2>💝 Creado para ti</h2>
+                  <button className="see-all-btn">Ver todo →</button>
                 </div>
-              ) : (
                 <div className="cards-grid compact">
                   {forYou.slice(0, 6).map((song, index) => (
                     <div 
@@ -538,21 +544,6 @@ const Principal = () => {
                             e.target.style.display = 'none';
                           }}
                         />
-                        {song.razon && (
-                          <div style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            left: '8px',
-                            right: '8px',
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            color: '#fff',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '10px',
-                            textAlign: 'center'
-                          }}>
-                          </div>
-                        )}
                       </div>
                       <p className="card-title" style={{ fontWeight: 'bold', marginTop: '8px' }}>
                         {song.titulo}
@@ -568,10 +559,10 @@ const Principal = () => {
                     </div>
                   ))}
                 </div>
-              )}
-            </section>
+              </section>
+            )}
 
-            {/* TOP del País */}
+            {/* TOP del País - SIEMPRE SE MUESTRA */}
             <section className="content-section">
               <div className="section-header">
                 <h2>🔥 TOP {userCountry}</h2>
@@ -579,6 +570,8 @@ const Principal = () => {
               </div>
               {loadingCountry ? (
                 <div className="loading-message">Cargando...</div>
+              ) : topCountry.length === 0 ? (
+                <div className="loading-message">No hay datos disponibles</div>
               ) : (
                 <div className="cards-grid compact">
                   {topCountry.slice(0, 6).map((song, index) => (
@@ -631,7 +624,7 @@ const Principal = () => {
               )}
             </section>
 
-            {/* TOP Global */}
+            {/* TOP Global - SIEMPRE SE MUESTRA */}
             <section className="content-section">
               <div className="section-header">
                 <h2>🌎 TOP GLOBAL</h2>
@@ -639,6 +632,8 @@ const Principal = () => {
               </div>
               {loadingGlobal ? (
                 <div className="loading-message">Cargando...</div>
+              ) : topGlobal.length === 0 ? (
+                <div className="loading-message">No hay datos disponibles</div>
               ) : (
                 <div className="cards-grid compact">
                   {topGlobal.slice(0, 6).map((song, index) => (

@@ -1,3 +1,5 @@
+//favoritesService.js
+
 const API_BASE = 'http://localhost:3002/api/music';
 
 /**
