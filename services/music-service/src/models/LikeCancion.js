@@ -1,3 +1,4 @@
+// models/LikeCancion.js
 const mongoose = require('mongoose');
 
 const likeCancionSchema = new mongoose.Schema({
@@ -9,7 +10,7 @@ const likeCancionSchema = new mongoose.Schema({
   cancion_id: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    ref: 'Song'
+    ref: 'Cancion' 
   },
   fecha_like: {
     type: Date,
