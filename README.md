@@ -42,17 +42,17 @@ docker-compose up -d mongodb redis minio neo4j
 
 ### 2. Run Backend Services
 ```bash
-# Music Service  [header-2](#header-2)
+# Music Service
 cd services/music-service  
 npm install  
 npm run dev  
 
-# Auth Service (in another terminal)  [header-3](#header-3)
+# Auth Service (in another terminal)
 cd services/auth-service  
 npm install  
 npm run dev
 
-# Recommendation Service (in another terminal)  [header-4](#header-4)
+# Recommendation Service (in another terminal)
 cd services/recommendation-service  
 npm install  
 npm run dev
@@ -84,10 +84,10 @@ node importMusic.js
 ### Local Development Setup
 For local development, run infrastructure services in Docker while application services run natively with hot-reload:
 ```bash
-# Start only infrastructure  [header-5](#header-5)
+# Start only infrastructure
 docker-compose up -d mongodb redis minio neo4j  
   
-# Run services with hot-reload  [header-6](#header-6)
+# Run services with hot-reload
 npm run dev  # in each service directory
 ```
 
@@ -121,11 +121,11 @@ This builds and starts all services with health checks and proper dependencies.
 
 ## 🛑 Stopping Services
 ```bash
-# Stop all services  [header-7](#header-7)
+# Stop all services
 docker-compose down  
   
-# Stop application services only (keep infrastructure)  [header-8](#header-8)
-# Use Ctrl+C in each terminal running npm run dev  [header-9](#header-9)
+# Stop application services only (keep infrastructure)  [header-8]
+# Use Ctrl+C in each terminal running npm run dev  [header-9]
 ```
 
 ## 📁 Project Structure
