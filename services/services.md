@@ -201,4 +201,4 @@ graph LR
 
 ## Notes
 
-All services implement comprehensive health checks and use Docker's health-check dependencies to ensure proper startup order [7](#4-6) . The recommendation service includes a data synchronization mechanism that runs every 30 minutes to keep Neo4j updated with MongoDB changes [28](#4-27) . Each service is containerized with multi-stage Docker builds for production optimization [29](#4-28) .
+All services implement comprehensive health checks and use Docker's health-check dependencies to ensure proper startup order. The recommendation service includes a data synchronization mechanism that runs every 30 minutes to keep Neo4j updated with MongoDB changes. Each service is containerized with multi-stage Docker builds for production optimization.
