@@ -158,6 +158,3 @@ curl "http://localhost:3003/api/recommendations/for-user/123?limit=20"
 - Rate limiting may apply to certain endpoints
 - Cache TTL varies by endpoint (5 minutes for most recommendations)
 - Some recommendation endpoints require user history data to function properly KornBeat:101-717 KornBeat:32-71 KornBeat:695-819 KornBeat:1169-1303 KornBeat:1713-1768 KornBeat:1-81 
-
-Wiki pages you might want to explore:
-- [KornBeat Overview (Charmandiox9/KornBeat)](/wiki/Charmandiox9/KornBeat#1)
