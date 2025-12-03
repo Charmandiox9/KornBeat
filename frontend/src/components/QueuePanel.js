@@ -27,12 +27,12 @@ const QueuePanel = ({ isOpen, onClose }) => {
     return null;
   };
 
-  // Función para obtener el título de la canción
+  // obtener el título de la canción
   const getSongTitle = (song) => {
     return song?.titulo || song?.title || 'Sin título';
   };
 
-  // Función para obtener los artistas
+  // obtener los artistas
   const getArtists = (song) => {
     if (song?.artistas && Array.isArray(song.artistas)) {
       return song.artistas.map(a => a.nombre).join(', ');
@@ -43,7 +43,7 @@ const QueuePanel = ({ isOpen, onClose }) => {
     return 'Artista desconocido';
   };
 
-  // Función para obtener la duración
+  // obtener la duración
   const getDuration = (song) => {
     return song?.duracion_segundos || song?.duration || 0;
   };
@@ -55,7 +55,7 @@ const QueuePanel = ({ isOpen, onClose }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  console.log('🎵 QueuePanel - Estado:', {
+  console.log('QueuePanel - Estado:', {
     isOpen,
     queueLength: queue.length,
     currentIndex,
@@ -83,7 +83,6 @@ const QueuePanel = ({ isOpen, onClose }) => {
         </div>
 
         <div className="queue-panel-content">
-          {/* Reproduciendo ahora */}
           {currentSong && (
             <div className="queue-section">
               <h4 className="queue-section-title">Reproduciendo ahora</h4>
@@ -126,7 +125,6 @@ const QueuePanel = ({ isOpen, onClose }) => {
               </h4>
               <div className="queue-list">
                 {queue.map((song, index) => {
-                  // Saltar la canción actual si está en la cola
                   if (currentSong && song._id === currentSong._id && index === currentIndex) {
                     return null;
                   }

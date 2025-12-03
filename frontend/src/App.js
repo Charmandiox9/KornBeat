@@ -1,4 +1,3 @@
-// App.js - Sin Providers duplicados (están en index.js)
 import React, { useContext, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthContext } from './context/authContext';
@@ -19,10 +18,8 @@ import InitialLoading from './components/InitialLoading';
 import SearchBarComponent from './components/SearchBarComponent';
 import SearchBarResultsComponent from './components/SearchBarResultsComponent';
 
-import Biblioteca from "./pages/Biblioteca";
 import Favoritos from "./pages/Favoritos";
 import Playlist from "./pages/Playlist";
-import Album from './pages/Album';
 import Principal from './pages/Principal';
 
 import PerfilPage from './pages/settings/Perfil';
@@ -45,7 +42,7 @@ function App() {
   // Cargar última posición al iniciar sesión
   useEffect(() => {
     if (user && user._id) {
-      console.log('👤 Usuario autenticado, cargando última posición...');
+      console.log('Usuario autenticado, cargando última posición...');
       loadLastPosition(user._id);
     }
   }, [user, loadLastPosition]);
@@ -54,13 +51,13 @@ function App() {
   useEffect(() => {
     if (!user?._id) return;
 
-    console.log('🔄 Iniciando intervalo de guardado cada 5s');
+    console.log('Iniciando intervalo de guardado cada 5s');
     const saveInterval = setInterval(() => {
       saveCurrentPosition(user._id);
     }, 5000);
 
     return () => {
-      console.log('🧹 Limpiando interval de guardado');
+      console.log('Limpiando interval de guardado');
       clearInterval(saveInterval);
     };
   }, [user?._id, saveCurrentPosition]);
@@ -109,7 +106,6 @@ function App() {
 
   return (
     <>
-      {/* Diálogo de reanudar reproducción */}
       {showResumeDialog && lastPosition && (
         <ResumeDialog
           position={lastPosition}
@@ -130,10 +126,8 @@ function App() {
         <Route path="/search" element={<SearchBarComponent />} />
         <Route path="/search-results" element={<SearchBarResultsComponent />} />
         
-        <Route path="/biblioteca" element={<Biblioteca />} />
         <Route path="/favoritos" element={<Favoritos />} />
         <Route path="/playlist" element={<Playlist />} />
-        <Route path="/albumes" element={<Album />} />
 
         <Route path="/perfil" element={<PerfilPage />} />
         <Route path="/editar-perfil" element={<EditarPerfilPage />} />

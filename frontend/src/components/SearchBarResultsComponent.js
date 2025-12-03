@@ -13,7 +13,7 @@ const SearchBarResultsComponent = () => {
   const { playNow, addToQueue, playNextInQueue, addMultipleToQueue, queue, clearQueue, playFromQueue, currentSong } = useMusicPlayer();
   const [imageErrors, setImageErrors] = useState(new Set());
   const [activeMenu, setActiveMenu] = useState(null);
-  const [activePlaylistMenu, setActivePlaylistMenu] = useState(null); // 🆕 Estado para el menú de playlist
+  const [activePlaylistMenu, setActivePlaylistMenu] = useState(null); 
 
   const formatDuration = useCallback((seconds) => {
     if (!seconds || seconds < 0) return '0:00';
@@ -63,11 +63,11 @@ const SearchBarResultsComponent = () => {
     setActiveMenu(null);
   }, [playNextInQueue]);
 
-  // 🆕 Handler para abrir el menú de playlist
+
   const handleAddToPlaylistMenu = useCallback((e, song) => {
     e.stopPropagation();
     setActivePlaylistMenu(song._id);
-    setActiveMenu(null); // Cerrar el menú de opciones
+    setActiveMenu(null);
   }, []);
 
   const resultsText = useMemo(() => {
@@ -75,7 +75,6 @@ const SearchBarResultsComponent = () => {
     return `${count} ${count === 1 ? 'canción encontrada' : 'canciones encontradas'}`;
   }, [searchResults.length]);
 
-  // Cerrar menú al hacer click fuera
   React.useEffect(() => {
     const handleClickOutside = () => {
       setActiveMenu(null);
@@ -194,7 +193,6 @@ const SearchBarResultsComponent = () => {
                     {formatDuration(songDuration)}
                   </span>
 
-                  {/* Botón de favoritos */}
                   {user && song._id && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <FavoriteButton 
@@ -230,7 +228,7 @@ const SearchBarResultsComponent = () => {
                           <ListPlus size={16} />
                           <span>Agregar a la cola</span>
                         </button>
-                        {/* 🆕 Opción de agregar a playlist */}
+                        {/*agregar a playlist */}
                         {user && (
                           <button 
                             onClick={(e) => handleAddToPlaylistMenu(e, song)} 

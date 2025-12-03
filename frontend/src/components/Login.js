@@ -1,4 +1,3 @@
-// frontend/src/components/Login.js
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
@@ -11,7 +10,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Obtener la ubicación desde donde vino el usuario (si fue redirigido)
+  // Obtener la ubicación desde donde vino el usuario
   const from = location.state?.from?.pathname || '/principal';
 
   const handleChange = (e) => {
@@ -39,7 +38,6 @@ const Login = () => {
     setErrors({});
     try {
       await login(formData.email, formData.password);
-      // Redirigir a la página que intentaba acceder o a /principal
       navigate(from, { replace: true });
     } catch (error) {
       setErrors({ submit: error.message });
@@ -48,7 +46,6 @@ const Login = () => {
 
   return (
     <div className="login-wrapper">
-      {/* Navbar superior */}
       <nav className="login-navbar">
         <div className="login-nav-brand">
           <Link to="/">
@@ -65,9 +62,7 @@ const Login = () => {
         </div>
       </nav>
 
-      {/* Contenedor principal con dos columnas */}
       <div className="login-container">
-        {/* Columna izquierda - Mensaje de bienvenida */}
         <div className="login-left">
           <div className="welcome-content">
             <h1>Qué bueno que volviste,<br />te estábamos esperando</h1>
@@ -83,7 +78,6 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Columna derecha - Formulario de login */}
         <div className="login-right">
           <div className="login-card">
             {errors.submit && <div className="error-message">{errors.submit}</div>}

@@ -21,7 +21,6 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Lista de países
   const countries = [
     { code: 'ES', name: 'España' },
     { code: 'MX', name: 'México' },
@@ -92,7 +91,6 @@ const Register = () => {
     if (!formData.birthDate) errors.push('La fecha de nacimiento es requerida');
     if (!formData.country) errors.push('Selecciona tu país');
 
-    // Validar edad mínima
     if (formData.birthDate) {
       const birthDate = new Date(formData.birthDate);
       const today = new Date();
@@ -193,7 +191,6 @@ const Register = () => {
 
   return (
     <div className="register-wrapper">
-      {/* Navbar superior */}
       <nav className="register-navbar">
         <div className="register-nav-brand">
           <Link to="/">
@@ -210,9 +207,7 @@ const Register = () => {
         </div>
       </nav>
 
-      {/* Contenedor principal con dos columnas */}
       <div className="register-container">
-        {/* Columna izquierda - Mensaje de bienvenida */}
         <div className="register-left">
           <div className="welcome-content">
             <h1>Bienvenido a KornBeat</h1>
@@ -230,10 +225,8 @@ const Register = () => {
           </div>
         </div>
 
-        {/* Columna derecha - Formulario de registro */}
         <div className="register-right">
           <div className="register-card">
-            {/* Indicador de pasos */}
             <div className="steps-indicator">
               <div className={`step ${currentStep === 1 ? 'active' : currentStep > 1 ? 'completed' : ''}`}>
                 <div className="step-number">1</div>
@@ -248,7 +241,6 @@ const Register = () => {
 
             {error && <div className="error-message">{error}</div>}
 
-            {/* PASO 1: Información Personal */}
             {currentStep === 1 && (
               <form className="register-form">
                 <div className="form-group">
@@ -323,7 +315,7 @@ const Register = () => {
               </form>
             )}
 
-            {/* PASO 2: Contraseña y detalles */}
+
             {currentStep === 2 && (
               <form onSubmit={handleSubmit} className="register-form">
                 <div className="form-group">

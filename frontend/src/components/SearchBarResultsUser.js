@@ -4,7 +4,7 @@ import { useMusicSearch } from '../context/MusicSearchContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import '../styles/SearchBarResults.css';
 
-// Componente para la página principal (usuarios registrados)
+// usuarios registrados
 const SearchBarResultsUser = () => {
   const { searchResults, isLoading, error, searchQuery } = useMusicSearch();
   const { playNow, addToQueue, playNextInQueue, currentSong } = useMusicPlayer();
@@ -27,8 +27,6 @@ const SearchBarResultsUser = () => {
 
   return (
     <div className="search-results">
-      {/* ...render igual al componente original... */}
-      {/* Solo cambia la lógica de handlePlayNow */}
     </div>
   );
 };

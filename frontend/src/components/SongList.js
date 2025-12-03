@@ -17,7 +17,6 @@ const SongList = ({ songs, onSongSelect, currentSong, searchQuery, searchType })
     return `${mb.toFixed(1)} MB`;
   };
 
-  // Función para resaltar texto de búsqueda
   const highlightText = (text, query) => {
     if (!query || !text) return text;
     
@@ -79,7 +78,6 @@ const SongList = ({ songs, onSongSelect, currentSong, searchQuery, searchType })
                   {searchQuery ? highlightText(song.artist, searchQuery) : song.artist}
                 </p>
                 
-                {/* Mostrar compositores si existen y son diferentes del artista */}
                 {song.composers && song.composers.length > 0 && (
                   <div className="song-composers">
                     <span className="composers-label">✍️ Compositores: </span>

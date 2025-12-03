@@ -9,7 +9,6 @@ const BottomBar = () => {
   return (
     <div className="bottom-bar">
       <div className="bottom-bar-container">
-        {/* Sector 1: Botones de navegación (Izquierda) */}
         <div className="bottom-navigation">
           <Link to="/principal" className="menu-btn">
             <Menu size={22} />     
@@ -23,8 +22,6 @@ const BottomBar = () => {
             <span>Playlist</span>
           </Link>
         </div>
-
-        {/* Sector 2: Reproductor (Derecha) */}
         <div className="bottom-player">
           <MiniPlayer />
         </div>
