@@ -151,7 +151,6 @@ async function connectDB() {
 function extractFileName(archivoUrl) {
   if (!archivoUrl) return null;
   
-  // "/uploads/music/acdc-back-in-black.mp3" → "acdc-back-in-black.mp3"
   const parts = archivoUrl.split('/');
   return parts[parts.length - 1];
 }
@@ -160,12 +159,9 @@ function extractFileName(archivoUrl) {
 function transformCoverUrl(portadaUrl, songId) {
   if (!portadaUrl) return null;
   
-  // Extraer extensión de la URL original
-  // "/uploads/covers/song/love-of-my-life.png" → "png"
   const match = portadaUrl.match(/\.([^.]+)$/);
   const extension = match ? match[1] : 'jpg';
   
-  // Generar nueva URL: "covers/objectId.ext"
   return `covers/${songId}.${extension}`;
 }
 
@@ -218,12 +214,10 @@ function getGeneroPrincipal(categorias) {
 function convertLongToNumber(value) {
   if (!value) return 0;
   
-  // Si es un objeto Long de MongoDB
   if (typeof value === 'object' && (value.low !== undefined || value.high !== undefined)) {
     return value.toNumber ? value.toNumber() : (value.low || 0);
   }
   
-  // Si ya es un número
   return Number(value) || 0;
 }
 
@@ -238,50 +232,43 @@ async function migrateCancion(cancion) {
   stats.total++;
 
   try {
-    // Obtener datos básicos
     const title = cancion.titulo || 'Sin Título';
     const artist = getArtistaPrincipal(cancion.artistas);
     
-    console.log(`${colors.cyan}🎵 Migrando:${colors.reset} "${title}" - ${artist}`);
+    console.log(`${colors.cyan}Migrando: ${colors.reset}"${title}" - ${artist}`);
 
-    // Verificar si ya existe
     if (await songExists(title, artist)) {
       stats.duplicates++;
-      console.log(`   ${colors.yellow}⏭️  Ya existe en 'songs'${colors.reset}\n`);
+      console.log(`   ${colors.yellow}Ya existe en 'songs'${colors.reset}\n`);
       return;
     }
 
-    // Extraer fileName
     let fileName = cancion.fileName;
     if (!fileName && cancion.archivo_url) {
       fileName = extractFileName(cancion.archivo_url);
       if (!fileName) {
         stats.warnings++;
-        console.log(`   ${colors.yellow}⚠️  No se pudo extraer fileName${colors.reset}`);
+        console.log(`   ${colors.yellow}No se pudo extraer fileName${colors.reset}`);
         fileName = `${title.toLowerCase().replace(/\s+/g, '-')}.mp3`;
       }
     }
 
     if (!fileName) {
       stats.errors++;
-      console.log(`   ${colors.red}❌ Error: fileName faltante${colors.reset}\n`);
+      console.log(`   ${colors.red}Error: fileName faltante${colors.reset}\n`);
       return;
     }
 
-    // Obtener coverUrl
     let coverUrl = null;
     if (cancion.album_info && cancion.album_info.portada_url) {
-      // Generar ObjectId para la nueva canción
       const tempId = new mongoose.Types.ObjectId();
       coverUrl = transformCoverUrl(cancion.album_info.portada_url, tempId);
     }
 
-    // Convertir tipos numéricos
     const duration = convertInt32ToNumber(cancion.duracion_segundos);
     const fileSize = convertInt32ToNumber(cancion.fileSize) || 0;
     const playCount = convertLongToNumber(cancion.reproducciones);
 
-    // Crear documento para Song
     const songData = {
       title: title,
       artist: artist,
@@ -298,21 +285,20 @@ async function migrateCancion(cancion) {
       playCount: playCount
     };
 
-    // Crear y guardar
     const song = new Song(songData);
     await song.save();
 
     stats.migrated++;
-    console.log(`   ${colors.green}✅ Migrado exitosamente${colors.reset}`);
-    console.log(`   ${colors.magenta}📊 Reproducciones: ${playCount} | Duración: ${duration}s${colors.reset}`);
+    console.log(`   ${colors.green}Migrado exitosamente${colors.reset}`);
+    console.log(`   ${colors.magenta}Reproducciones: ${playCount} | Duración: ${duration}s${colors.reset}`);
     if (coverUrl) {
-      console.log(`   ${colors.cyan}🖼️  Portada: ${coverUrl}${colors.reset}`);
+      console.log(`   ${colors.cyan}Portada: ${coverUrl}${colors.reset}`);
     }
     console.log('');
 
   } catch (error) {
     stats.errors++;
-    console.error(`   ${colors.red}❌ Error:${colors.reset}`, error.message);
+    console.error(`   ${colors.red}Error:${colors.reset}`, error.message);
     console.log('');
   }
 }
@@ -320,28 +306,26 @@ async function migrateCancion(cancion) {
 // Función principal de migración
 async function migrateAllCanciones() {
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}🔄 MIGRADOR: canciones → songs${colors.reset}`);
+  console.log(`${colors.bright}MIGRADOR: canciones → songs${colors.reset}`);
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
   try {
-    // Obtener todas las canciones
     const canciones = await Cancion.find({}).lean();
 
     if (canciones.length === 0) {
-      console.log(`${colors.yellow}⚠️  No se encontraron documentos en 'canciones'${colors.reset}\n`);
+      console.log(`${colors.yellow}No se encontraron documentos en 'canciones'${colors.reset}\n`);
       return;
     }
 
     console.log(`${colors.green}✓${colors.reset} Encontradas ${colors.bright}${canciones.length}${colors.reset} canciones para migrar\n`);
     console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-    // Migrar cada canción
     for (const cancion of canciones) {
       await migrateCancion(cancion);
     }
 
   } catch (error) {
-    console.error(`${colors.red}❌ Error durante la migración:${colors.reset}`, error);
+    console.error(`${colors.red}Error durante la migración:${colors.reset}`, error);
     throw error;
   }
 }
@@ -349,22 +333,22 @@ async function migrateAllCanciones() {
 // Mostrar reporte final
 function showReport() {
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}📊 REPORTE FINAL DE MIGRACIÓN${colors.reset}`);
+  console.log(`${colors.bright}REPORTE FINAL DE MIGRACIÓN${colors.reset}`);
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-  console.log(`   📁 Total de canciones procesadas:    ${colors.bright}${stats.total}${colors.reset}`);
-  console.log(`   ${colors.green}✅ Canciones migradas:${colors.reset}            ${colors.bright}${stats.migrated}${colors.reset}`);
-  console.log(`   ${colors.yellow}⏭️  Duplicados (omitidos):${colors.reset}        ${colors.bright}${stats.duplicates}${colors.reset}`);
-  console.log(`   ${colors.yellow}⚠️  Advertencias:${colors.reset}                 ${colors.bright}${stats.warnings}${colors.reset}`);
-  console.log(`   ${colors.red}❌ Errores:${colors.reset}                       ${colors.bright}${stats.errors}${colors.reset}`);
+  console.log(`   Total de canciones procesadas:    ${colors.bright}${stats.total}${colors.reset}`);
+  console.log(`   ${colors.green}Canciones migradas:${colors.reset}            ${colors.bright}${stats.migrated}${colors.reset}`);
+  console.log(`   ${colors.yellow}Duplicados (omitidos):${colors.reset}        ${colors.bright}${stats.duplicates}${colors.reset}`);
+  console.log(`   ${colors.yellow}Advertencias:${colors.reset}                 ${colors.bright}${stats.warnings}${colors.reset}`);
+  console.log(`   ${colors.red}Errores:${colors.reset}                       ${colors.bright}${stats.errors}${colors.reset}`);
   console.log('');
 
   if (stats.migrated > 0) {
     console.log(`${colors.green}${colors.bright}🎉 ¡Migración completada exitosamente!${colors.reset}\n`);
   } else if (stats.total === 0) {
-    console.log(`${colors.yellow}⚠️  No se encontraron canciones para migrar${colors.reset}\n`);
+    console.log(`${colors.yellow} No se encontraron canciones para migrar${colors.reset}\n`);
   } else {
-    console.log(`${colors.yellow}⚠️  No se migraron canciones nuevas${colors.reset}\n`);
+    console.log(`${colors.yellow} No se migraron canciones nuevas${colors.reset}\n`);
   }
 
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
@@ -375,7 +359,7 @@ async function showCollectionStats() {
   const cancionesCount = await Cancion.countDocuments();
   const songsCount = await Song.countDocuments();
 
-  console.log(`${colors.cyan}📊 Estadísticas de colecciones:${colors.reset}`);
+  console.log(`${colors.cyan}Estadísticas de colecciones:${colors.reset}`);
   console.log(`   Colección origen (canciones):  ${colors.bright}${cancionesCount}${colors.reset} documentos`);
   console.log(`   Colección destino (songs):     ${colors.bright}${songsCount}${colors.reset} documentos`);
   console.log('');
@@ -390,10 +374,10 @@ async function main() {
     showReport();
     await showCollectionStats();
   } catch (error) {
-    console.error(`${colors.red}❌ Error fatal:${colors.reset}`, error);
+    console.error(`${colors.red}Error fatal:${colors.reset}`, error);
   } finally {
     await mongoose.connection.close();
-    console.log(`${colors.green}✅ Conexión cerrada${colors.reset}`);
+    console.log(`${colors.green}Conexión cerrada${colors.reset}`);
     process.exit(0);
   }
 }

@@ -193,7 +193,6 @@ router.post('/user/:userId/playlists', async (req, res) => {
       total_canciones: 0,
       duracion_total: 0,
       
-      // ✅ CORRECTO: Long de BSON 5.x
       seguidores: BSON.Long.fromNumber(0),
       reproducciones: BSON.Long.fromNumber(0),
       
@@ -208,7 +207,6 @@ router.post('/user/:userId/playlists', async (req, res) => {
 
     console.log('✅ Playlist creada con ID:', result.insertedId);
 
-    // Convertir Long a número para la respuesta JSON
     const playlistResponse = {
       _id: result.insertedId,
       usuario_creador_id: nuevaPlaylist.usuario_creador_id,
@@ -219,8 +217,8 @@ router.post('/user/:userId/playlists', async (req, res) => {
       canciones: nuevaPlaylist.canciones,
       total_canciones: nuevaPlaylist.total_canciones,
       duracion_total: nuevaPlaylist.duracion_total,
-      seguidores: 0, // Convertir a número
-      reproducciones: 0, // Convertir a número
+      seguidores: 0,
+      reproducciones: 0,
       fecha_creacion: nuevaPlaylist.fecha_creacion,
       fecha_actualizacion: nuevaPlaylist.fecha_actualizacion
     };

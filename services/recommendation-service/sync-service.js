@@ -1,4 +1,3 @@
-// sync-service.js - Servicio de sincronización MongoDB -> Neo4j
 const { MongoClient } = require('mongodb');
 const neo4j = require('neo4j-driver');
 const config = require('./config');
@@ -17,14 +16,13 @@ const neo4jDriver = neo4j.driver(
   )
 );
 
-// Helper para obtener nombre de colección
 const getCollection = (name) => mongoDb.collection(config.collections[name]);
 
 // ==================== FUNCIONES DE SINCRONIZACIÓN ====================
 
 // 1. Sincronizar Usuarios
 async function syncUsuarios() {
-  console.log('📥 Sincronizando usuarios...');
+  console.log('Sincronizando usuarios...');
   const session = neo4jDriver.session();
   
   try {
@@ -43,17 +41,17 @@ async function syncUsuarios() {
       `, {
         id: usuario._id.toString(),
         username: usuario.username,
-        name: usuario.name, // Corregido: usar 'name' no 'nombre'
-        country: usuario.country, // Corregido: usar 'country' no 'pais'
+        name: usuario.name,
+        country: usuario.country,
         is_premium: usuario.is_premium || false,
         es_artist: usuario.es_artist || false,
         date_of_register: usuario.date_of_register?.toISOString() || new Date().toISOString()
       });
     }
     
-    console.log(`✅ ${usuarios.length} usuarios sincronizados`);
+    console.log(`${usuarios.length} usuarios sincronizados`);
   } catch (error) {
-    console.error('❌ Error sincronizando usuarios:', error);
+    console.error('Error sincronizando usuarios:', error);
   } finally {
     await session.close();
   }
@@ -61,7 +59,7 @@ async function syncUsuarios() {
 
 // 2. Sincronizar Artistas
 async function syncArtistas() {
-  console.log('🎤 Sincronizando artistas...');
+  console.log('Sincronizando artistas...');
   const session = neo4jDriver.session();
   
   try {
@@ -90,9 +88,9 @@ async function syncArtistas() {
       });
     }
     
-    console.log(`✅ ${artistas.length} artistas sincronizados`);
+    console.log(`${artistas.length} artistas sincronizados`);
   } catch (error) {
-    console.error('❌ Error sincronizando artistas:', error);
+    console.error('Error sincronizando artistas:', error);
   } finally {
     await session.close();
   }
@@ -100,7 +98,7 @@ async function syncArtistas() {
 
 // 3. Sincronizar Géneros/Categorías
 async function syncGeneros() {
-  console.log('🎵 Sincronizando géneros...');
+  console.log('Sincronizando géneros...');
   const session = neo4jDriver.session();
   
   try {
@@ -119,9 +117,9 @@ async function syncGeneros() {
       });
     }
     
-    console.log(`✅ ${categorias.length} géneros sincronizados`);
+    console.log(`${categorias.length} géneros sincronizados`);
   } catch (error) {
-    console.error('❌ Error sincronizando géneros:', error);
+    console.error('Error sincronizando géneros:', error);
   } finally {
     await session.close();
   }
@@ -129,7 +127,7 @@ async function syncGeneros() {
 
 // 4. Sincronizar Álbumes
 async function syncAlbumes() {
-  console.log('💿 Sincronizando álbumes...');
+  console.log('Sincronizando álbumes...');
   const session = neo4jDriver.session();
   
   try {
@@ -183,9 +181,9 @@ async function syncAlbumes() {
       }
     }
     
-    console.log(`✅ ${albumes.length} álbumes sincronizados`);
+    console.log(`${albumes.length} álbumes sincronizados`);
   } catch (error) {
-    console.error('❌ Error sincronizando álbumes:', error);
+    console.error('Error sincronizando álbumes:', error);
   } finally {
     await session.close();
   }
@@ -193,24 +191,23 @@ async function syncAlbumes() {
 
 // 5. Sincronizar Canciones (adaptado a tu esquema real)
 async function syncCanciones() {
-  console.log('🎶 Sincronizando canciones...');
+  console.log('Sincronizando canciones...');
   const session = neo4jDriver.session();
   
   try {
     const collectionName = config.collections.canciones;
-    console.log(`  📋 Usando colección: ${collectionName}`);
+    console.log(`  Usando colección: ${collectionName}`);
     
-    // Tu esquema no tiene campo 'disponible', así que traemos todas
     const canciones = await mongoDb.collection(collectionName)
       .find({})
       .toArray();
     
     if (canciones.length === 0) {
-      console.log('  ⚠️  No se encontraron canciones.');
+      console.log('  No se encontraron canciones.');
       return;
     }
     
-    console.log(`  📊 Encontradas ${canciones.length} canciones`);
+    console.log(`  Encontradas ${canciones.length} canciones`);
     
     // Sincronizar en lotes
     const batchSize = config.sync.batchSize;
@@ -221,7 +218,7 @@ async function syncCanciones() {
         try {
           // Validar campos mínimos
           if (!cancion.title) {
-            console.log(`  ⚠️  Canción sin título, saltando: ${cancion._id}`);
+            console.log(`  Canción sin título, saltando: ${cancion._id}`);
             continue;
           }
           
@@ -322,19 +319,19 @@ async function syncCanciones() {
           }
           
         } catch (cancionError) {
-          console.error(`  ❌ Error procesando canción ${cancion.title || cancion._id}:`, cancionError.message);
+          console.error(`  Error procesando canción ${cancion.title || cancion._id}:`, cancionError.message);
         }
       }
       
       if (i + batchSize < canciones.length) {
         await new Promise(resolve => setTimeout(resolve, config.sync.delayBetweenBatches));
-        console.log(`  ⏳ Procesadas ${Math.min(i + batchSize, canciones.length)} de ${canciones.length} canciones...`);
+        console.log(`  Procesadas ${Math.min(i + batchSize, canciones.length)} de ${canciones.length} canciones...`);
       }
     }
     
-    console.log(`✅ ${canciones.length} canciones sincronizadas`);
+    console.log(`${canciones.length} canciones sincronizadas`);
   } catch (error) {
-    console.error('❌ Error sincronizando canciones:', error);
+    console.error('Error sincronizando canciones:', error);
     throw error;
   } finally {
     await session.close();
@@ -343,7 +340,7 @@ async function syncCanciones() {
 
 // 6. Sincronizar Historial de Reproducciones
 async function syncHistorialReciente() {
-  console.log('📊 Sincronizando historial reciente...');
+  console.log('Sincronizando historial reciente...');
   const session = neo4jDriver.session();
   
   try {
@@ -360,10 +357,10 @@ async function syncHistorialReciente() {
       .limit(50000)
       .toArray();
     
-    console.log(`  📊 Encontrados ${historial.length} registros de historial`);
+    console.log(`  Encontrados ${historial.length} registros de historial`);
     
     if (historial.length === 0) {
-      console.log('  ⚠️  No se encontraron registros de historial');
+      console.log('  No se encontraron registros de historial');
       return;
     }
     
@@ -372,9 +369,8 @@ async function syncHistorialReciente() {
     
     for (const registro of historial) {
       try {
-        // Validar que existan los campos necesarios
         if (!registro.metadata?.usuario_id || !registro.metadata?.cancion_id) {
-          console.log(`  ⚠️  Registro sin usuario_id o cancion_id, saltando`);
+          console.log(`Registro sin usuario_id o cancion_id, saltando`);
           continue;
         }
         
@@ -396,15 +392,15 @@ async function syncHistorialReciente() {
         sincronizados++;
       } catch (regError) {
         errores++;
-        if (errores <= 3) { // Solo mostrar los primeros 3 errores
-          console.error(`  ❌ Error en registro:`, regError.message);
+        if (errores <= 3) {
+          console.error(`Error en registro:`, regError.message);
         }
       }
     }
     
-    console.log(`✅ ${sincronizados} registros de historial sincronizados (${errores} errores)`);
+    console.log(`${sincronizados} registros de historial sincronizados (${errores} errores)`);
   } catch (error) {
-    console.error('❌ Error sincronizando historial:', error);
+    console.error('Error sincronizando historial:', error);
   } finally {
     await session.close();
   }
@@ -412,7 +408,7 @@ async function syncHistorialReciente() {
 
 // 7. Sincronizar Likes de Canciones
 async function syncLikes() {
-  console.log('❤️  Sincronizando likes...');
+  console.log('Sincronizando likes...');
   const session = neo4jDriver.session();
   
   try {
@@ -431,9 +427,9 @@ async function syncLikes() {
       });
     }
     
-    console.log(`✅ ${likes.length} likes sincronizados`);
+    console.log(`${likes.length} likes sincronizados`);
   } catch (error) {
-    console.error('❌ Error sincronizando likes:', error);
+    console.error('Error sincronizando likes:', error);
   } finally {
     await session.close();
   }
@@ -441,7 +437,7 @@ async function syncLikes() {
 
 // 8. Sincronizar Seguimiento de Artistas
 async function syncSeguimientos() {
-  console.log('👥 Sincronizando seguimientos...');
+  console.log('Sincronizando seguimientos...');
   const session = neo4jDriver.session();
   
   try {
@@ -462,9 +458,9 @@ async function syncSeguimientos() {
       });
     }
     
-    console.log(`✅ ${seguimientos.length} seguimientos sincronizados`);
+    console.log(`${seguimientos.length} seguimientos sincronizados`);
   } catch (error) {
-    console.error('❌ Error sincronizando seguimientos:', error);
+    console.error('Error sincronizando seguimientos:', error);
   } finally {
     await session.close();
   }
@@ -472,11 +468,10 @@ async function syncSeguimientos() {
 
 // 9. Calcular y guardar preferencias de género por usuario
 async function calcularPreferencias() {
-  console.log('🎯 Calculando preferencias de usuarios...');
+  console.log('Calculando preferencias de usuarios...');
   const session = neo4jDriver.session();
   
   try {
-    // Neo4j 5.x usa COUNT {} en lugar de size()
     await session.run(`
       MATCH (u:Usuario)-[r:REPRODUJO]->(c:Cancion)-[:HAS_GENRE]->(g:Genero)
       WITH u, g, COUNT(r) as reproducciones
@@ -489,10 +484,9 @@ async function calcularPreferencias() {
           pref.last_update = datetime()
     `);
     
-    console.log('✅ Preferencias calculadas');
+    console.log('Preferencias calculadas');
   } catch (error) {
-    console.error('❌ Error calculando preferencias:', error.message);
-    // No lanzar error, es una función opcional
+    console.error('Error calculando preferencias:', error.message);
   } finally {
     await session.close();
   }
@@ -501,12 +495,12 @@ async function calcularPreferencias() {
 // ==================== EJECUCIÓN COMPLETA ====================
 
 async function sincronizacionCompleta() {
-  console.log('🚀 Iniciando sincronización completa MongoDB -> Neo4j');
+  console.log('Iniciando sincronización completa MongoDB -> Neo4j');
   console.log('='.repeat(60));
   
   try {
     await mongoClient.connect();
-    console.log('✅ Conectado a MongoDB');
+    console.log('Conectado a MongoDB');
     
     // Verificar Neo4j
     const testSession = neo4jDriver.session();
@@ -527,13 +521,13 @@ async function sincronizacionCompleta() {
     await calcularPreferencias();
     
     console.log('='.repeat(60));
-    console.log('✅ Sincronización completa finalizada con éxito');
+    console.log('Sincronización completa finalizada con éxito');
   } catch (error) {
-    console.error('❌ Error en sincronización:', error);
+    console.error('Error en sincronización:', error);
   } finally {
     await mongoClient.close();
     await neo4jDriver.close();
-    console.log('👋 Conexiones cerradas');
+    console.log('Conexiones cerradas');
   }
 }
 

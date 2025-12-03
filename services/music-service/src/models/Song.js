@@ -11,7 +11,7 @@ const songSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  composers: { // ← NUEVO CAMPO
+  composers: { 
     type: [String],
     default: [],
     trim: true
@@ -21,7 +21,7 @@ const songSchema = new mongoose.Schema({
     trim: true
   },
   duration: {
-    type: Number, // en segundos
+    type: Number, 
     required: true
   },
   genre: {

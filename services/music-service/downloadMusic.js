@@ -369,10 +369,10 @@ async function connectToMongoDB() {
     try {
         const client = new MongoClient(MONGODB_URI);
         await client.connect();
-        console.log("✅ Conectado a MongoDB exitosamente");
+        console.log("Conectado a MongoDB exitosamente");
         return client.db('music_app');
     } catch (error) {
-        console.error(`❌ Error conectando a MongoDB: ${error.message}`);
+        console.error(`Error conectando a MongoDB: ${error.message}`);
         return null;
     }
 }
@@ -386,22 +386,22 @@ async function searchYouTube(query) {
         }
         return null;
     } catch (error) {
-        console.error(`   ⚠️  Error buscando en YouTube: ${error.message}`);
+        console.error(`    Error buscando en YouTube: ${error.message}`);
         return null;
     }
 }
 
 async function downloadSong(searchQuery, outputPath) {
     try {
-        console.log(`   🔍 Buscando: ${searchQuery}`);
+        console.log(`   Buscando: ${searchQuery}`);
         
         const video = await searchYouTube(searchQuery);
         if (!video) {
-            console.log(`   ⚠️  No se encontró: ${searchQuery}`);
+            console.log(`   No se encontró: ${searchQuery}`);
             return null;
         }
 
-        console.log(`   ⬇️  Descargando: ${video.title}`);
+        console.log(`    Descargando: ${video.title}`);
         
         const videoUrl = video.url;
         const stream = ytdl(videoUrl, { quality: 'highestaudio' });
@@ -411,19 +411,19 @@ async function downloadSong(searchQuery, outputPath) {
                 .audioBitrate(192)
                 .save(outputPath)
                 .on('end', () => {
-                    console.log(`   ✅ Descargada: ${video.title}`);
+                    console.log(`   Descargada: ${video.title}`);
                     resolve({
                         duration: video.timestamp ? parseTimestamp(video.timestamp) : 180,
                         title: video.title
                     });
                 })
                 .on('error', (err) => {
-                    console.error(`   ❌ Error en descarga: ${err.message}`);
+                    console.error(`   Error en descarga: ${err.message}`);
                     reject(err);
                 });
         });
     } catch (error) {
-        console.error(`   ⚠️  Error descargando ${searchQuery}: ${error.message}`);
+        console.error(`    Error descargando ${searchQuery}: ${error.message}`);
         return null;
     }
 }
@@ -440,7 +440,7 @@ function parseTimestamp(timestamp) {
 
 // ==================== POBLACIÓN DE BD ====================
 async function populateDatabase(db, downloadMusic = false) {
-    console.log("\n🎵 ==================== INICIANDO POBLACIÓN DE BD ====================\n");
+    console.log("\n==================== INICIANDO POBLACIÓN DE BD ====================\n");
     
     // Crear usuario demo
     const existingUser = await db.collection('usuarios').findOne({ username: "music_admin" });
@@ -461,15 +461,15 @@ async function populateDatabase(db, downloadMusic = false) {
             last_acces: new Date(),
             active: true
         });
-        console.log("✅ Usuario administrador creado");
+        console.log("Usuario administrador creado");
     } else {
-        console.log("⏭️  Usuario administrador ya existe");
+        console.log("⏭Usuario administrador ya existe");
     }
     
     // Procesar cada género
     for (const [genre, data] of Object.entries(MUSIC_DATA)) {
         console.log(`\n${'='.repeat(60)}`);
-        console.log(`🎸 PROCESANDO GÉNERO: ${genre}`);
+        console.log(`PROCESANDO GÉNERO: ${genre}`);
         console.log(`${'='.repeat(60)}\n`);
         
         // Insertar artistas del género
@@ -503,7 +503,7 @@ async function populateDatabase(db, downloadMusic = false) {
                     instagram: `@${artistData.name.toLowerCase().replace(/\s+/g, '')}`
                 }
             });
-            console.log(`   ✅ Artista creado: ${artistData.name}`);
+            console.log(`  Artista creado: ${artistData.name}`);
         }
         
         // Crear álbum para el género
@@ -530,14 +530,14 @@ async function populateDatabase(db, downloadMusic = false) {
                 disponible: true,
                 fecha_creacion: new Date()
             });
-            console.log(`   📀 Álbum creado: Best of ${genre}`);
+            console.log(`   Álbum creado: Best of ${genre}`);
         } else {
             albumId = existingAlbum._id;
-            console.log(`   ⏭️  Álbum ya existe: Best of ${genre}`);
+            console.log(`   Álbum ya existe: Best of ${genre}`);
         }
         
         // Procesar canciones
-        console.log(`\n   🎵 ${downloadMusic ? 'Descargando y registrando' : 'Registrando'} ${data.songs.length} canciones...\n`);
+        console.log(`\n ${downloadMusic ? 'Descargando y registrando' : 'Registrando'} ${data.songs.length} canciones...\n`);
         
         for (let idx = 0; idx < data.songs.length; idx++) {
             const songQuery = data.songs[idx];
@@ -615,7 +615,7 @@ async function populateDatabase(db, downloadMusic = false) {
             }
         }
         
-        console.log(`\n✅ Género ${genre} completado: ${data.songs.length} canciones\n`);
+        console.log(`\nGénero ${genre} completado: ${data.songs.length} canciones\n`);
     }
     
     // Resumen
@@ -623,8 +623,8 @@ async function populateDatabase(db, downloadMusic = false) {
     const albumesCount = await db.collection('albumes').countDocuments({});
     const cancionesCount = await db.collection('canciones').countDocuments({});
     
-    console.log("\n🎉 ==================== POBLACIÓN COMPLETADA ====================");
-    console.log(`\n📊 Resumen:`);
+    console.log("\n==================== POBLACIÓN COMPLETADA ====================");
+    console.log(`\nResumen:`);
     console.log(`   - Artistas: ${artistasCount}`);
     console.log(`   - Álbumes: ${albumesCount}`);
     console.log(`   - Canciones: ${cancionesCount}`);
@@ -634,9 +634,9 @@ async function populateDatabase(db, downloadMusic = false) {
 // ==================== MAIN ====================
 async function main() {
     console.log(`
-    ╔══════════════════════════════════════════════════════════╗
-    ║       🎵 MUSIC DOWNLOADER & DATABASE POPULATOR 🎵       ║
-    ╚══════════════════════════════════════════════════════════╝
+    ╔═════════════════════════════════════════════════════╗
+    ║        MUSIC DOWNLOADER & DATABASE POPULATOR        ║
+    ╚═════════════════════════════════════════════════════╝
     `);
     
     // Conectar a MongoDB
@@ -646,26 +646,26 @@ async function main() {
     }
     
     // Preguntar si descargar música
-    console.log("\n⚠️  IMPORTANTE: La descarga de música puede tardar varias horas.");
+    console.log("\n  IMPORTANTE: La descarga de música puede tardar varias horas.");
     const downloadChoice = await askQuestion("\n¿Deseas descargar música de YouTube? (s/N): ");
     const downloadMusic = downloadChoice.toLowerCase().trim() === 's';
     
     if (!downloadMusic) {
-        console.log("\n📝 Modo: Solo registro en BD (sin descargas)");
+        console.log("\nModo: Solo registro en BD (sin descargas)");
     } else {
-        console.log("\n⬇️  Modo: Descarga + Registro (esto puede tardar)");
-        console.log("\n📦 Asegúrate de tener FFmpeg instalado en tu sistema");
+        console.log("\n⬇ Modo: Descarga + Registro (esto puede tardar)");
+        console.log("\nAsegúrate de tener FFmpeg instalado en tu sistema");
     }
     
     // Poblar base de datos
     try {
         await populateDatabase(db, downloadMusic);
     } catch (error) {
-        console.error(`\n\n❌ Error: ${error.message}`);
+        console.error(`\n\nError: ${error.message}`);
         console.error(error.stack);
     }
     
-    console.log("\n✅ Proceso finalizado\n");
+    console.log("\nProceso finalizado\n");
     process.exit(0);
 }
 

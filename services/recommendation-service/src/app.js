@@ -43,12 +43,12 @@ const initRedis = async () => {
       
       redisClient.on('error', (err) => console.log('Redis Error:', err));
       await redisClient.connect();
-      console.log('✅ Conectado a Redis para caché');
+      console.log('Conectado a Redis para caché');
     } else {
-      console.log('⚠️  Redis no configurado, caché deshabilitado');
+      console.log('Redis no configurado, caché deshabilitado');
     }
   } catch (error) {
-    console.error('❌ Error conectando a Redis:', error);
+    console.error('Error conectando a Redis:', error);
     redisClient = null;
   }
 };
@@ -81,9 +81,8 @@ const verifyConnection = async () => {
     await session.run('RETURN 1');
     console.log('✅ Conectado a Neo4j');
     
-    // Auto-sync on start si está configurado
     if (process.env.AUTO_SYNC_ON_START === 'true') {
-      console.log('🔄 Ejecutando sincronización inicial...');
+      console.log('Ejecutando sincronización inicial...');
       const { sincronizacionCompleta } = require('./../sync-service');
       setTimeout(() => {
         sincronizacionCompleta().catch(err => 
@@ -92,7 +91,7 @@ const verifyConnection = async () => {
       }, 5000);
     }
   } catch (error) {
-    console.error('❌ Error conectando a Neo4j:', error);
+    console.error('Error conectando a Neo4j:', error);
   } finally {
     await session.close();
   }
@@ -106,7 +105,6 @@ app.get('/api/recommendations/top-global', async (req, res) => {
   try {
     const { limit = 100, offset = 0 } = req.query;
     
-    // Verificar caché
     const cacheKey = `top-global:${limit}:${offset}`;
     const cached = await getCache(cacheKey);
     if (cached) {
@@ -144,7 +142,6 @@ app.get('/api/recommendations/top-global', async (req, res) => {
       total: canciones.length 
     };
     
-    // Guardar en caché por 5 minutos
     await setCache(cacheKey, response, 300);
 
     res.json(response);
@@ -156,15 +153,13 @@ app.get('/api/recommendations/top-global', async (req, res) => {
   }
 });
 
-// 2. Top 100 por País (⚠️ Limitado - requiere metadata de artistas)
+// 2. Top 100 por País (Limitado - requiere metadata de artistas)
 app.get('/api/recommendations/top-country/:country', async (req, res) => {
   const session = driver.session();
   try {
     const { country } = req.params;
     const { limit = 100, offset = 0 } = req.query;
     
-    // Nota: Esta query busca artistas que TENGAN el campo country
-    // Los artistas creados desde sync no tendrán este campo
     const result = await session.run(`
       MATCH (a:Artista)<-[:PERFORMED_BY]-(c:Cancion)
       WHERE a.country = $country
@@ -216,7 +211,6 @@ app.get('/api/recommendations/for-user/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 50 } = req.query;
     
-    // Algoritmo basado en géneros que el usuario ha escuchado
     const result = await session.run(`
       MATCH (u:Usuario {id: $userId})-[r:REPRODUJO]->(c:Cancion)-[:HAS_GENRE]->(g:Genero)
       WITH u, g, COUNT(r) as escuchas
@@ -342,7 +336,6 @@ app.get('/api/recommendations/similar-artists/:artistId', async (req, res) => {
     const { artistId } = req.params;
     const { limit = 20 } = req.query;
     
-    // Busca por ID o por nombre
     const result = await session.run(`
       MATCH (a1:Artista)<-[:PERFORMED_BY]-(c:Cancion)-[:HAS_GENRE]->(g:Genero)
       WHERE a1.id = $artistId OR a1.nombre_artistico = $artistId
@@ -401,7 +394,6 @@ app.get('/api/recommendations/collaborative/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 30 } = req.query;
     
-    // Encuentra usuarios con gustos similares y sus canciones
     const result = await session.run(`
       MATCH (u1:Usuario {id: $userId})-[:REPRODUJO]->(c:Cancion)
       WITH u1, COLLECT(c) as canciones_u1
@@ -466,7 +458,6 @@ app.get('/api/recommendations/discover-emerging/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 25 } = req.query;
     
-    // Buscar artistas con pocos oyentes mensuales pero con canciones muy reproducidas
     const result = await session.run(`
       MATCH (u:Usuario {id: $userId})
       MATCH (a:Artista)<-[:PERFORMED_BY]-(c:Cancion)
@@ -523,8 +514,8 @@ app.get('/api/recommendations/discover-emerging/:userId', async (req, res) => {
         generos: record.get('generos'),
         factor_viral: factorViral,
         razon: oyentesArtista < 10000 
-          ? '🚀 Hit viral de artista emergente'
-          : '💎 Joya escondida de artista indie'
+          ? 'Hit viral de artista emergente'
+          : 'Joya escondida de artista indie'
       };
     });
 
@@ -533,7 +524,7 @@ app.get('/api/recommendations/discover-emerging/:userId', async (req, res) => {
       data: descubrimientos,
       usuario_id: userId,
       total: descubrimientos.length,
-      info: 'Artistas con menos de 100k oyentes pero con canciones exitosas (+50k reproducciones)'
+      info: 'Artistas con menos de 2M oyentes pero con canciones exitosas (+50k reproducciones)'
     });
   } catch (error) {
     console.error('Error en discover-emerging:', error);
@@ -626,8 +617,6 @@ app.get('/api/recommendations/recent-history/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 20 } = req.query;
     
-    // Obtener las últimas canciones reproducidas sin repetir
-    // Solo muestra la reproducción más reciente de cada canción
     const result = await session.run(`
       MATCH (u:Usuario {id: $userId})-[r:REPRODUJO]->(c:Cancion)
       WHERE c.disponible = true
@@ -704,8 +693,8 @@ const PORT = process.env.PORT || 3003;
 app.listen(PORT, async () => {
   await initRedis();
   await verifyConnection();
-  console.log(`🚀 Microservicio de Recomendaciones ejecutándose en puerto ${PORT}`);
-  console.log(`📊 Endpoints disponibles:`);
+  console.log(`Microservicio de Recomendaciones ejecutándose en puerto ${PORT}`);
+  console.log(`Endpoints disponibles:`);
   console.log(`   GET /api/recommendations/top-global`);
   console.log(`   GET /api/recommendations/top-country/:country (⚠️  requiere metadata)`);
   console.log(`   GET /api/recommendations/for-user/:userId`);
@@ -716,10 +705,9 @@ app.listen(PORT, async () => {
   console.log(`   GET /api/recommendations/trending`);
 });
 
-// Cerrar conexiones al salir
 process.on('SIGINT', async () => {
   await driver.close();
   if (redisClient) await redisClient.quit();
-  console.log('\n👋 Conexiones cerradas');
+  console.log('\nConexiones cerradas');
   process.exit(0);
 });

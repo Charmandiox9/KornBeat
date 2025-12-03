@@ -1,7 +1,4 @@
-// seed-historial-preferencias.js
 // Script para crear datos de prueba en historial_reproducciones y preferencias_usuario
-// ✅ CORREGIDO para cumplir con los esquemas de MongoDB
-
 const { MongoClient, ObjectId } = require('mongodb');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:admin123@localhost:27017/music_app?authSource=admin';
@@ -67,7 +64,7 @@ const PERFILES_ESCUCHA = {
   }
 };
 
-// ✅ CORREGIDO: Generar historial compatible con Time Series Collection
+// CORREGIDO: Generar historial compatible con Time Series Collection
 function generarHistorial(usuario, diasHistorial = 30) {
   const historial = [];
   const perfil = PERFILES_ESCUCHA[usuario.id];
@@ -95,7 +92,7 @@ function generarHistorial(usuario, diasHistorial = 30) {
     const fuentes = ['search', 'playlist', 'recommendation', 'album', 'artist_profile'];
     const dispositivos = ['web', 'mobile', 'desktop'];
     
-    // ✅ Estructura correcta para Time Series Collection
+    // Estructura correcta para Time Series Collection
     // - fecha_reproduccion: timeField
     // - metadata: metaField (contiene los identificadores y metadatos)
     // - Otros campos son mediciones
@@ -119,7 +116,7 @@ function generarHistorial(usuario, diasHistorial = 30) {
   return historial;
 }
 
-// ✅ CORREGIDO: Calcular preferencias según esquema requerido
+// CORREGIDO: Calcular preferencias según esquema requerido
 function calcularPreferencias(usuario, historial) {
   const reproducciones = historial.filter(h => 
     h.metadata.usuario_id.toString() === usuario.id
@@ -160,7 +157,7 @@ function calcularPreferencias(usuario, historial) {
     .slice(0, 10)
     .map(([id]) => new ObjectId(id));
   
-  // ✅ Estructura correcta según esquema
+  // Estructura correcta según esquema
   return {
     usuario_id: new ObjectId(usuario.id),
     categorias_favoritas: categoriasFavoritas,
@@ -175,34 +172,34 @@ async function seedDatabase() {
   
   try {
     await client.connect();
-    console.log('✅ Conectado a MongoDB');
+    console.log('Conectado a MongoDB');
     
     const db = client.db(DB_NAME);
     
     // Limpiar colecciones existentes
-    console.log('\n🗑️  Limpiando colecciones...');
+    console.log('\nLimpiando colecciones...');
     await db.collection('historial_reproducciones').deleteMany({});
     await db.collection('preferencias_usuario').deleteMany({});
     
     // Generar historial para cada usuario
-    console.log('\n📊 Generando historial de reproducciones...');
+    console.log('\nGenerando historial de reproducciones...');
     const todosLosHistoriales = [];
     
     for (const usuario of USUARIOS) {
       console.log(`  - Generando historial para ${usuario.name}...`);
       const historial = generarHistorial(usuario, 30);
       todosLosHistoriales.push(...historial);
-      console.log(`    ✓ ${historial.length} reproducciones generadas`);
+      console.log(`    ${historial.length} reproducciones generadas`);
     }
     
     // Insertar historial
     if (todosLosHistoriales.length > 0) {
       await db.collection('historial_reproducciones').insertMany(todosLosHistoriales);
-      console.log(`\n✅ ${todosLosHistoriales.length} registros de historial insertados`);
+      console.log(`\n${todosLosHistoriales.length} registros de historial insertados`);
     }
     
     // Calcular y guardar preferencias
-    console.log('\n🎯 Calculando preferencias de usuarios...');
+    console.log('\nCalculando preferencias de usuarios...');
     const preferencias = [];
     
     for (const usuario of USUARIOS) {
@@ -215,12 +212,12 @@ async function seedDatabase() {
     
     if (preferencias.length > 0) {
       await db.collection('preferencias_usuario').insertMany(preferencias);
-      console.log(`\n✅ ${preferencias.length} perfiles de preferencias creados`);
+      console.log(`\n${preferencias.length} perfiles de preferencias creados`);
     }
     
     // Resumen
     console.log('\n' + '='.repeat(60));
-    console.log('📈 RESUMEN DE DATOS GENERADOS');
+    console.log('RESUMEN DE DATOS GENERADOS');
     console.log('='.repeat(60));
     
     for (const usuario of USUARIOS) {
@@ -242,18 +239,17 @@ async function seedDatabase() {
     }
     
     console.log('\n' + '='.repeat(60));
-    console.log('✅ Proceso completado exitosamente');
+    console.log('Proceso completado exitosamente');
     console.log('='.repeat(60));
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('Error:', error);
   } finally {
     await client.close();
-    console.log('\n👋 Conexión cerrada');
+    console.log('\nConexión cerrada');
   }
 }
 
-// Ejecutar
 if (require.main === module) {
   seedDatabase()
     .then(() => process.exit(0))

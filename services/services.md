@@ -5,7 +5,7 @@ Complete documentation of all microservices and infrastructure components in the
 
 ---
 
-## 🏗️ Infrastructure Services
+## Infrastructure Services
 
 ### MongoDB (Port 27017)
 - **Purpose**: Primary database for user data, music metadata, playlists, and application state
@@ -35,7 +35,7 @@ Complete documentation of all microservices and infrastructure components in the
 
 ---
 
-## 🔐 Auth Service (Port 3001)
+## Auth Service (Port 3001)
 
 ### Purpose
 Handles user authentication, registration, JWT token management, and session persistence across the platform.
@@ -58,7 +58,7 @@ Handles user authentication, registration, JWT token management, and session per
 
 ---
 
-## 🎵 Music Service (Port 3002)
+## Music Service (Port 3002)
 
 ### Purpose
 Core music management service handling catalog operations, audio streaming, playlists, favorites, and search functionality.
@@ -86,7 +86,7 @@ Core music management service handling catalog operations, audio streaming, play
 
 ---
 
-## 🤖 Recommendation Service (Port 3003)
+## Recommendation Service (Port 3003)
 
 ### Purpose
 Graph-based recommendation engine providing personalized music suggestions using Neo4j for relationship analysis and MongoDB for user data synchronization.
@@ -119,7 +119,7 @@ Graph-based recommendation engine providing personalized music suggestions using
 
 ---
 
-## 🌐 Nginx Reverse Proxy (Port 80)
+## Nginx Reverse Proxy (Port 80)
 
 ### Purpose
 Load balancer and reverse proxy providing unified entry point for all services and static file serving.
@@ -131,7 +131,7 @@ Load balancer and reverse proxy providing unified entry point for all services a
 
 ---
 
-## 📊 Service Dependencies
+## Service Dependencies
 
 ```mermaid
 graph LR
@@ -154,7 +154,7 @@ graph LR
 
 ---
 
-## 🚀 Service Startup Order
+## Service Startup Order
 
 1. **Infrastructure Services** (with health checks):
    - MongoDB (30s start period)
@@ -171,7 +171,7 @@ graph LR
 
 ---
 
-## 📝 Environment Variables
+## Environment Variables
 
 ### Common Variables
 - `NODE_ENV=production` - Production mode for all services
@@ -186,7 +186,7 @@ graph LR
 
 ---
 
-## 🛠️ Development vs Production
+## Development vs Production
 
 ### Development Mode
 - Services run natively with `npm run dev` for hot-reload

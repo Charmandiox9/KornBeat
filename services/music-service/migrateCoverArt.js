@@ -30,7 +30,6 @@ const stats = {
   errors: 0
 };
 
-// Definir esquema de la colección "canciones"
 const cancionesSchema = new mongoose.Schema({
   titulo: String,
   album_id: mongoose.Schema.Types.ObjectId,
@@ -68,9 +67,9 @@ async function connectDB() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(`${colors.green}✅ Conectado a MongoDB${colors.reset}\n`);
+    console.log(`${colors.green}Conectado a MongoDB${colors.reset}\n`);
   } catch (error) {
-    console.error(`${colors.red}❌ Error al conectar MongoDB:${colors.reset}`, error);
+    console.error(`${colors.red}Error al conectar MongoDB:${colors.reset}`, error);
     process.exit(1);
   }
 }
@@ -81,12 +80,12 @@ async function initMinIO() {
     const exists = await minioClient.bucketExists(bucketName);
     if (!exists) {
       await minioClient.makeBucket(bucketName, 'us-east-1');
-      console.log(`${colors.green}✅ Bucket de MinIO creado: ${bucketName}${colors.reset}\n`);
+      console.log(`${colors.green}Bucket de MinIO creado: ${bucketName}${colors.reset}\n`);
     } else {
-      console.log(`${colors.green}✅ Bucket de MinIO encontrado: ${bucketName}${colors.reset}\n`);
+      console.log(`${colors.green}Bucket de MinIO encontrado: ${bucketName}${colors.reset}\n`);
     }
   } catch (error) {
-    console.error(`${colors.red}❌ Error con MinIO:${colors.reset}`, error);
+    console.error(`${colors.red}Error con MinIO:${colors.reset}`, error);
     throw error;
   }
 }
@@ -97,8 +96,8 @@ function normalizeText(text) {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remover acentos
-    .replace(/[^a-z0-9]/g, ''); // Solo letras y números
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
 }
 
 // Buscar canción en "songs" que coincida con "cancion"
@@ -107,7 +106,6 @@ async function findMatchingSong(cancion) {
   const artista = cancion.artistas?.[0]?.nombre || '';
   const artistaNorm = normalizeText(artista);
   
-  // Buscar por título y artista
   const songs = await Song.find({
     $or: [
       {
@@ -116,17 +114,14 @@ async function findMatchingSong(cancion) {
           { artist: { $regex: artista, $options: 'i' } }
         ]
       },
-      // También buscar por archivo
       { fileName: { $regex: path.basename(cancion.archivo_url || ''), $options: 'i' } }
     ]
   });
   
-  // Si hay coincidencia exacta, devolverla
   if (songs.length === 1) {
     return songs[0];
   }
   
-  // Si hay múltiples, buscar la mejor coincidencia
   if (songs.length > 1) {
     for (const song of songs) {
       const songTitle = normalizeText(song.title);
@@ -136,7 +131,6 @@ async function findMatchingSong(cancion) {
         return song;
       }
     }
-    // Si no hay exacta, devolver la primera
     return songs[0];
   }
   
@@ -146,33 +140,28 @@ async function findMatchingSong(cancion) {
 // Subir portada a MinIO
 async function uploadCoverToMinio(localPath, minioPath) {
   try {
-    // Verificar si ya existe en MinIO
     try {
       const stat = await minioClient.statObject(bucketName, minioPath);
-      console.log(`   ${colors.yellow}⚠️  Ya existe en MinIO (${(stat.size / 1024).toFixed(2)} KB)${colors.reset}`);
+      console.log(`   ${colors.yellow}Ya existe en MinIO (${(stat.size / 1024).toFixed(2)} KB)${colors.reset}`);
       stats.alreadyExists++;
       return minioPath;
     } catch (err) {
-      // No existe, continuar
     }
 
-    // Verificar que el archivo existe en el sistema de archivos
     const uploadsDir = path.join(__dirname, 'uploads');
     const fullPath = path.join(uploadsDir, localPath);
     
     try {
       await fs.access(fullPath);
     } catch (err) {
-      console.log(`   ${colors.red}❌ Archivo no encontrado: ${fullPath}${colors.reset}`);
+      console.log(`   ${colors.red}Archivo no encontrado: ${fullPath}${colors.reset}`);
       stats.notFound++;
       return null;
     }
 
-    // Obtener tamaño del archivo
     const fileStats = await fs.stat(fullPath);
     const fileSizeKB = (fileStats.size / 1024).toFixed(2);
 
-    // Detectar tipo de contenido
     const ext = path.extname(fullPath).toLowerCase();
     const contentType = 
       ext === '.png' ? 'image/png' :
@@ -181,18 +170,17 @@ async function uploadCoverToMinio(localPath, minioPath) {
       ext === '.gif' ? 'image/gif' :
       'image/jpeg';
 
-    // Subir archivo con metadata
-    console.log(`   ${colors.cyan}📤 Subiendo portada... (${fileSizeKB} KB)${colors.reset}`);
+    console.log(`   ${colors.cyan}Subiendo portada... (${fileSizeKB} KB)${colors.reset}`);
     await minioClient.fPutObject(bucketName, minioPath, fullPath, {
       'Content-Type': contentType,
       'Cache-Control': 'public, max-age=31536000'
     });
     
     stats.uploaded++;
-    console.log(`   ${colors.green}✅ Portada subida a MinIO${colors.reset}`);
+    console.log(`   ${colors.green}Portada subida a MinIO${colors.reset}`);
     return minioPath;
   } catch (error) {
-    console.error(`   ${colors.red}❌ Error subiendo portada:${colors.reset}`, error.message);
+    console.error(`   ${colors.red}Error subiendo portada:${colors.reset}`, error.message);
     stats.errors++;
     return null;
   }
@@ -201,12 +189,11 @@ async function uploadCoverToMinio(localPath, minioPath) {
 // Sincronizar portadas
 async function syncCovers() {
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}🔄 SINCRONIZACIÓN DE PORTADAS${colors.reset}`);
+  console.log(`${colors.bright}SINCRONIZACIÓN DE PORTADAS${colors.reset}`);
   console.log(`${colors.bright}   De: "canciones" → A: "songs" + MinIO${colors.reset}`);
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
   try {
-    // Obtener todas las canciones de ambas colecciones
     const canciones = await Cancion.find();
     const songs = await Song.find();
     
@@ -217,24 +204,22 @@ async function syncCovers() {
     console.log(`📊 Canciones en "songs":      ${colors.bright}${stats.totalSongs}${colors.reset}\n`);
     
     if (stats.totalCanciones === 0) {
-      console.log(`${colors.yellow}⚠️  No hay documentos en la colección "canciones"${colors.reset}\n`);
+      console.log(`${colors.yellow}No hay documentos en la colección "canciones"${colors.reset}\n`);
       return;
     }
 
     console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-    // Procesar cada canción
     for (let i = 0; i < canciones.length; i++) {
       const cancion = canciones[i];
       const artista = cancion.artistas?.[0]?.nombre || 'Desconocido';
       
       console.log(`${colors.cyan}[${i + 1}/${stats.totalCanciones}] ${cancion.titulo}${colors.reset} - ${artista}`);
 
-      // Buscar canción correspondiente en "songs"
       const song = await findMatchingSong(cancion);
       
       if (!song) {
-        console.log(`   ${colors.red}❌ No encontrada en "songs"${colors.reset}`);
+        console.log(`   ${colors.red}No encontrada en "songs"${colors.reset}`);
         stats.notMatched++;
         console.log('');
         continue;
@@ -243,39 +228,34 @@ async function syncCovers() {
       console.log(`   ${colors.green}✓${colors.reset} Encontrada: "${song.title}" - ${song.artist}`);
       stats.matched++;
 
-      // Verificar si tiene portada
       const portadaUrl = cancion.album_info?.portada_url;
       
       if (!portadaUrl) {
-        console.log(`   ${colors.yellow}⚠️  Sin portada en "canciones"${colors.reset}`);
+        console.log(`   ${colors.yellow}Sin portada en "canciones"${colors.reset}`);
         stats.withoutCover++;
         console.log('');
         continue;
       }
 
-      console.log(`   📁 Portada: ${portadaUrl}`);
+      console.log(`   Portada: ${portadaUrl}`);
       stats.withCover++;
 
-      // Normalizar path de portada
       let coverPath = portadaUrl.replace(/^\/uploads\//, '');
       
-      // Construir path en MinIO
       const ext = path.extname(coverPath);
       const minioPath = `covers/${song._id}${ext}`;
 
-      // Subir a MinIO
       const uploadedPath = await uploadCoverToMinio(coverPath, minioPath);
 
       if (uploadedPath) {
-        // Actualizar MongoDB
         try {
           await Song.findByIdAndUpdate(song._id, {
             coverUrl: uploadedPath
           });
           stats.updated++;
-          console.log(`   ${colors.green}✅ "songs" actualizado${colors.reset}`);
+          console.log(`   ${colors.green}"songs" actualizado${colors.reset}`);
         } catch (err) {
-          console.log(`   ${colors.red}❌ Error actualizando MongoDB:${colors.reset}`, err.message);
+          console.log(`   ${colors.red}Error actualizando MongoDB:${colors.reset}`, err.message);
           stats.errors++;
         }
       }
@@ -284,7 +264,7 @@ async function syncCovers() {
     }
 
   } catch (error) {
-    console.error(`${colors.red}❌ Error en la sincronización:${colors.reset}`, error);
+    console.error(`${colors.red}Error en la sincronización:${colors.reset}`, error);
   }
 }
 
@@ -310,55 +290,53 @@ async function listCoverFiles() {
 // Mostrar reporte final
 async function showReport() {
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}📊 REPORTE FINAL${colors.reset}`);
+  console.log(`${colors.bright}REPORTE FINAL${colors.reset}`);
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-  console.log(`   📁 Canciones en "canciones":        ${colors.bright}${stats.totalCanciones}${colors.reset}`);
-  console.log(`   📁 Canciones en "songs":            ${colors.bright}${stats.totalSongs}${colors.reset}`);
+  console.log(`   Canciones en "canciones":        ${colors.bright}${stats.totalCanciones}${colors.reset}`);
+  console.log(`   Canciones en "songs":            ${colors.bright}${stats.totalSongs}${colors.reset}`);
   console.log(`   ${colors.green}✓${colors.reset}  Coincidencias encontradas:       ${colors.bright}${stats.matched}${colors.reset}`);
   console.log(`   ${colors.red}✗${colors.reset}  No encontradas:                  ${colors.bright}${stats.notMatched}${colors.reset}`);
   console.log('');
-  console.log(`   🖼️  Con portada definida:            ${colors.bright}${stats.withCover}${colors.reset}`);
-  console.log(`   ❌ Sin portada:                     ${colors.bright}${stats.withoutCover}${colors.reset}`);
-  console.log(`   ${colors.green}✅ Portadas subidas a MinIO:${colors.reset}        ${colors.bright}${stats.uploaded}${colors.reset}`);
-  console.log(`   ${colors.yellow}⚠️  Ya existían en MinIO:${colors.reset}           ${colors.bright}${stats.alreadyExists}${colors.reset}`);
-  console.log(`   ${colors.red}❌ No encontradas en filesystem:${colors.reset}    ${colors.bright}${stats.notFound}${colors.reset}`);
-  console.log(`   ${colors.green}📝 Documentos "songs" actualizados:${colors.reset} ${colors.bright}${stats.updated}${colors.reset}`);
-  console.log(`   ${colors.red}❌ Errores:${colors.reset}                         ${colors.bright}${stats.errors}${colors.reset}`);
+  console.log(`   Con portada definida:            ${colors.bright}${stats.withCover}${colors.reset}`);
+  console.log(`   Sin portada:                     ${colors.bright}${stats.withoutCover}${colors.reset}`);
+  console.log(`   ${colors.green}Portadas subidas a MinIO:${colors.reset}        ${colors.bright}${stats.uploaded}${colors.reset}`);
+  console.log(`   ${colors.yellow}Ya existían en MinIO:${colors.reset}           ${colors.bright}${stats.alreadyExists}${colors.reset}`);
+  console.log(`   ${colors.red}No encontradas en filesystem:${colors.reset}    ${colors.bright}${stats.notFound}${colors.reset}`);
+  console.log(`   ${colors.green}Documentos "songs" actualizados:${colors.reset} ${colors.bright}${stats.updated}${colors.reset}`);
+  console.log(`   ${colors.red}Errores:${colors.reset}                         ${colors.bright}${stats.errors}${colors.reset}`);
   console.log('');
 
-  // Listar portadas en MinIO
   try {
     const coverFiles = await listCoverFiles();
     const totalSizeKB = coverFiles.reduce((sum, f) => sum + parseFloat(f.sizeKB), 0);
     
-    console.log(`   ${colors.cyan}☁️  Portadas en MinIO:${colors.reset}              ${colors.bright}${coverFiles.length}${colors.reset}`);
-    console.log(`   ${colors.cyan}💾 Espacio total usado:${colors.reset}             ${colors.bright}${totalSizeKB.toFixed(2)} KB${colors.reset}`);
+    console.log(`   ${colors.cyan}Portadas en MinIO:${colors.reset}              ${colors.bright}${coverFiles.length}${colors.reset}`);
+    console.log(`   ${colors.cyan}Espacio total usado:${colors.reset}             ${colors.bright}${totalSizeKB.toFixed(2)} KB${colors.reset}`);
     console.log('');
   } catch (error) {
-    console.error(`   ${colors.red}❌ Error listando portadas de MinIO${colors.reset}`);
+    console.error(`   ${colors.red}Error listando portadas de MinIO${colors.reset}`);
   }
 
-  // Verificar cobertura en "songs"
   const songsWithCover = await Song.countDocuments({
     coverUrl: { $exists: true, $ne: null, $ne: '' }
   });
   
-  console.log(`   ${colors.magenta}📊 Cobertura en "songs":${colors.reset}            ${colors.bright}${songsWithCover}/${stats.totalSongs}${colors.reset} (${((songsWithCover / stats.totalSongs) * 100).toFixed(1)}%)`);
+  console.log(`   ${colors.magenta}Cobertura en "songs":${colors.reset}            ${colors.bright}${songsWithCover}/${stats.totalSongs}${colors.reset} (${((songsWithCover / stats.totalSongs) * 100).toFixed(1)}%)`);
   console.log('');
 
   if (stats.matched === stats.totalCanciones) {
-    console.log(`${colors.green}${colors.bright}🎉 ¡Todas las canciones fueron encontradas!${colors.reset}`);
+    console.log(`${colors.green}${colors.bright}¡Todas las canciones fueron encontradas!${colors.reset}`);
   } else if (stats.notMatched > 0) {
-    console.log(`${colors.yellow}⚠️  ${stats.notMatched} canciones no coinciden entre colecciones${colors.reset}`);
+    console.log(`${colors.yellow}${stats.notMatched} canciones no coinciden entre colecciones${colors.reset}`);
   }
 
   if (stats.notFound > 0) {
-    console.log(`${colors.red}⚠️  ${stats.notFound} archivos de portada no se encontraron en uploads/${colors.reset}`);
+    console.log(`${colors.red}${stats.notFound} archivos de portada no se encontraron en uploads/${colors.reset}`);
   }
 
   if (songsWithCover === stats.totalSongs) {
-    console.log(`${colors.green}${colors.bright}🎉 ¡Todas las canciones en "songs" tienen portada!${colors.reset}`);
+    console.log(`${colors.green}${colors.bright}¡Todas las canciones en "songs" tienen portada!${colors.reset}`);
   }
 
   console.log('');
@@ -373,10 +351,10 @@ async function main() {
     await syncCovers();
     await showReport();
   } catch (error) {
-    console.error(`${colors.red}❌ Error fatal:${colors.reset}`, error);
+    console.error(`${colors.red}Error fatal:${colors.reset}`, error);
   } finally {
     await mongoose.connection.close();
-    console.log(`${colors.green}✅ Conexión cerrada${colors.reset}`);
+    console.log(`${colors.green}Conexión cerrada${colors.reset}`);
     process.exit(0);
   }
 }

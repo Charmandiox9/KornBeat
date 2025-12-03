@@ -1,6 +1,6 @@
-# 🎵 Documentación de Endpoints: Favoritos y Caché de Última Posición
+# Documentación de Endpoints: Favoritos y Caché de Última Posición
 
-## 📋 Resumen de Implementación
+## Resumen de Implementación
 
 Se han implementado dos funcionalidades principales:
 
@@ -9,7 +9,7 @@ Se han implementado dos funcionalidades principales:
 
 ---
 
-## ⭐ ENDPOINTS DE FAVORITOS
+## ENDPOINTS DE FAVORITOS
 
 ### 1. Obtener Canciones Favoritas del Usuario
 
@@ -154,7 +154,7 @@ curl http://localhost:3002/api/music/user/673e02db1b21cb17c49c5ab4/favorites/673
 
 ---
 
-## 🎬 ENDPOINTS DE CACHÉ DE ÚLTIMA POSICIÓN
+## ENDPOINTS DE CACHÉ DE ÚLTIMA POSICIÓN
 
 ### 1. Guardar Última Posición del Usuario
 
@@ -339,7 +339,7 @@ curl http://localhost:3002/api/music/user/673e02db1b21cb17c49c5ab4/reel-history?
 
 ---
 
-## 🔧 Códigos de Error
+## Códigos de Error
 
 | Código | Descripción |
 |--------|-------------|
@@ -351,14 +351,14 @@ curl http://localhost:3002/api/music/user/673e02db1b21cb17c49c5ab4/reel-history?
 
 ---
 
-## 💾 Almacenamiento
+## Almacenamiento
 
 ### MongoDB (`likes_canciones`)
 ```javascript
 {
   _id: ObjectId,
-  usuario_id: ObjectId,  // Referencia a usuarios
-  cancion_id: ObjectId,  // Referencia a songs
+  usuario_id: ObjectId,
+  cancion_id: ObjectId,
   fecha_like: Date
 }
 ```
@@ -376,23 +376,23 @@ curl http://localhost:3002/api/music/user/673e02db1b21cb17c49c5ab4/reel-history?
 
 ---
 
-## 📝 Notas de Implementación
+## Notas de Implementación
 
 ### Favoritos:
-- ✅ Usa agregación de MongoDB para obtener datos completos
-- ✅ Incrementa/decrementa contador de likes en Song
-- ✅ Previene duplicados con índice único
-- ✅ Procesa URLs de portadas automáticamente
-- ✅ Soporta paginación y ordenamiento
+- Usa agregación de MongoDB para obtener datos completos
+- Incrementa/decrementa contador de likes en Song
+- Previene duplicados con índice único
+- Procesa URLs de portadas automáticamente
+- Soporta paginación y ordenamiento
 
 ### Caché de Última Posición:
-- ✅ Persistencia en Redis con TTL de 7 días
-- ✅ Guarda última canción, posición en lista y progreso
-- ✅ Guarda automáticamente en historial al actualizar posición
-- ✅ Retorna información completa de la canción
-- ✅ Permite "Continuar donde quedaste"
-- ✅ Manejo robusto de errores y caídas de Redis
-- ✅ Historial limitado a 100 elementos (FIFO)
+- Persistencia en Redis con TTL de 7 días
+- Guarda última canción, posición en lista y progreso
+- Guarda automáticamente en historial al actualizar posición
+- Retorna información completa de la canción
+- Permite "Continuar donde quedaste"
+- Manejo robusto de errores y caídas de Redis
+- Historial limitado a 100 elementos (FIFO)
 
 ---
 

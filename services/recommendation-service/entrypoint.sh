@@ -1,12 +1,9 @@
-#!/bin/bash
-# services/recommendations-service/entrypoint.sh
-
 set -e
 
-echo "🚀 Iniciando Recommendations Service..."
+echo "Iniciando Recommendations Service..."
 
 # Esperar a que Neo4j esté disponible
-echo "⏳ Esperando a Neo4j..."
+echo "Esperando a Neo4j..."
 until node -e "
 const neo4j = require('neo4j-driver');
 const driver = neo4j.driver(
@@ -31,10 +28,9 @@ const driver = neo4j.driver(
   sleep 5
 done
 
-echo "✅ Neo4j disponible"
+echo "Neo4j disponible"
 
-# Esperar a que MongoDB esté disponible
-echo "⏳ Esperando a MongoDB..."
+echo "Esperando a MongoDB..."
 until node -e "
 const { MongoClient } = require('mongodb');
 const client = new MongoClient(process.env.MONGODB_URI);
@@ -53,20 +49,20 @@ const client = new MongoClient(process.env.MONGODB_URI);
   sleep 5
 done
 
-echo "✅ MongoDB disponible"
+echo "MongoDB disponible"
 
 # Configurar Neo4j schema si es la primera vez
 if [ "$SETUP_NEO4J" = "true" ]; then
-  echo "📋 Configurando schema de Neo4j..."
-  node setup-neo4j.js || echo "⚠️  Error en setup (puede ser normal si ya existe)"
+  echo "Configurando schema de Neo4j..."
+  node setup-neo4j.js || echo "Error en setup (puede ser normal si ya existe)"
 fi
 
 # Sincronización inicial si está habilitado
 if [ "$AUTO_SYNC_ON_START" = "true" ]; then
-  echo "🔄 Ejecutando sincronización inicial..."
-  node sync-service.js || echo "⚠️  Error en sincronización inicial"
+  echo "Ejecutando sincronización inicial..."
+  node sync-service.js || echo "Error en sincronización inicial"
 fi
 
 # Iniciar el servidor
-echo "✅ Iniciando servidor..."
+echo "Iniciando servidor..."
 exec node server.js

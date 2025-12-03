@@ -1,6 +1,4 @@
-// diagnostic-preferencias.js
 // Script para diagnosticar problemas con preferencias_usuario
-
 const { MongoClient, ObjectId } = require('mongodb');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:admin123@localhost:27017/music_app?authSource=admin';
@@ -11,12 +9,12 @@ async function diagnosticar() {
   
   try {
     await client.connect();
-    console.log('✅ Conectado a MongoDB\n');
+    console.log('Conectado a MongoDB\n');
     
     const db = client.db(DB_NAME);
     
     // 1. Verificar datos en historial
-    console.log('📊 VERIFICANDO HISTORIAL_REPRODUCCIONES:');
+    console.log('VERIFICANDO HISTORIAL_REPRODUCCIONES:');
     console.log('='.repeat(60));
     const countHistorial = await db.collection('historial_reproducciones').countDocuments();
     console.log(`Total de documentos: ${countHistorial}`);
@@ -28,18 +26,18 @@ async function diagnosticar() {
     }
     
     // 2. Verificar estructura del validador
-    console.log('\n\n🔍 VERIFICANDO VALIDADOR DE PREFERENCIAS_USUARIO:');
+    console.log('\n\nVERIFICANDO VALIDADOR DE PREFERENCIAS_USUARIO:');
     console.log('='.repeat(60));
     const collectionInfo = await db.listCollections({name: 'preferencias_usuario'}).toArray();
     if (collectionInfo.length > 0 && collectionInfo[0].options.validator) {
       console.log('Validador encontrado:');
       console.log(JSON.stringify(collectionInfo[0].options.validator, null, 2));
     } else {
-      console.log('⚠️  No hay validador configurado');
+      console.log('No hay validador configurado');
     }
     
     // 3. Verificar preferencias existentes
-    console.log('\n\n📋 VERIFICANDO PREFERENCIAS_USUARIO:');
+    console.log('\n\nVERIFICANDO PREFERENCIAS_USUARIO:');
     console.log('='.repeat(60));
     const countPreferencias = await db.collection('preferencias_usuario').countDocuments();
     console.log(`Total de documentos: ${countPreferencias}`);
@@ -51,11 +49,11 @@ async function diagnosticar() {
         console.log(JSON.stringify(pref, null, 2));
       });
     } else {
-      console.log('⚠️  No hay preferencias guardadas');
+      console.log('No hay preferencias guardadas');
     }
     
     // 4. Intentar crear una preferencia de prueba
-    console.log('\n\n🧪 INTENTANDO INSERTAR PREFERENCIA DE PRUEBA:');
+    console.log('\n\nIntentando insertar preferencia de prueba:');
     console.log('='.repeat(60));
     
     const preferenciaTest = {
@@ -76,22 +74,20 @@ async function diagnosticar() {
     
     try {
       const result = await db.collection('preferencias_usuario').insertOne(preferenciaTest);
-      console.log('\n✅ Inserción exitosa!');
+      console.log('\nInserción exitosa!');
       console.log(`ID insertado: ${result.insertedId}`);
       
-      // Eliminar el documento de prueba
       await db.collection('preferencias_usuario').deleteOne({ _id: result.insertedId });
-      console.log('🗑️  Documento de prueba eliminado');
+      console.log('Documento de prueba eliminado');
       
     } catch (error) {
-      console.log('\n❌ Error al insertar:');
+      console.log('\nError al insertar:');
       console.log(error.message);
       console.log('\nDetalles completos del error:');
       console.log(JSON.stringify(error, null, 2));
     }
     
-    // 5. Calcular preferencias desde historial real
-    console.log('\n\n🎯 CALCULANDO PREFERENCIAS DESDE HISTORIAL:');
+    console.log('\n\nCALCULANDO PREFERENCIAS DESDE HISTORIAL:');
     console.log('='.repeat(60));
     
     const usuarios = [
@@ -111,7 +107,6 @@ async function diagnosticar() {
       console.log(`  - Reproducciones encontradas: ${reproducciones.length}`);
       
       if (reproducciones.length > 0) {
-        // Agrupar por categoría
         const categorias = {};
         reproducciones.forEach(r => {
           const genero = r.metadata.genero;
@@ -127,7 +122,6 @@ async function diagnosticar() {
           console.log(`    * ${cat}: ${count} reproducciones (${(puntuacion * 100).toFixed(1)}%)`);
         });
         
-        // Agrupar artistas
         const artistas = new Map();
         reproducciones.forEach(r => {
           const artistaId = r.metadata.artista_id.toString();
@@ -136,7 +130,6 @@ async function diagnosticar() {
         
         console.log(`  - Artistas únicos: ${artistas.size}`);
         
-        // Construir objeto de preferencias
         const totalReproducciones = reproducciones.length;
         const categoriasFavoritas = Object.entries(categorias)
           .map(([categoria, count]) => ({
@@ -161,31 +154,28 @@ async function diagnosticar() {
         console.log(`    - Categorías: ${preferencia.categorias_favoritas.length}`);
         console.log(`    - Artistas favoritos: ${preferencia.artistas_favoritos.length}`);
         
-        // Intentar insertar
         try {
           const result = await db.collection('preferencias_usuario').insertOne(preferencia);
-          console.log(`    ✅ Inserción exitosa! ID: ${result.insertedId}`);
+          console.log(`    Inserción exitosa! ID: ${result.insertedId}`);
         } catch (error) {
-          console.log(`    ❌ Error: ${error.message}`);
+          console.log(`    Error: ${error.message}`);
         }
       }
     }
     
-    // 6. Verificar resultado final
-    console.log('\n\n📊 RESULTADO FINAL:');
+    console.log('\n\nRESULTADO FINAL:');
     console.log('='.repeat(60));
     const finalCount = await db.collection('preferencias_usuario').countDocuments();
     console.log(`Total de preferencias en la colección: ${finalCount}`);
     
   } catch (error) {
-    console.error('❌ Error general:', error);
+    console.error('Error general:', error);
   } finally {
     await client.close();
-    console.log('\n👋 Conexión cerrada');
+    console.log('\nConexión cerrada');
   }
 }
 
-// Ejecutar
 diagnosticar()
   .then(() => process.exit(0))
   .catch(err => {

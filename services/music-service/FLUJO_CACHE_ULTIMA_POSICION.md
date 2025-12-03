@@ -1,13 +1,13 @@
-# 🔄 Flujo de Actividad - Caché de Última Posición
+# Flujo de Actividad - Caché de Última Posición
 
-## 📖 Resumen
+## Resumen
 Este documento explica **cómo funciona el sistema de caché Redis** para guardar la última posición de reproducción del usuario, permitiendo que **continúe exactamente donde dejó** de escuchar música.
 
 ---
 
-## 🎯 Escenario Completo
+## Escenario Completo
 
-### **Paso 1: Usuario Entra y Inicia Sesión** 🚪
+### **Paso 1: Usuario Entra y Inicia Sesión** 
 
 ```javascript
 // Frontend: MusicPlayer.js - componentDidMount / useEffect
@@ -20,7 +20,7 @@ useEffect(() => {
       const data = await response.json();
       
       if (data.hasPosition && data.position) {
-        console.log('📍 Restaurando última posición:', data.position);
+        console.log('Restaurando última posición:', data.position);
         
         // Restaurar canción
         setCurrentSong(data.position.song);
@@ -35,9 +35,9 @@ useEffect(() => {
         setPlaylistPosition(data.position.position);
         
         // Mostrar notificación al usuario
-        showNotification('Continuando donde lo dejaste 🎵');
+        showNotification('Continuando donde lo dejaste');
       } else {
-        console.log('✨ Primera vez del usuario, no hay posición guardada');
+        console.log('Primera vez del usuario, no hay posición guardada');
       }
     } catch (error) {
       console.error('Error al cargar última posición:', error);
@@ -90,7 +90,7 @@ const saveUserPosition = async (playingState = isPlaying) => {
         body: JSON.stringify({
           songId: currentSong._id,
           position: currentPlaylistIndex,
-          progress: Math.floor(progress), // 0-100
+          progress: Math.floor(progress),
           isPlaying: playingState,
           timestamp: Date.now()
         })
@@ -98,7 +98,7 @@ const saveUserPosition = async (playingState = isPlaying) => {
     );
     
     const data = await response.json();
-    console.log('💾 Posición guardada:', data);
+    console.log('Posición guardada:', data);
   } catch (error) {
     console.error('Error al guardar posición:', error);
   }
@@ -118,7 +118,7 @@ Cada 5 segundos actualiza:
 
 ---
 
-### **Paso 3: Usuario Pausa o Cambia de Canción** ⏸️
+### **Paso 3: Usuario Pausa o Cambia de Canción**
 
 ```javascript
 // Frontend: Al pausar
@@ -156,7 +156,7 @@ Usuario cambia a siguiente canción:
 
 ---
 
-### **Paso 4: Usuario Cierra Sesión** 🚪👋
+### **Paso 4: Usuario Cierra Sesión**
 
 ```javascript
 // Frontend: Al cerrar sesión o desmontar componente
@@ -164,7 +164,7 @@ useEffect(() => {
   return () => {
     // Cleanup: guardar posición final antes de desmontar
     if (currentSong && userId) {
-      console.log('💾 Guardando posición final antes de salir...');
+      console.log('Guardando posición final antes de salir...');
       saveUserPosition();
     }
   };
@@ -200,7 +200,7 @@ TTL: 7 días (604800 segundos)
 
 ---
 
-### **Paso 5: Usuario Inicia Sesión Nuevamente (al día siguiente)** 🔄
+### **Paso 5: Usuario Inicia Sesión Nuevamente (al día siguiente)**
 
 ```javascript
 // Frontend: Se ejecuta automáticamente (Paso 1)
@@ -226,15 +226,15 @@ TTL: 7 días (604800 segundos)
 }
 
 // Frontend restaura:
-setCurrentSong(data.position.song);        // Back In Black - AC/DC
-setProgress(80);                           // 80% de la canción
-setIsPlaying(false);                       // PAUSADA ← El usuario debe dar play
-setPlaylistPosition(15);                   // Canción #15 de la playlist
+setCurrentSong(data.position.song);
+setProgress(80);
+setIsPlaying(false);
+setPlaylistPosition(15);
 
 // UI muestra:
-// 🎵 Back In Black - AC/DC
+// Back In Black - AC/DC
 // ━━━━━━━━━━━━━●━━━━━━  80%
-// ⏸️ PAUSADA
+// PAUSADA
 // [Botón Play] ← Usuario puede continuar donde quedó
 ```
 
@@ -252,7 +252,7 @@ Si el usuario NO inicia sesión en 7 días:
 
 ---
 
-## ⏱️ **Timeline Resumido**
+## **Timeline Resumido**
 
 | Tiempo | Acción | Redis State |
 |--------|--------|-------------|
@@ -268,7 +268,7 @@ Si el usuario NO inicia sesión en 7 días:
 
 ---
 
-## 🔑 **Campos del Objeto en Redis**
+## **Campos del Objeto en Redis**
 
 ```typescript
 interface UserReelPosition {
@@ -283,7 +283,7 @@ interface UserReelPosition {
 
 ---
 
-## 🎨 **Ejemplo de UX Recomendado**
+## **Ejemplo de UX Recomendado**
 
 ```javascript
 // Al iniciar sesión, si hay posición guardada:
@@ -294,7 +294,6 @@ if (data.hasPosition) {
   setProgress(data.position.progress);
   setIsPlaying(false);  // Siempre pausada al cargar
   
-  // Mostrar banner: "Continuar donde lo dejaste?"
   showBanner({
     message: `Continuar escuchando "${data.position.song.title}"?`,
     actions: [
@@ -303,7 +302,6 @@ if (data.hasPosition) {
     ]
   });
   
-  // Opción 2: Preguntar al usuario
   const shouldResume = await showDialog({
     title: '¿Continuar donde lo dejaste?',
     message: `Última canción: ${data.position.song.title} (${data.position.progress}%)`,
@@ -320,7 +318,7 @@ if (data.hasPosition) {
 
 ---
 
-## ⚙️ **Configuraciones Importantes**
+## **Configuraciones Importantes**
 
 ### **TTL de Redis** (7 días)
 ```javascript
@@ -337,14 +335,14 @@ const SAVE_INTERVAL = 5000; // milisegundos
 ```
 
 ### **Eventos que Guardan Inmediatamente**
-- ✅ Pausar/Reproducir
-- ✅ Cambiar de canción
-- ✅ Cerrar sesión
-- ✅ Cerrar pestaña/navegador (beforeunload)
+- Pausar/Reproducir
+- Cambiar de canción
+- Cerrar sesión
+- Cerrar pestaña/navegador (beforeunload)
 
 ---
 
-## 🚀 **Endpoints Utilizados**
+## **Endpoints Utilizados**
 
 ### **1. Guardar Posición**
 ```http
@@ -399,11 +397,11 @@ Response 200:
 
 ---
 
-## ✅ **Respuesta a tu Pregunta**
+## **Respuesta a tu Pregunta**
 
 ### **"¿Estará la canción en el mismo tiempo pausada?"**
 
-**SÍ** ✅, con la implementación actual:
+**SÍ** , con la implementación actual:
 
 1. **Usuario cierra sesión con música en 80% PAUSADA**
    - Redis guarda: `progress: 80`, `isPlaying: false`
@@ -419,7 +417,7 @@ Response 200:
 
 ---
 
-## 🔍 **Casos Especiales**
+## **Casos Especiales**
 
 ### **¿Qué pasa si el usuario escucha en otro dispositivo?**
 - Redis es por `userId`, NO por dispositivo
@@ -439,7 +437,7 @@ Response 200:
 
 ---
 
-## 📊 **Monitoreo en Redis CLI**
+## **Monitoreo en Redis CLI**
 
 ```bash
 # Ver posición guardada
@@ -456,15 +454,15 @@ redis-cli
 
 ---
 
-## 🎯 **Conclusión**
+## **Conclusión**
 
 El flujo está **completamente funcional** y permite:
 
-✅ Guardar última canción escuchada  
-✅ Guardar progreso exacto (0-100%)  
-✅ Guardar estado (pausada/reproduciendo)  
-✅ Restaurar automáticamente al iniciar sesión  
-✅ TTL de 7 días para no almacenar indefinidamente  
-✅ Historial de últimas 100 canciones escuchadas  
+- Guardar última canción escuchada  
+- Guardar progreso exacto (0-100%)  
+- Guardar estado (pausada/reproduciendo)  
+- Restaurar automáticamente al iniciar sesión  
+- TTL de 7 días para no almacenar indefinidamente  
+- Historial de últimas 100 canciones escuchadas  
 
-**El usuario puede cerrar sesión, apagar la computadora, y al volver (hasta 7 días después) continuar exactamente donde quedó.** 🎵✨
+**El usuario puede cerrar sesión, apagar la computadora, y al volver (hasta 7 días después) continuar exactamente donde quedó.**
