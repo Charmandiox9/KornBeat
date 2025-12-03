@@ -7,7 +7,6 @@ const FavoriteButton = ({ songId, userId, size = 'medium', onToggle }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Verificar si es favorito al montar
   useEffect(() => {
     if (userId && songId) {
       checkFavorite();
@@ -17,15 +16,15 @@ const FavoriteButton = ({ songId, userId, size = 'medium', onToggle }) => {
   const checkFavorite = async () => {
     try {
       const response = await favoritesService.checkFavorite(userId, songId);
-      console.log('✅ Check favorite response:', response);
+      console.log('Check favorite response:', response);
       setIsFavorite(response.isFavorite);
     } catch (error) {
-      console.error('❌ Error al verificar favorito:', error);
+      console.error('Error al verificar favorito:', error);
     }
   };
 
   const handleToggle = async (e) => {
-    e.stopPropagation(); // Evitar que se dispare el click del padre
+    e.stopPropagation(); 
     
     if (isLoading || !userId) return;
 
@@ -33,24 +32,21 @@ const FavoriteButton = ({ songId, userId, size = 'medium', onToggle }) => {
     setIsAnimating(true);
 
     try {
-      console.log('🔄 Toggle favorito:', { userId, songId, isFavorite });
+      console.log('Toggle favorito:', { userId, songId, isFavorite });
       const response = await favoritesService.toggleFavorite(userId, songId, isFavorite);
       
-      console.log('✅ Toggle response:', response);
+      console.log('Toggle response:', response);
       
       if (response.success) {
         setIsFavorite(!isFavorite);
-        
-        // Animación completada
         setTimeout(() => setIsAnimating(false), 600);
         
-        // 🆕 Llamar callback si existe
         if (onToggle) {
           onToggle(!isFavorite);
         }
       }
     } catch (error) {
-      console.error('❌ Error al toggle favorito:', error);
+      console.error('Error al toggle favorito:', error);
       setIsAnimating(false);
     } finally {
       setIsLoading(false);

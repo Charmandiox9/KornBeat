@@ -2,15 +2,15 @@ import React from 'react';
 import '../styles/ResumeDialog.css';
 
 const ResumeDialog = ({ position, onResume, onDismiss }) => {
-  console.log('🎭 ResumeDialog renderizado con:', { position, hasSong: !!position?.song });
+  console.log('ResumeDialog renderizado con:', { position, hasSong: !!position?.song });
   
   if (!position || !position.song) {
-    console.log('❌ ResumeDialog: No se muestra - falta position o song');
+    console.log('ResumeDialog: No se muestra - falta position o song');
     return null;
   }
 
   const { song, progress } = position;
-  console.log('✅ ResumeDialog: Mostrando diálogo para:', song.title);
+  console.log('ResumeDialog: Mostrando diálogo para:', song.title);
 
   return (
     <div className="resume-dialog-overlay">

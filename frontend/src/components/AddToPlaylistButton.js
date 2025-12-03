@@ -16,21 +16,18 @@ const AddToPlaylistButton = ({ songId, songTitle }) => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const buttonRef = useRef(null);
 
-  // ✅ Reset cuando cambia la canción
   useEffect(() => {
     setAddedPlaylists(new Set());
     setIsOpen(false);
   }, [songId]);
 
-  // ✅ Calcular posición del dropdown cuando se abre
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      const dropdownHeight = 400; // Altura máxima del dropdown
+      const dropdownHeight = 400;
       const spaceAbove = rect.top;
       const spaceBelow = window.innerHeight - rect.bottom;
       
-      // Posicionar arriba del botón si hay espacio, sino abajo
       if (spaceAbove > dropdownHeight || spaceAbove > spaceBelow) {
         setDropdownPosition({
           bottom: window.innerHeight - rect.top + 8,
@@ -77,7 +74,7 @@ const AddToPlaylistButton = ({ songId, songTitle }) => {
       );
 
       if (response.success) {
-        toast.success(`✅ Agregado a "${playlistTitle}"`);
+        toast.success(`Agregado a "${playlistTitle}"`);
         setAddedPlaylists(prev => new Set(prev).add(playlistId));
         
         setTimeout(() => setIsOpen(false), 1000);

@@ -23,7 +23,6 @@ const TopBar = ({ notifications = 0 }) => {
     }
   };
 
-  // ← NUEVA función para cambiar tema
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
     setShowSettingsMenu(false);
@@ -45,7 +44,6 @@ const TopBar = ({ notifications = 0 }) => {
       </div>
 
       <div className="navbar-right">
-        {/* Notificaciones */}
         <div className="notifications-menu-container">
           <button
             className="navbar-icon-btn"
@@ -90,7 +88,6 @@ const TopBar = ({ notifications = 0 }) => {
           )}
         </div>
 
-        {/* Perfil */}
         <div className="user-menu-container">
           <button
             className="user-menu-btn"
@@ -124,7 +121,6 @@ const TopBar = ({ notifications = 0 }) => {
           )}
         </div>
         
-        {/* ← ACTUALIZADO: Menú de tema con funcionalidad real */}
         <div className="settings-menu-container">
           <button
             className="navbar-icon-btn"

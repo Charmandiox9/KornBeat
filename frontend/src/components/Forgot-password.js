@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import '../styles/Login.css'; // Reutilizamos los estilos del login
+import '../styles/Login.css';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -11,7 +11,6 @@ const ForgotPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Aquí irá la lógica de envío de email cuando tengamos el backend
       setMessage('Se ha enviado un correo con las instrucciones');
       setStep(2);
     } catch (err) {
