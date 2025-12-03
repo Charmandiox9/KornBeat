@@ -5,11 +5,9 @@ import { AuthContext } from '../context/authContext';
 import '../App.css';
 import Register from '../components/Register';
 
-// Componente de página de registro (placeholder)
 const RegisterPage = () => {
   const { user } = useContext(AuthContext);
   
-  // Si ya está logueado, redirigir a principal
   if (user) {
     return <Navigate to="/principal" replace />;
   }
