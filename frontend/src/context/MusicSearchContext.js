@@ -11,15 +11,14 @@ export const MusicSearchProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // URL base del API - Cambiado para funcionar con invitados
   const API_BASE = 'http://localhost:3002/api/music';
 
-  // Obtener token de autenticación
+ 
   const getAuthToken = () => {
     return localStorage.getItem('authToken') || localStorage.getItem('token');
   };
 
-  // Headers base para las peticiones
+
   const getHeaders = () => {
     const headers = {
       'Content-Type': 'application/json',
@@ -28,7 +27,6 @@ export const MusicSearchProvider = ({ children }) => {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    // No incluir Authorization si no hay token (permite acceso de invitados)
     return headers;
   };
 
@@ -45,17 +43,14 @@ export const MusicSearchProvider = ({ children }) => {
     try {
       let endpoint = '';
       
-      // Si es búsqueda por categoría solamente
       if (categoria && !query) {
         endpoint = `${API_BASE}/search/category/${encodeURIComponent(categoria)}`;
       } 
-      // Si hay query (búsqueda general)
       else if (query) {
-        // Búsqueda general que busca en título, artista, álbum y género
         endpoint = `${API_BASE}/search/${encodeURIComponent(query)}`;
       }
 
-      console.log('🔍 Fetching:', endpoint);
+      console.log('Fetching:', endpoint);
 
       const response = await fetch(endpoint, {
         headers: getHeaders(),
@@ -63,18 +58,17 @@ export const MusicSearchProvider = ({ children }) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Response error:', errorText);
+        console.error('Response error:', errorText);
         throw new Error(`Error al buscar canciones: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('✅ Data received:', data);
+      console.log('Data received:', data);
       
-      // Manejar diferentes formatos de respuesta
       const songs = data.data || data.songs || [];
       setSearchResults(songs);
     } catch (err) {
-      console.error('❌ Search error:', err);
+      console.error('Search error:', err);
       setError(err.message);
       setSearchResults([]);
     } finally {
@@ -82,7 +76,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Obtener canciones populares
   const fetchPopularSongs = useCallback(async (limit = 50) => {
     setIsLoading(true);
     setError(null);
@@ -103,7 +96,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Obtener canciones recientes
   const fetchRecentSongs = useCallback(async (limit = 50) => {
     setIsLoading(true);
     setError(null);
@@ -124,7 +116,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Obtener canciones por categoría
   const fetchSongsByCategory = useCallback(async (categoria, limit = 50) => {
     setIsLoading(true);
     setError(null);
@@ -145,7 +136,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Registrar reproducción
   const playSong = useCallback(async (songId) => {
     try {
       const response = await fetch(`${API_BASE}/songs/${songId}/play`, {
@@ -168,7 +158,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Dar like a una canción
   const likeSong = useCallback(async (songId) => {
     try {
       const response = await fetch(`${API_BASE}/songs/${songId}/like`, {
@@ -190,7 +179,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Quitar like
   const unlikeSong = useCallback(async (songId) => {
     try {
       const response = await fetch(`${API_BASE}/songs/${songId}/like`, {
@@ -207,7 +195,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Obtener letra de canción
   const fetchLyrics = useCallback(async (songId) => {
     try {
       const response = await fetch(`${API_BASE}/songs/${songId}/lyrics`, {
@@ -223,7 +210,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Obtener historial reciente del usuario
   const fetchUserRecent = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/user/recent`, {
@@ -240,7 +226,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Obtener canciones con like del usuario
   const fetchUserLiked = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/user/liked`, {
@@ -257,7 +242,6 @@ export const MusicSearchProvider = ({ children }) => {
     }
   }, []);
 
-  // Limpiar resultados
   const clearSearch = useCallback(() => {
     setSearchResults([]);
     setSearchQuery('');

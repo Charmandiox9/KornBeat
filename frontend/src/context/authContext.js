@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
-  // Verificar autenticación al cargar la app
   useEffect(() => {
     checkAuth();
   }, []);
@@ -63,7 +62,6 @@ export const AuthProvider = ({ children }) => {
       });
       setUser(res.data.user);
     } catch (error) {
-      // Token inválido, limpiar localStorage
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       setUser(null);
@@ -72,7 +70,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Función para refrescar token (opcional, para mayor seguridad)
   const refreshToken = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) throw new Error('No refresh token');
@@ -83,12 +80,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('accessToken', accessToken);
       return accessToken;
     } catch (error) {
-      logout(); // Refresh token inválido
+      logout();
       throw error;
     }
   };
 
-  // Interceptor para manejar tokens expirados automáticamente
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
@@ -112,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
-    initialLoading, // Para mostrar spinner inicial
+    initialLoading, 
     login,
     logout,
     checkAuth,

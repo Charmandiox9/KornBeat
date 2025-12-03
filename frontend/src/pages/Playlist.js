@@ -1,4 +1,3 @@
-// Playlist.js
 import React, { useState, useEffect, useContext } from "react";
 import { Music, Play, Plus, MoreVertical, Trash2, Edit2, Lock, Users, Clock } from "lucide-react";
 import TopBar from "../components/TopBar";
@@ -53,7 +52,7 @@ const PlaylistContent = () => {
       const data = await response.json();
       
       if (data.success) {
-        console.log('✅ Playlists cargadas:', data.playlists.length);
+        console.log('Playlists cargadas:', data.playlists.length);
         setPlaylists(data.playlists);
         if (data.playlists.length > 0 && !selectedPlaylist) {
           loadPlaylistDetails(data.playlists[0]._id);
@@ -61,7 +60,7 @@ const PlaylistContent = () => {
       }
     } catch (err) {
       setError('Error al cargar las playlists');
-      console.error('❌ Error al cargar playlists:', err);
+      console.error('Error al cargar playlists:', err);
     } finally {
       setIsLoading(false);
     }
@@ -74,18 +73,18 @@ const PlaylistContent = () => {
       const data = await response.json();
       
       if (data.success) {
-        console.log('✅ Detalles de playlist cargados:', data.playlist.titulo);
+        console.log('Detalles de playlist cargados:', data.playlist.titulo);
         setSelectedPlaylist(data.playlist);
 
         const songs = data.playlist.canciones
           .map(item => item.cancion_completa)
           .filter(song => song !== null && song !== undefined);
         
-        console.log('🎵 Canciones en playlist:', songs.length);
+        console.log('Canciones en playlist:', songs.length);
         setPlaylistSongs(songs);
       }
     } catch (err) {
-      console.error('❌ Error al cargar detalles de playlist:', err);
+      console.error('Error al cargar detalles de playlist:', err);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +92,7 @@ const PlaylistContent = () => {
 
   const createPlaylist = async (formData) => {
     try {
-      console.log('📝 Creando playlist:', formData.titulo);
+      console.log('Creando playlist:', formData.titulo);
       const response = await fetch(`${API_BASE}/user/${userId}/playlists`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,14 +101,14 @@ const PlaylistContent = () => {
       
       const data = await response.json();
       if (data.success) {
-        console.log('✅ Playlist creada:', data.playlist._id);
+        console.log('Playlist creada:', data.playlist._id);
         await fetchUserPlaylists();
         setShowCreateModal(false);
       } else {
-        console.error('❌ Error al crear playlist:', data.message);
+        console.error('Error al crear playlist:', data.message);
       }
     } catch (err) {
-      console.error('❌ Error al crear playlist:', err);
+      console.error('Error al crear playlist:', err);
     }
   };
 
@@ -117,14 +116,14 @@ const PlaylistContent = () => {
     if (!window.confirm('¿Estás seguro de eliminar esta playlist?')) return;
     
     try {
-      console.log('🗑️ Eliminando playlist:', playlistId);
+      console.log('Eliminando playlist:', playlistId);
       const response = await fetch(`${API_BASE}/playlists/${playlistId}`, {
         method: 'DELETE'
       });
       
       const data = await response.json();
       if (data.success) {
-        console.log('✅ Playlist eliminada');
+        console.log('Playlist eliminada');
         await fetchUserPlaylists();
         if (selectedPlaylist?._id === playlistId) {
           setSelectedPlaylist(null);
@@ -132,17 +131,17 @@ const PlaylistContent = () => {
         }
       }
     } catch (err) {
-      console.error('❌ Error al eliminar playlist:', err);
+      console.error('Error al eliminar playlist:', err);
     }
   };
 
   const playPlaylist = () => {
     if (playlistSongs.length === 0) {
-      console.warn('⚠️ No hay canciones en la playlist');
+      console.warn('No hay canciones en la playlist');
       return;
     }
 
-    console.log('🎵 Reproduciendo playlist completa:', {
+    console.log('Reproduciendo playlist completa:', {
       nombre: selectedPlaylist.titulo,
       totalCanciones: playlistSongs.length,
       canciones: playlistSongs.map(s => s.titulo).slice(0, 3)
@@ -162,14 +161,11 @@ const PlaylistContent = () => {
     }
   };
 
-  //Reproducir canción individual desde la playlist
   const playSongFromPlaylist = (song, index) => {
-    console.log(`🎵 Reproduciendo desde posición ${index + 1}/${playlistSongs.length}:`, song.titulo);
-    
-    // Reproducir desde este índice en adelante
+    console.log(`Reproduciendo desde posición ${index + 1}/${playlistSongs.length}:`, song.titulo);
     const songsFromIndex = playlistSongs.slice(index);
     
-    console.log('📋 Cola de reproducción:', songsFromIndex.map(s => s.titulo));
+    console.log('Cola de reproducción:', songsFromIndex.map(s => s.titulo));
     
     clearQueue();
     addMultipleToQueue(songsFromIndex);
@@ -217,7 +213,6 @@ const PlaylistContent = () => {
       
       <main className="play-content">
         <div className="playlists-container">
-          {/* Sidebar con lista de playlists */}
           <aside className="playlists-sidebar">
             <div className="sidebar-header">
               <h2>Mis Playlists</h2>
@@ -291,11 +286,9 @@ const PlaylistContent = () => {
             </div>
           </aside>
 
-          {/* Contenido principal - Detalles de la playlist */}
           <div className="playlist-main">
             {selectedPlaylist ? (
               <>
-                {/* Header de la playlist */}
                 <div className="playlist-header">
                   <div className="playlist-cover-large">
                     <Music size={80} />
@@ -316,7 +309,6 @@ const PlaylistContent = () => {
                   </div>
                 </div>
 
-                {/* Controles de la playlist */}
                 <div className="playlist-controls">
                   <button 
                     className="play-playlist-btn"
@@ -328,7 +320,6 @@ const PlaylistContent = () => {
                   </button>
                 </div>
 
-                {/* Lista de canciones */}
                 <div className="playlist-songs">
                   {playlistSongs.length === 0 ? (
                     <div className="empty-playlist-songs">
@@ -406,7 +397,6 @@ const PlaylistContent = () => {
         </div>
       </main>
 
-      {/* Modal para crear playlist */}
       {showCreateModal && (
         <CreatePlaylistModal
           onClose={() => setShowCreateModal(false)}
@@ -421,7 +411,7 @@ const PlaylistContent = () => {
   );
 };
 
-// Modal para crear playlist
+
 const CreatePlaylistModal = ({ onClose, onCreate }) => {
   const [formData, setFormData] = useState({
     titulo: '',

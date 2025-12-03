@@ -1,4 +1,3 @@
-// Principal.js
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
@@ -36,7 +35,6 @@ const Principal = () => {
     if (!user) navigate('/login');
   }, [user, navigate]);
 
-  // Obtener el país del usuario si está disponible en el contexto
   useEffect(() => {
     if (user?.country) {
       setUserCountry(user.country);
@@ -51,7 +49,6 @@ const Principal = () => {
     console.log('==================');
   }, [user, userCountry]);
 
-  // Cargar TOP Global
   useEffect(() => {
     const fetchTopGlobal = async () => {
       try {
@@ -71,7 +68,6 @@ const Principal = () => {
     fetchTopGlobal();
   }, []);
 
-  // Cargar TOP del País
   useEffect(() => {
     const fetchTopCountry = async () => {
       try {
@@ -93,7 +89,6 @@ const Principal = () => {
     }
   }, [userCountry]);
 
-  // Cargar recomendaciones personalizadas
   useEffect(() => {
     const fetchForYou = async () => {
       if (!user?._id) return;
@@ -117,7 +112,6 @@ const Principal = () => {
     fetchForYou();
   }, [user]);
 
-  // Cargar historial reciente
   useEffect(() => {
     const fetchRecentlyPlayed = async () => {
       if (!user?._id) return;
@@ -141,7 +135,6 @@ const Principal = () => {
     fetchRecentlyPlayed();
   }, [user]);
 
-  // Cargar artistas emergentes
   useEffect(() => {
     const fetchDiscoverNew = async () => {
       if (!user?._id) return;
@@ -167,12 +160,10 @@ const Principal = () => {
 
   const hasSearchResults = searchResults.length > 0 || searchQuery;
 
-  // 🆕 Variables para determinar si mostrar cada sección
   const shouldShowRecent = !loadingRecent && recentlyPlayed.length > 0;
   const shouldShowForYou = !loadingForYou && forYou.length > 0;
   const shouldShowDiscover = !loadingDiscover && discoverNew.length > 0;
 
-  // Función para formatear canciones del TOP al formato del player
   const formatSongForPlayer = useCallback((song) => {
     const formattedSong = {
       _id: song.id,
@@ -195,13 +186,12 @@ const Principal = () => {
     return formattedSong;
   }, []);
 
-  // Función para reproducir canción del TOP Global
   const handlePlayFromTopGlobal = useCallback((e, song, index) => {
     e.stopPropagation();
     const songsFromIndex = topGlobal.slice(index);
     const formattedSongs = songsFromIndex.map(formatSongForPlayer);
     
-    console.log('🎵 Reproduciendo desde TOP GLOBAL:', {
+    console.log('Reproduciendo desde TOP GLOBAL:', {
       cancionSeleccionada: song.titulo,
       posicion: index + 1,
       totalEnCola: formattedSongs.length,
@@ -217,13 +207,12 @@ const Principal = () => {
     }
   }, [topGlobal, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
-  // Función para reproducir canción del TOP País
   const handlePlayFromTopCountry = useCallback((e, song, index) => {
     e.stopPropagation();
     const songsFromIndex = topCountry.slice(index);
     const formattedSongs = songsFromIndex.map(formatSongForPlayer);
     
-    console.log('🎵 Reproduciendo desde TOP', userCountry, ':', {
+    console.log('Reproduciendo desde TOP', userCountry, ':', {
       cancionSeleccionada: song.titulo,
       posicion: index + 1,
       totalEnCola: formattedSongs.length,
@@ -239,13 +228,12 @@ const Principal = () => {
     }
   }, [topCountry, userCountry, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
-  // Función para reproducir desde "Creado para ti"
   const handlePlayFromForYou = useCallback((e, song, index) => {
     e.stopPropagation();
     const songsFromIndex = forYou.slice(index);
     const formattedSongs = songsFromIndex.map(formatSongForPlayer);
     
-    console.log('🎵 Reproduciendo desde CREADO PARA TI:', {
+    console.log('Reproduciendo desde CREADO PARA TI:', {
       cancionSeleccionada: song.titulo,
       posicion: index + 1,
       totalEnCola: formattedSongs.length,
@@ -262,13 +250,12 @@ const Principal = () => {
     }
   }, [forYou, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
-  // Función para reproducir desde historial reciente
   const handlePlayFromRecent = useCallback((e, song, index) => {
     e.stopPropagation();
     const songsFromIndex = recentlyPlayed.slice(index);
     const formattedSongs = songsFromIndex.map(formatSongForPlayer);
     
-    console.log('🕐 Reproduciendo desde HISTORIAL RECIENTE:', {
+    console.log('Reproduciendo desde HISTORIAL RECIENTE:', {
       cancionSeleccionada: song.titulo,
       posicion: index + 1,
       totalEnCola: formattedSongs.length,
@@ -286,13 +273,12 @@ const Principal = () => {
     }
   }, [recentlyPlayed, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
-  // Función para reproducir desde descubrimientos (artistas emergentes)
   const handlePlayFromDiscover = useCallback((e, song, index) => {
     e.stopPropagation();
     const songsFromIndex = discoverNew.slice(index);
     const formattedSongs = songsFromIndex.map(formatSongForPlayer);
     
-    console.log('🔍 Reproduciendo artista emergente:', {
+    console.log('Reproduciendo artista emergente:', {
       cancionSeleccionada: song.titulo,
       artista: song.artista_nombre || song.artista,
       oyentesArtista: song.oyentes_artista,
@@ -309,7 +295,6 @@ const Principal = () => {
     }
   }, [discoverNew, clearQueue, addMultipleToQueue, playFromQueue, formatSongForPlayer]);
 
-  // Función auxiliar para formatear fecha
   const formatFechaReproduccion = (fecha) => {
     if (!fecha) return '';
     
@@ -327,7 +312,6 @@ const Principal = () => {
     });
   };
 
-  // Función auxiliar para formatear número de oyentes
   const formatOyentes = (oyentes) => {
     if (!oyentes) return '0';
     if (oyentes >= 1000000) return `${(oyentes / 1000000).toFixed(1)}M`;
@@ -335,7 +319,6 @@ const Principal = () => {
     return oyentes.toString();
   };
 
-  // Función para determinar emoji según oyentes
   const getEmergingEmoji = (oyentes) => {
     if (oyentes < 10000) return '🚀';
     if (oyentes < 50000) return '💎';
@@ -355,7 +338,6 @@ const Principal = () => {
 
         {!hasSearchResults && (
           <>
-            {/* 🆕 MENSAJE DE BIENVENIDA para usuarios nuevos */}
             {!shouldShowRecent && !shouldShowForYou && !loadingRecent && !loadingForYou && (
               <section className="content-section welcome-section" style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -377,7 +359,6 @@ const Principal = () => {
               </section>
             )}
 
-            {/* SECCIÓN: Escuchados recientemente - SOLO SI HAY DATOS */}
             {shouldShowRecent && (
               <section className="content-section">
                 <div className="section-header">
@@ -441,7 +422,6 @@ const Principal = () => {
               </section>
             )}
 
-            {/* SECCIÓN: Descubre artistas emergentes - SOLO SI HAY DATOS */}
             {shouldShowDiscover && (
               <section className="content-section">
                 <div className="section-header">
@@ -541,7 +521,6 @@ const Principal = () => {
               </section>
             )}
 
-            {/* SECCIÓN: Creado para ti - SOLO SI HAY DATOS */}
             {shouldShowForYou && (
               <section className="content-section">
                 <div className="section-header">
@@ -588,7 +567,6 @@ const Principal = () => {
               </section>
             )}
 
-            {/* TOP del País - SIEMPRE SE MUESTRA */}
             <section className="content-section">
               <div className="section-header">
                 <h2>🔥 TOP {userCountry}</h2>
@@ -650,7 +628,6 @@ const Principal = () => {
               )}
             </section>
 
-            {/* TOP Global - SIEMPRE SE MUESTRA */}
             <section className="content-section">
               <div className="section-header">
                 <h2>🌎 TOP GLOBAL</h2>

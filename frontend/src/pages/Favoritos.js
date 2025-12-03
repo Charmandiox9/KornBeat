@@ -1,4 +1,3 @@
-// Favoritos.js
 import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from '../context/authContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
@@ -18,11 +17,11 @@ const Favoritos = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
-  const [showQueuePanel, setShowQueuePanel] = useState(false); // ← AGREGAR ESTADO
+  const [showQueuePanel, setShowQueuePanel] = useState(false); 
 
   useEffect(() => {
     if (user && user._id) {
-      console.log('🔄 Cargando favoritos para usuario:', user._id);
+      console.log('Cargando favoritos para usuario:', user._id);
       loadFavorites();
     }
   }, [user, page]);
@@ -30,11 +29,11 @@ const Favoritos = () => {
   const loadFavorites = async () => {
     try {
       setIsLoading(true);
-      console.log('📡 Solicitando favoritos - Página:', page);
+      console.log('Solicitando favoritos - Página:', page);
       
       const response = await favoritesService.getFavorites(user._id, page, 20);
       
-      console.log('📦 Respuesta recibida:', response.success ? 'OK' : 'ERROR');
+      console.log('Respuesta recibida:', response.success ? 'OK' : 'ERROR');
       
       if (response.success) {
         let newFavorites = [];
@@ -48,7 +47,7 @@ const Favoritos = () => {
           }).filter(song => song && song._id);
         }
         
-        console.log('✅ Canciones procesadas:', newFavorites.length);
+        console.log('Canciones procesadas:', newFavorites.length);
         
         if (page === 1) {
           setFavorites(newFavorites);
@@ -60,21 +59,21 @@ const Favoritos = () => {
         setHasMore(response.total > page * 20);
         
         if (page === 1) {
-          toast.success(`❤️ ${response.total || newFavorites.length} favoritos cargados`);
+          toast.success(`${response.total || newFavorites.length} favoritos cargados`);
         }
       } else {
-        toast.error(response.message || '❌ Error al cargar favoritos');
+        toast.error(response.message || 'Error al cargar favoritos');
       }
     } catch (error) {
-      console.error('❌ Error al cargar favoritos:', error);
-      toast.error('❌ Error de conexión al cargar favoritos');
+      console.error('Error al cargar favoritos:', error);
+      toast.error('Error de conexión al cargar favoritos');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSongSelect = (song, index) => {
-    console.log('▶️ Reproduciendo desde favoritos:', song.title);
+    console.log('Reproduciendo desde favoritos:', song.title);
     const songsFromIndex = favorites.slice(index);
     clearQueue();
     addMultipleToQueue(songsFromIndex);
@@ -82,7 +81,7 @@ const Favoritos = () => {
   };
 
   const handleRemoveFavorite = () => {
-    console.log('🗑️ Favorito eliminado, recargando lista...');
+    console.log('Favorito eliminado, recargando lista...');
     setTimeout(() => {
       setPage(1);
       loadFavorites();
@@ -139,7 +138,7 @@ const Favoritos = () => {
       <TopBar />
       <main className="fav-content">
         <div className="fav-header">
-          <h1>❤️ Mis Favoritos</h1>
+          <h1>Mis Favoritos</h1>
           <p className="fav-count">{total} canciones</p>
         </div>
 
@@ -159,7 +158,7 @@ const Favoritos = () => {
             <div className="fav-list">
               {favorites.map((song, index) => {
                 if (!song || !song._id) {
-                  console.warn('⚠️ Canción inválida en índice:', index);
+                  console.warn('Canción inválida en índice:', index);
                   return null;
                 }
 

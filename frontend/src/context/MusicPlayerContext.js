@@ -18,7 +18,6 @@ export const MusicPlayerProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const audioRef = useRef(null);
   
-  // Estados del reproductor
   const [currentSong, setCurrentSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -28,27 +27,24 @@ export const MusicPlayerProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Cola de reproducción
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [history, setHistory] = useState([]);
   
-  // Modos de reproducción
+ 
   const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState('off'); // 'off', 'one', 'all'
+  const [repeat, setRepeat] = useState('off');
   
-  // Mini player expandido
+
   const [isExpanded, setIsExpanded] = useState(false);
   
-  // 🆕 Estado del panel de cola
+
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
-  // Caché de última posición
   const [lastPosition, setLastPosition] = useState(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const savePositionTimeoutRef = useRef(null);
   
-  // Refs para valores actuales
   const currentSongRef = useRef(null);
   const currentIndexRef = useRef(-1);
   const isPlayingRef = useRef(false);
@@ -56,7 +52,6 @@ export const MusicPlayerProvider = ({ children }) => {
   const repeatRef = useRef('off');
   const shuffleRef = useRef(false);
   
-  // Actualizar refs cuando cambien los estados
   useEffect(() => {
     currentSongRef.current = currentSong;
     currentIndexRef.current = currentIndex;
@@ -66,9 +61,9 @@ export const MusicPlayerProvider = ({ children }) => {
     shuffleRef.current = shuffle;
   }, [currentSong, currentIndex, isPlaying, queue, repeat, shuffle]);
 
-  // DEBUG: Log cuando currentSong cambie
+
   useEffect(() => {
-    console.log('🎵 currentSong actualizado:', {
+    console.log('currentSong actualizado:', {
       exists: !!currentSong,
       id: currentSong?._id,
       title: currentSong?.title || currentSong?.titulo,
@@ -76,14 +71,14 @@ export const MusicPlayerProvider = ({ children }) => {
     });
   }, [currentSong]);
 
-  // Reproducir canción
+
   const playSong = useCallback((song, addToHistory = true) => {
     if (!song) {
-      console.error('❌ No se proporcionó una canción');
+      console.error('No se proporcionó una canción');
       return;
     }
 
-    console.log('🎵 Intentando reproducir:', song);
+    console.log('Intentando reproducir:', song);
 
     let streamUrl;
     
@@ -94,12 +89,12 @@ export const MusicPlayerProvider = ({ children }) => {
     } else if (song._id) {
       streamUrl = `${API_BASE}/api/music/songs/${song._id}/stream`;
     } else {
-      console.error('❌ No se pudo construir URL de audio:', song);
+      console.error('No se pudo construir URL de audio:', song);
       setError('No se puede reproducir esta canción (falta ID)');
       return;
     }
 
-    console.log('🔗 URL del stream:', streamUrl);
+    console.log('URL del stream:', streamUrl);
 
     const songWithFullUrl = {
       ...song,
@@ -120,10 +115,10 @@ export const MusicPlayerProvider = ({ children }) => {
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Reproducción iniciada exitosamente');
+            console.log('Reproducción iniciada exitosamente');
           })
           .catch(err => {
-            console.error('❌ Error al reproducir:', err);
+            console.error('Error al reproducir:', err);
             setError(`No se pudo reproducir: ${err.message}`);
             setIsLoading(false);
           });
@@ -138,63 +133,59 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, []);
 
-  // 🔧 ARREGLAR: Manejar fin de canción usando refs
   const handleSongEnd = useCallback(() => {
-    console.log('🏁 Canción finalizada - manejando auto-avance');
+    console.log('Canción finalizada - manejando auto-avance');
     
     const currentRepeat = repeatRef.current;
     const currentIdx = currentIndexRef.current;
     const currentQueue = queueRef.current;
     const isShuffleOn = shuffleRef.current;
     
-    console.log('📊 Estado actual:', {
+    console.log('Estado actual:', {
       repeat: currentRepeat,
       currentIndex: currentIdx,
       queueLength: currentQueue.length,
       shuffle: isShuffleOn
     });
 
-    // Si está en repeat one, repetir la misma canción
     if (currentRepeat === 'one') {
-      console.log('🔂 Repitiendo canción actual');
+      console.log('Repitiendo canción actual');
       audioRef.current?.play();
       return;
     }
 
-    // Si hay siguiente en la cola
+  
     if (currentIdx < currentQueue.length - 1) {
-      console.log('⏭️ Reproduciendo siguiente canción');
+      console.log('Reproduciendo siguiente canción');
       let nextIndex;
       
       if (isShuffleOn) {
-        // Aleatorio excluyendo la canción actual
         const availableIndices = currentQueue
           .map((_, idx) => idx)
           .filter(idx => idx !== currentIdx);
         nextIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-        console.log('🔀 Shuffle activo - siguiente aleatorio:', nextIndex);
+        console.log('Shuffle activo - siguiente aleatorio:', nextIndex);
       } else {
         nextIndex = currentIdx + 1;
-        console.log('➡️ Siguiente en orden:', nextIndex);
+        console.log('Siguiente en orden:', nextIndex);
       }
       
       setCurrentIndex(nextIndex);
       playSong(currentQueue[nextIndex], true);
     } 
-    // Si terminó la cola y está en repeat all
+
     else if (currentRepeat === 'all' && currentQueue.length > 0) {
-      console.log('🔁 Repeat all activo - volviendo al inicio');
+      console.log('Repeat all activo - volviendo al inicio');
       setCurrentIndex(0);
       playSong(currentQueue[0], true);
     } 
-    // Si no hay más canciones
     else {
-      console.log('⏹️ No hay más canciones - pausando');
+      console.log('No hay más canciones - pausando');
       setIsPlaying(false);
     }
   }, [playSong]);
 
-  // Inicializar audio ref
+
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
@@ -205,18 +196,18 @@ export const MusicPlayerProvider = ({ children }) => {
     const audio = audioRef.current;
 
     const handleLoadStart = () => {
-      console.log('🔄 Cargando audio...');
+      console.log('Cargando audio...');
       setIsLoading(true);
       setError(null);
     };
     
     const handleCanPlay = () => {
-      console.log('✅ Audio listo para reproducir');
+      console.log('Audio listo para reproducir');
       setIsLoading(false);
     };
     
     const handleLoadedMetadata = () => {
-      console.log('📊 Metadatos cargados, duración:', audio.duration);
+      console.log('Metadatos cargados, duración:', audio.duration);
       setDuration(audio.duration);
       setIsLoading(false);
     };
@@ -224,22 +215,22 @@ export const MusicPlayerProvider = ({ children }) => {
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     
     const handleEnded = () => {
-      console.log('🏁 Evento ended disparado');
+      console.log('Evento ended disparado');
       handleSongEnd();
     };
     
     const handlePlay = () => {
-      console.log('▶️  Reproduciendo');
+      console.log('Reproduciendo');
       setIsPlaying(true);
     };
     
     const handlePause = () => {
-      console.log('⏸️  Pausado');
+      console.log('Pausado');
       setIsPlaying(false);
     };
     
     const handleError = (e) => {
-      console.error('❌ Error de audio:', e);
+      console.error('Error de audio:', e);
       setIsLoading(false);
       
       let errorMessage = 'Error al cargar la canción';
@@ -277,17 +268,15 @@ export const MusicPlayerProvider = ({ children }) => {
     };
   }, [handleSongEnd]);
 
-  // Actualizar volumen
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
 
-  // Play/Pause toggle
   const togglePlay = useCallback(() => {
     if (!audioRef.current || !currentSong) {
-      console.warn('⚠️  No hay canción cargada');
+      console.warn('No hay canción cargada');
       return;
     }
 
@@ -304,7 +293,6 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, [isPlaying, currentSong]);
 
-  // Buscar en la canción
   const seekTo = useCallback((time) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
@@ -312,7 +300,6 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, []);
 
-  // Cambiar volumen
   const changeVolume = useCallback((newVolume) => {
     const clampedVolume = Math.max(0, Math.min(1, newVolume));
     setVolume(clampedVolume);
@@ -321,22 +308,18 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, [isMuted]);
 
-  // Toggle mute
   const toggleMute = useCallback(() => {
     setIsMuted(prev => !prev);
   }, []);
 
-  // Agregar a la cola
   const addToQueue = useCallback((song) => {
     setQueue(prev => [...prev, song]);
   }, []);
 
-  // Agregar múltiples canciones a la cola
   const addMultipleToQueue = useCallback((songs) => {
     setQueue(prev => [...prev, ...songs]);
   }, []);
 
-  // Reproducir desde la cola
   const playFromQueue = useCallback((index) => {
     if (index >= 0 && index < queue.length) {
       setCurrentIndex(index);
@@ -344,7 +327,6 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, [queue, playSong]);
 
-  // Siguiente canción
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
 
@@ -363,7 +345,6 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, [queue.length, shuffle, currentIndex, repeat, playFromQueue]);
 
-  // Canción anterior
   const playPrevious = useCallback(() => {
     if (queue.length === 0) return;
 
@@ -380,13 +361,11 @@ export const MusicPlayerProvider = ({ children }) => {
     playFromQueue(prevIndex);
   }, [queue.length, currentIndex, currentTime, repeat, seekTo, playFromQueue]);
 
-  // Limpiar cola
   const clearQueue = useCallback(() => {
     setQueue([]);
     setCurrentIndex(-1);
   }, []);
 
-  // Remover de la cola
   const removeFromQueue = useCallback((index) => {
     setQueue(prev => {
       const newQueue = [...prev];
@@ -400,12 +379,10 @@ export const MusicPlayerProvider = ({ children }) => {
     }
   }, [currentIndex, playNext]);
 
-  // Toggle shuffle
   const toggleShuffle = useCallback(() => {
     setShuffle(prev => !prev);
   }, []);
 
-  // Toggle repeat
   const toggleRepeat = useCallback(() => {
     setRepeat(prev => {
       if (prev === 'off') return 'all';
@@ -414,7 +391,6 @@ export const MusicPlayerProvider = ({ children }) => {
     });
   }, []);
 
-  // Reproducir ahora
   const playNow = useCallback((song) => {
     clearQueue();
     addToQueue(song);
@@ -422,24 +398,21 @@ export const MusicPlayerProvider = ({ children }) => {
     playSong(song);
   }, [playSong, addToQueue, clearQueue]);
 
-  // Reproducir siguiente en cola
   const playNextInQueue = useCallback((song) => {
     const newQueue = [...queue];
     newQueue.splice(currentIndex + 1, 0, song);
     setQueue(newQueue);
   }, [queue, currentIndex]);
 
-  // 🆕 Toggle panel de cola
   const toggleQueue = useCallback(() => {
     setIsQueueOpen(prev => !prev);
   }, []);
 
-  // Toggle expanded
+
   const toggleExpanded = useCallback(() => {
     setIsExpanded(prev => !prev);
   }, []);
 
-  // Cerrar reproductor
   const closePlayer = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -453,24 +426,24 @@ export const MusicPlayerProvider = ({ children }) => {
     setIsExpanded(false);
   }, []);
 
-  // Funciones de caché (sin cambios)
+ 
   const loadLastPosition = useCallback(async (userId) => {
     if (!userId) return;
 
     try {
-      console.log('📍 Cargando última posición para usuario:', userId);
+      console.log('Cargando última posición para usuario:', userId);
       const response = await cacheService.getPosition(userId);
       
       if (response.success && response.hasPosition) {
-        console.log('✅ Última posición encontrada:', response.position);
+        console.log('Última posición encontrada:', response.position);
         setLastPosition(response.position);
         setShowResumeDialog(true);
       } else {
-        console.log('ℹ️  No hay posición guardada');
+        console.log('No hay posición guardada');
         setLastPosition(null);
       }
     } catch (error) {
-      console.error('❌ Error al cargar última posición:', error);
+      console.error('Error al cargar última posición:', error);
     }
   }, []);
 
@@ -497,7 +470,7 @@ export const MusicPlayerProvider = ({ children }) => {
       
       await cacheService.savePosition(userId, position);
     } catch (error) {
-      console.error('❌ Error al guardar posición:', error);
+      console.error('Error al guardar posición:', error);
     }
   };
 
@@ -518,7 +491,7 @@ export const MusicPlayerProvider = ({ children }) => {
   const resumeLastPosition = useCallback(() => {
     if (!lastPosition || !lastPosition.song) return;
 
-    console.log('▶️  Restaurando última posición:', lastPosition);
+    console.log('Restaurando última posición:', lastPosition);
     
     setCurrentSong(lastPosition.song);
     
@@ -552,7 +525,7 @@ export const MusicPlayerProvider = ({ children }) => {
       try {
         await cacheService.clearPosition(user._id);
       } catch (error) {
-        console.error('❌ Error al borrar posición:', error);
+        console.error('Error al borrar posición:', error);
       }
     }
     

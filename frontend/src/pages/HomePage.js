@@ -1,4 +1,3 @@
-// src/pages/HomePage.js
 import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
@@ -8,13 +7,12 @@ import SearchBarResultsGuest from '../components/SearchBarResultsGuest';
 import MiniPlayer from '../components/MiniPlayer';
 import QueuePanel from '../components/QueuePanel';
 import toast, { Toaster } from 'react-hot-toast';
-import '../styles/HomePages.css'; // Asegúrate de que este archivo existe
+import '../styles/HomePages.css'; 
 
 const HomePage = () => {
   const { user, logout } = useContext(AuthContext);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
-  // Mostrar mensaje de bienvenida para invitados
   useEffect(() => {
     if (!user) {
       const hasShownWelcome = sessionStorage.getItem('guestWelcomeShown');
@@ -141,10 +139,7 @@ const HomePage = () => {
             </div>
           </main>
 
-          {/* Reproductor de música */}
           <MiniPlayer />
-
-          {/* Panel de cola de reproducción */}
           <QueuePanel 
             isOpen={isQueueOpen} 
             onClose={() => setIsQueueOpen(false)} 

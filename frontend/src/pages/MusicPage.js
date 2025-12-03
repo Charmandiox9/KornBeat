@@ -11,22 +11,19 @@ import TopBar from '../components/TopBar';
 const MusicPage = () => {
   const { user, logout } = useContext(AuthContext);
 
-  // Si no hay usuario, retorna antes de renderizar cualquier provider o hijo
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Hooks después del return condicional
-  const [allSongs, setAllSongs] = useState([]); // Todas las canciones
-  const [displayedSongs, setDisplayedSongs] = useState([]); // Canciones mostradas
+  const [allSongs, setAllSongs] = useState([]); 
+  const [displayedSongs, setDisplayedSongs] = useState([]); 
   const [currentSong, setCurrentSong] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // Estados de búsqueda
+ 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
-  // Cargar todas las canciones desde el music-service
   useEffect(() => {
     fetchAllSongs();
   }, []);
@@ -34,7 +31,6 @@ const MusicPage = () => {
   const fetchAllSongs = async () => {
     try {
       setIsLoading(true);
-      // CAMBIO: Ahora usa /api/music/songs
       const response = await fetch('http://localhost:3002/api/music/songs');
       
       if (!response.ok) {
@@ -46,20 +42,19 @@ const MusicPage = () => {
       if (data.success) {
         setAllSongs(data.data);
         setDisplayedSongs(data.data);
-        toast.success(`✅ ${data.data.length} canciones cargadas`);
+        toast.success(`${data.data.length} canciones cargadas`);
       } else {
         console.error('Error fetching songs:', data.message);
-        toast.error('❌ Error al cargar las canciones');
+        toast.error('Error al cargar las canciones');
       }
     } catch (error) {
       console.error('Error fetching songs:', error);
-      toast.error('❌ No se pudieron cargar las canciones');
+      toast.error('No se pudieron cargar las canciones');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Función de búsqueda
   const handleSearch = async (query, type = 'general') => {
     if (!query.trim()) {
       setDisplayedSongs(allSongs);
@@ -76,7 +71,6 @@ const MusicPage = () => {
       
       switch (type) {
         case 'artist':
-          // CAMBIO: Agregado /api
           endpoint = `http://localhost:3002/api/music/search/artist/${encodeURIComponent(query)}`;
           break;
         case 'song':
@@ -101,22 +95,22 @@ const MusicPage = () => {
         setDisplayedSongs(data.data);
         setSearchQuery(query);
         setSearchType(data.searchType || type);
-        toast.success(`✅ ${data.data.length} resultados encontrados`, { id: 'searching' });
+        toast.success(`${data.data.length} resultados encontrados`, { id: 'searching' });
       } else {
         console.error('Error searching:', data.message);
         setDisplayedSongs([]);
-        toast.error('❌ No se encontraron resultados', { id: 'searching' });
+        toast.error('No se encontraron resultados', { id: 'searching' });
       }
     } catch (error) {
       console.error('Error searching:', error);
       setDisplayedSongs([]);
-      toast.error('❌ Error al buscar', { id: 'searching' });
+      toast.error('Error al buscar', { id: 'searching' });
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Limpiar búsqueda
+
   const clearSearch = () => {
     setSearchQuery('');
     setSearchType('');
@@ -125,7 +119,7 @@ const MusicPage = () => {
     toast.success('🔄 Búsqueda limpiada');
   };
 
-  // Buscar por categoría
+
   const handleCategorySearch = (category) => {
     handleSearch(category, 'category');
   };
@@ -176,7 +170,6 @@ const MusicPage = () => {
         <div className="container">
           <h1>🎵 Mi Biblioteca Musical</h1>
           
-          {/* Barra de búsqueda integrada */}
           <div className="search-section">
             <div className="search-container">
               <input
@@ -218,14 +211,13 @@ const MusicPage = () => {
                     onClick={clearSearch}
                     className="search-btn clear"
                   >
-                    ❌ Limpiar
+                    Limpiar
                   </button>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Botones de Categorías */}
           <div className="categories-section">
             <h3>🎭 Explorar por Género</h3>
             <div className="category-buttons">
@@ -280,7 +272,7 @@ const MusicPage = () => {
                 <div className="player-section">
                   <MusicPlayer 
                     song={currentSong}
-                    songs={displayedSongs} // Usar canciones filtradas
+                    songs={displayedSongs}
                     onSongChange={setCurrentSong}
                   />
                 </div>
