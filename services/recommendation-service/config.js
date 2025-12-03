@@ -1,8 +1,4 @@
-// services/recommendations-service/config.js
-// Configuración de mapeo de colecciones MongoDB
-
 module.exports = {
-  // Mapeo de colecciones MongoDB
   collections: {
     canciones: 'songs',
     usuarios: 'usuarios',
@@ -18,32 +14,29 @@ module.exports = {
     discograficas: process.env.LABELS_COLLECTION || 'discograficas'
   },
 
-  // Mapeo de campos - ACTUALIZADO PARA TU ESQUEMA REAL
   fields: {
     cancion: {
-      // Tu esquema real
       id: '_id',
-      titulo: 'title',              // ← Cambiado de 'titulo' a 'title'
-      artista: 'artist',            // ← String simple, no array
-      compositores: 'composers',    // ← Array
-      album: 'album',               // ← String del nombre del álbum
-      duracion: 'duration',         // ← Cambiado de 'duracion_segundos' a 'duration'
-      genero: 'genre',              // ← String simple
-      categorias: 'categorias',     // ← Array (puede estar vacío)
-      tags: 'tags',                 // ← Array
-      archivo: 'fileName',          // ← Cambiado de 'archivo_url' a 'fileName'
-      fileSize: 'fileSize',         // ← Tamaño del archivo
-      portada: 'coverUrl',          // ← Cambiado de 'portada_url' a 'coverUrl'
-      reproducciones: 'playCount',  // ← Cambiado de 'reproducciones' a 'playCount'
+      titulo: 'title',
+      artista: 'artist',
+      compositores: 'composers',
+      album: 'album',
+      duracion: 'duration',
+      genero: 'genre',
+      categorias: 'categories',
+      tags: 'tags',
+      archivo: 'fileName',
+      fileSize: 'fileSize',
+      portada: 'coverUrl',
+      reproducciones: 'playCount',
       fecha_creacion: 'createdAt',
       fecha_subida: 'uploadDate',
       fecha_actualizacion: 'updatedAt',
-      // Campos que no existen en tu esquema pero podemos derivar
-      disponible: null,             // No existe, asumir true
-      explicito: null,              // No existe
-      instrumental: null,           // No existe
-      likes: null,                  // No existe
-      idioma: null                  // No existe
+      disponible: null,
+      explicito: null,
+      instrumental: null,
+      likes: null,
+      idioma: null
     },
     usuario: {
       id: '_id',
@@ -79,7 +72,6 @@ module.exports = {
     }
   },
 
-  // Configuración de sincronización
   sync: {
     batchSize: 100,
     delayBetweenBatches: 100,
@@ -87,7 +79,6 @@ module.exports = {
     retryDelay: 1000
   },
 
-  // Neo4j
   neo4j: {
     maxConnectionPoolSize: 50,
     connectionTimeout: 30000

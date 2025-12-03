@@ -1,4 +1,3 @@
-// Script para verificar los datos de las canciones en MongoDB
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Song = require('./src/models/Song');
@@ -11,21 +10,21 @@ async function checkSongs() {
       useUnifiedTopology: true,
     });
     
-    console.log('✅ Conectado a MongoDB\n');
+    console.log(' Conectado a MongoDB\n');
 
     // Obtener todas las canciones
     const songs = await Song.find({});
     
-    console.log(`📊 Total de canciones en DB: ${songs.length}\n`);
+    console.log(` Total de canciones en DB: ${songs.length}\n`);
     
     if (songs.length === 0) {
-      console.log('❌ No hay canciones en la base de datos');
+      console.log(' No hay canciones en la base de datos');
       process.exit(0);
     }
 
     // Mostrar detalles de cada canción
     songs.forEach((song, index) => {
-      console.log(`\n🎵 Canción ${index + 1}:`);
+      console.log(`\n Canción ${index + 1}:`);
       console.log(`   ID: ${song._id}`);
       console.log(`   Título: ${song.title || song.titulo || 'N/A'}`);
       console.log(`   Artista: ${song.artist || 'N/A'}`);
@@ -56,9 +55,9 @@ async function checkSongs() {
     }
 
     mongoose.disconnect();
-    console.log('\n✅ Script completado');
+    console.log('\n Script completado');
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error(' Error:', error);
     process.exit(1);
   }
 }

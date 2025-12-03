@@ -31,9 +31,9 @@ async function connectDB() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(`${colors.green}✅ Conectado a MongoDB${colors.reset}\n`);
+    console.log(`${colors.green}Conectado a MongoDB${colors.reset}\n`);
   } catch (error) {
-    console.error(`${colors.red}❌ Error al conectar MongoDB:${colors.reset}`, error);
+    console.error(`${colors.red}Error al conectar MongoDB:${colors.reset}`, error);
     process.exit(1);
   }
 }
@@ -44,12 +44,12 @@ async function initMinIO() {
     const exists = await minioClient.bucketExists(bucketName);
     if (!exists) {
       await minioClient.makeBucket(bucketName, 'us-east-1');
-      console.log(`${colors.green}✅ Bucket de MinIO creado: ${bucketName}${colors.reset}\n`);
+      console.log(`${colors.green}Bucket de MinIO creado: ${bucketName}${colors.reset}\n`);
     } else {
-      console.log(`${colors.green}✅ Bucket de MinIO encontrado: ${bucketName}${colors.reset}\n`);
+      console.log(`${colors.green}Bucket de MinIO encontrado: ${bucketName}${colors.reset}\n`);
     }
   } catch (error) {
-    console.error(`${colors.red}❌ Error con MinIO:${colors.reset}`, error);
+    console.error(`${colors.red}Error con MinIO:${colors.reset}`, error);
     throw error;
   }
 }
@@ -57,38 +57,33 @@ async function initMinIO() {
 // Subir archivo a MinIO
 async function uploadToMinio(filePath, fileName) {
   try {
-    // Verificar si ya existe en MinIO
     try {
       const stat = await minioClient.statObject(bucketName, fileName);
-      console.log(`   ${colors.yellow}⚠️  Ya existe en MinIO (${(stat.size / 1024 / 1024).toFixed(2)} MB)${colors.reset}`);
+      console.log(`   ${colors.yellow}Ya existe en MinIO (${(stat.size / 1024 / 1024).toFixed(2)} MB)${colors.reset}`);
       stats.alreadyExists++;
       return true;
     } catch (err) {
-      // No existe, continuar con la subida
     }
 
-    // Verificar que el archivo existe en el sistema de archivos
     try {
       await fs.access(filePath);
     } catch (err) {
-      console.log(`   ${colors.red}❌ Archivo no encontrado en: ${filePath}${colors.reset}`);
+      console.log(`   ${colors.red}Archivo no encontrado en: ${filePath}${colors.reset}`);
       stats.notFound++;
       return false;
     }
 
-    // Obtener tamaño del archivo
     const fileStats = await fs.stat(filePath);
     const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
 
-    // Subir archivo
-    console.log(`   ${colors.cyan}📤 Subiendo... (${fileSizeMB} MB)${colors.reset}`);
+    console.log(`   ${colors.cyan}Subiendo... (${fileSizeMB} MB)${colors.reset}`);
     await minioClient.fPutObject(bucketName, fileName, filePath);
     
     stats.uploaded++;
-    console.log(`   ${colors.green}✅ Subido exitosamente a MinIO${colors.reset}`);
+    console.log(`   ${colors.green}Subido exitosamente a MinIO${colors.reset}`);
     return true;
   } catch (error) {
-    console.error(`   ${colors.red}❌ Error subiendo a MinIO:${colors.reset}`, error.message);
+    console.error(`   ${colors.red}Error subiendo a MinIO:${colors.reset}`, error.message);
     stats.errors++;
     return false;
   }
@@ -97,18 +92,17 @@ async function uploadToMinio(filePath, fileName) {
 // Migrar todas las canciones
 async function migrateAllSongs() {
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}☁️  MIGRACIÓN DE ARCHIVOS A MINIO${colors.reset}`);
+  console.log(`${colors.bright}MIGRACIÓN DE ARCHIVOS A MINIO${colors.reset}`);
   console.log(`${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
   try {
-    // Obtener todas las canciones de MongoDB
     const songs = await Song.find();
     stats.total = songs.length;
 
-    console.log(`📊 Total de canciones en MongoDB: ${colors.bright}${stats.total}${colors.reset}\n`);
+    console.log(`Total de canciones en MongoDB: ${colors.bright}${stats.total}${colors.reset}\n`);
     
     if (stats.total === 0) {
-      console.log(`${colors.yellow}⚠️  No hay canciones en la base de datos${colors.reset}\n`);
+      console.log(`${colors.yellow}No hay canciones en la base de datos${colors.reset}\n`);
       return;
     }
 
@@ -116,11 +110,10 @@ async function migrateAllSongs() {
 
     const musicDir = path.join(__dirname, 'uploads', 'music');
 
-    // Procesar cada canción
     for (let i = 0; i < songs.length; i++) {
       const song = songs[i];
       console.log(`${colors.cyan}[${i + 1}/${stats.total}] ${song.title}${colors.reset} - ${song.artist}`);
-      console.log(`   📁 Archivo: ${song.fileName}`);
+      console.log(`Archivo: ${song.fileName}`);
 
       const filePath = path.join(musicDir, song.fileName);
       await uploadToMinio(filePath, song.fileName);
@@ -128,7 +121,7 @@ async function migrateAllSongs() {
     }
 
   } catch (error) {
-    console.error(`${colors.red}❌ Error en la migración:${colors.reset}`, error);
+    console.error(`${colors.red}Error en la migración:${colors.reset}`, error);
   }
 }
 
@@ -154,14 +147,14 @@ async function listMinioFiles() {
 // Mostrar reporte final
 async function showReport() {
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-  console.log(`${colors.bright}📊 REPORTE FINAL${colors.reset}`);
+  console.log(`${colors.bright}REPORTE FINAL${colors.reset}`);
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-  console.log(`   📁 Total de canciones:              ${colors.bright}${stats.total}${colors.reset}`);
-  console.log(`   ${colors.green}✅ Archivos subidos:${colors.reset}                ${colors.bright}${stats.uploaded}${colors.reset}`);
-  console.log(`   ${colors.yellow}⚠️  Ya existían en MinIO:${colors.reset}           ${colors.bright}${stats.alreadyExists}${colors.reset}`);
-  console.log(`   ${colors.red}❌ No encontrados en filesystem:${colors.reset}    ${colors.bright}${stats.notFound}${colors.reset}`);
-  console.log(`   ${colors.red}❌ Errores:${colors.reset}                         ${colors.bright}${stats.errors}${colors.reset}`);
+  console.log(`   Total de canciones:              ${colors.bright}${stats.total}${colors.reset}`);
+  console.log(`   ${colors.green}Archivos subidos:${colors.reset}                ${colors.bright}${stats.uploaded}${colors.reset}`);
+  console.log(`   ${colors.yellow}Ya existían en MinIO:${colors.reset}           ${colors.bright}${stats.alreadyExists}${colors.reset}`);
+  console.log(`   ${colors.red}No encontrados en filesystem:${colors.reset}    ${colors.bright}${stats.notFound}${colors.reset}`);
+  console.log(`   ${colors.red}Errores:${colors.reset}                         ${colors.bright}${stats.errors}${colors.reset}`);
   console.log('');
 
   // Listar archivos en MinIO
@@ -169,8 +162,8 @@ async function showReport() {
     const minioFiles = await listMinioFiles();
     const totalSizeMB = minioFiles.reduce((sum, f) => sum + parseFloat(f.sizeMB), 0);
     
-    console.log(`   ${colors.cyan}☁️  Archivos en MinIO:${colors.reset}              ${colors.bright}${minioFiles.length}${colors.reset}`);
-    console.log(`   ${colors.cyan}💾 Espacio total usado:${colors.reset}             ${colors.bright}${totalSizeMB.toFixed(2)} MB${colors.reset}`);
+    console.log(`   ${colors.cyan}Archivos en MinIO:${colors.reset}              ${colors.bright}${minioFiles.length}${colors.reset}`);
+    console.log(`   ${colors.cyan}Espacio total usado:${colors.reset}             ${colors.bright}${totalSizeMB.toFixed(2)} MB${colors.reset}`);
     console.log('');
   } catch (error) {
     console.error(`   ${colors.red}❌ Error listando archivos de MinIO${colors.reset}`);
@@ -179,13 +172,13 @@ async function showReport() {
   const successRate = ((stats.uploaded + stats.alreadyExists) / stats.total * 100).toFixed(1);
   
   if (successRate === '100.0') {
-    console.log(`${colors.green}${colors.bright}🎉 ¡Migración completada exitosamente!${colors.reset}`);
+    console.log(`${colors.green}${colors.bright}¡Migración completada exitosamente!${colors.reset}`);
   } else if (successRate >= 90) {
-    console.log(`${colors.yellow}⚠️  Migración casi completa (${successRate}%)${colors.reset}`);
+    console.log(`${colors.yellow}Migración casi completa (${successRate}%)${colors.reset}`);
   } else if (stats.notFound > 0) {
-    console.log(`${colors.red}❌ Faltan archivos en uploads/music/ (${stats.notFound} no encontrados)${colors.reset}`);
+    console.log(`${colors.red}Faltan archivos en uploads/music/ (${stats.notFound} no encontrados)${colors.reset}`);
   } else {
-    console.log(`${colors.red}❌ Migración incompleta (${successRate}%)${colors.reset}`);
+    console.log(`${colors.red}Migración incompleta (${successRate}%)${colors.reset}`);
   }
 
   console.log('');
@@ -200,10 +193,10 @@ async function main() {
     await migrateAllSongs();
     await showReport();
   } catch (error) {
-    console.error(`${colors.red}❌ Error fatal:${colors.reset}`, error);
+    console.error(`${colors.red}Error fatal:${colors.reset}`, error);
   } finally {
     await mongoose.connection.close();
-    console.log(`${colors.green}✅ Conexión cerrada${colors.reset}`);
+    console.log(`${colors.green}Conexión cerrada${colors.reset}`);
     process.exit(0);
   }
 }

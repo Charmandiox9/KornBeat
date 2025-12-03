@@ -1,4 +1,4 @@
-// debug-neo4j.js - Script para diagnosticar datos en Neo4j
+//Script para diagnosticar datos en Neo4j
 const neo4j = require('neo4j-driver');
 require('dotenv').config();
 
@@ -14,11 +14,10 @@ async function debugNeo4j() {
   const session = driver.session();
   
   try {
-    console.log('🔍 Diagnóstico de Neo4j\n');
+    console.log('Diagnóstico de Neo4j\n');
     console.log('='.repeat(70));
     
-    // 1. Contar nodos por tipo
-    console.log('\n📊 NODOS POR TIPO:');
+    console.log('\nNODOS POR TIPO:');
     console.log('-'.repeat(70));
     const nodosResult = await session.run(`
       MATCH (n)
@@ -30,8 +29,7 @@ async function debugNeo4j() {
       console.log(`  ${record.get('tipo').padEnd(20)} : ${record.get('cantidad').toNumber()}`);
     });
     
-    // 2. Ver ejemplo de canción
-    console.log('\n🎵 EJEMPLO DE CANCIÓN EN NEO4J:');
+    console.log('\nEJEMPLO DE CANCIÓN EN NEO4J:');
     console.log('-'.repeat(70));
     const cancionResult = await session.run(`
       MATCH (c:Cancion)
@@ -51,11 +49,10 @@ async function debugNeo4j() {
         console.log(`  ${key.padEnd(25)} : ${value}`);
       });
     } else {
-      console.log('  ⚠️  No hay canciones en Neo4j');
+      console.log('  No hay canciones en Neo4j');
     }
     
-    // 3. Ver IDs de canciones
-    console.log('\n🆔 PRIMEROS 5 IDs DE CANCIONES:');
+    console.log('\nPRIMEROS 5 IDs DE CANCIONES:');
     console.log('-'.repeat(70));
     const idsResult = await session.run(`
       MATCH (c:Cancion)
@@ -70,8 +67,7 @@ async function debugNeo4j() {
       console.log();
     });
     
-    // 4. Ver relaciones
-    console.log('🔗 RELACIONES:');
+    console.log('RELACIONES:');
     console.log('-'.repeat(70));
     const relResult = await session.run(`
       MATCH ()-[r]->()
@@ -83,8 +79,7 @@ async function debugNeo4j() {
       console.log(`  ${record.get('tipo').padEnd(30)} : ${record.get('cantidad').toNumber()}`);
     });
     
-    // 5. Ver géneros
-    console.log('\n🎸 GÉNEROS DISPONIBLES:');
+    console.log('\nGÉNEROS DISPONIBLES:');
     console.log('-'.repeat(70));
     const genresResult = await session.run(`
       MATCH (g:Genero)
@@ -96,8 +91,7 @@ async function debugNeo4j() {
       console.log(`  - ${record.get('nombre')}`);
     });
     
-    // 6. Verificar si hay datos antiguos
-    console.log('\n⚠️  VERIFICACIÓN DE DATOS:');
+    console.log('\nVERIFICACIÓN DE DATOS:');
     console.log('-'.repeat(70));
     
     const oldDataCheck = await session.run(`
@@ -108,8 +102,8 @@ async function debugNeo4j() {
     
     const oldCount = oldDataCheck.records[0].get('old_count').toNumber();
     if (oldCount > 0) {
-      console.log(`  ⚠️  Hay ${oldCount} canciones con IDs antiguos (672...)`);
-      console.log('  💡 Estos datos son de una sincronización anterior con otro esquema');
+      console.log(`  Hay ${oldCount} canciones con IDs antiguos (672...)`);
+      console.log('  Estos datos son de una sincronización anterior con otro esquema');
     }
     
     const newDataCheck = await session.run(`
@@ -120,15 +114,15 @@ async function debugNeo4j() {
     
     const newCount = newDataCheck.records[0].get('new_count').toNumber();
     if (newCount > 0) {
-      console.log(`  ✅ Hay ${newCount} canciones con IDs nuevos (68f...)`);
-      console.log('  💡 Estos datos son de tu colección songs actual');
+      console.log(`  Hay ${newCount} canciones con IDs nuevos (68f...)`);
+      console.log('  Estos datos son de tu colección songs actual');
     }
     
     if (oldCount > 0 && newCount === 0) {
-      console.log('\n❌ PROBLEMA DETECTADO:');
+      console.log('\nPROBLEMA DETECTADO:');
       console.log('  Neo4j tiene datos de una sincronización anterior.');
       console.log('  Necesitas limpiar Neo4j y volver a sincronizar.');
-      console.log('\n📝 SOLUCIÓN:');
+      console.log('\nSOLUCIÓN:');
       console.log('  1. Limpiar Neo4j:');
       console.log('     node clean-neo4j.js');
       console.log('  2. Sincronizar de nuevo:');
@@ -138,7 +132,7 @@ async function debugNeo4j() {
     console.log('\n' + '='.repeat(70));
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('Error:', error);
   } finally {
     await session.close();
     await driver.close();

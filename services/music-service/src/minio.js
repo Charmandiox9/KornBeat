@@ -4,7 +4,7 @@ const bucketName = process.env.MINIO_BUCKET || 'music';
 
 // Configuración del cliente MinIO
 const minioClient = new Minio.Client({
-  endPoint: process.env.MINIO_ENDPOINT || 'localhost', // ⚠️ Cambiado de 'minio' a 'localhost' para desarrollo
+  endPoint: process.env.MINIO_ENDPOINT || 'localhost',
   port: parseInt(process.env.MINIO_PORT || '9000'),
   useSSL: (process.env.MINIO_USE_SSL || 'false') === 'true',
   accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',

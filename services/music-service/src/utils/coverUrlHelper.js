@@ -1,6 +1,3 @@
-// src/utils/coverUrlHelper.js
-// Helper para procesar URLs de portadas
-
 /**
  * Convierte un documento de canción agregando la URL completa de la portada
  * @param {Object} song - Documento de canción (puede ser objeto Mongoose o plain object)

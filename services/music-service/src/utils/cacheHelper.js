@@ -1,6 +1,3 @@
-// Archivo para las funciones de caché de Redis
-// Este archivo se inicializará desde app.js para evitar importaciones circulares
-
 let redisClient = null;
 
 const setRedisClient = (client) => {

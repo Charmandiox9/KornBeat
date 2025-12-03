@@ -17,7 +17,6 @@ const Song = require('./models/Song');
 
 const musicDir = path.join(__dirname, '../uploads/music');
 
-// Servir archivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ============= REDIS CON CONTRASEÑA =============
@@ -37,7 +36,6 @@ redisClient.on('error', (err) => console.error('❌ Redis Error:', err));
 (async () => {
   try {
     await redisClient.connect();
-    // Inicializar el cliente de Redis en el helper de caché
     cacheHelper.setRedisClient(redisClient);
   } catch (err) {
     console.error('❌ Error al conectar Redis:', err);
@@ -202,7 +200,6 @@ const requireAuth = (req, res, next) => {
 // ============= IMPORTACIÓN AUTOMÁTICA DE MÚSICA =============
 async function importMusicOnStartup() {
   try {
-    // ✅ Dynamic import para music-metadata (ESM)
     const { parseFile } = await import('music-metadata');
     
     await fs.access(musicDir);
@@ -289,7 +286,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(async () => {
   console.log('✅ Conectado a MongoDB');
   
-  // ⭐ IMPORTANTE: Exponer la conexión de la base de datos
   app.locals.db = mongoose.connection.db;
   console.log('✅ Base de datos disponible en app.locals.db');
   
