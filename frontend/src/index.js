@@ -6,7 +6,7 @@ import App from './App';
 import { AuthProvider } from './context/authContext';
 import { MusicPlayerProvider } from './context/MusicPlayerContext';
 import { MusicSearchProvider } from './context/MusicSearchContext';
-import { ThemeProvider } from './context/ThemeContext'; // ← NUEVO
+import { ThemeProvider } from './context/ThemeContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
