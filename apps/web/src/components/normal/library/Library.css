@@ -1,0 +1,122 @@
+/* Biblioteca (tabs Recientes / Favoritos / Playlists) */
+.library-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 24px;
+  flex-wrap: wrap;
+}
+
+.library-tab {
+  background: rgba(139, 92, 246, 0.12);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.library-tab:hover {
+  background: rgba(139, 92, 246, 0.25);
+}
+
+.library-tab.active {
+  background: #8b5cf6;
+  color: white;
+  border-color: #8b5cf6;
+}
+
+.library-section {
+  min-height: 200px;
+}
+
+.library-status {
+  color: #9ca3af;
+  padding: 24px 0;
+  text-align: center;
+  font-size: 15px;
+}
+
+.playlist-cards {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.playlist-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.playlist-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.playlist-card-header h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.playlist-card-header p {
+  margin: 0 0 6px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.playlist-meta {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.playlist-expand {
+  color: #8b5cf6;
+  font-size: 12px;
+}
+
+.playlist-songs {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 4px;
+}
+
+.playlist-song-btn {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  width: 100%;
+}
+
+.playlist-song-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: white;
+}
+
+/* Página de búsqueda */
+.search-page-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* Compatibilidad: el placeholder antiguo seguía importando estas clases */
+.library-container,
+.library-card,
+.library-content {
+  display: none;
+}

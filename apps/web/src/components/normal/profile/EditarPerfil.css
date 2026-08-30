@@ -1,0 +1,127 @@
+/* ==================== CONTENEDOR PRINCIPAL ==================== */
+.principal-containe2 {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column; /* ← IMPORTANTE */
+  background: url('../../../images/smooth-purple.jpg') center/cover no-repeat fixed;
+}
+
+.principal-content{
+  width: 100%;
+  display: flex;
+  justify-content: center; /* centra horizontal */
+  padding-top: 80px; /* evita que TopBar tape */
+  padding-bottom: 80px; /* deja espacio para BottomBar */
+}
+
+/* ==================== TARJETA ==================== */
+.edit-profile-card {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  padding: 2.5rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+}
+
+/* ==================== TÍTULO ==================== */
+.edit-profile-title {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #111827;
+  text-align: center;
+}
+
+/* ==================== FORMULARIO ==================== */
+.edit-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.edit-form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* ==================== INPUTS ==================== */
+.edit-form-group input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  font-size: 1rem;
+  color: #222;
+  background: #ffffff;
+  border: 2px solid #4b5563;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.edit-form-group input::placeholder {
+  color: #6b7280;
+}
+
+/* ==================== FOCUS ==================== */
+.edit-form-group input:focus {
+  border-color: #001f5c;
+  box-shadow: 0 0 0 3px rgba(0, 31, 92, 0.18);
+}
+
+/* ==================== BOTÓN ==================== */
+.edit-profile-btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: #001f5c;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.edit-profile-btn:hover {
+  background: #000;
+}
+
+/* ==================== BOTÓN VOLVER ==================== */
+.back-btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #4b5563;
+}
+
+/* ==================== MENSAJE DE ERROR ==================== */
+.edit-field-error {
+  margin-top: 4px;
+  color: #dc2626;
+  font-size: 0.8rem;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .edit-profile-wrapper {
+    padding: 1rem;
+  }
+  
+  .edit-profile-card {
+    padding: 2rem 1.5rem;
+  }
+}
+

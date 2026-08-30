@@ -1,0 +1,375 @@
+.principal-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: url('../../../images/smooth-purple.jpg') center/cover no-repeat fixed;
+  position: relative;
+}
+
+/*CONTENIDO PRINCIPAL*/
+.principal-contents {
+  flex: 1;
+  padding: 2rem;
+  padding-bottom: 200px;
+  overflow-y: auto;
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.search-results-section {
+  margin-bottom: 2rem;
+}
+
+.principal-content .search-results {
+  background: transparent;
+  padding: 0;
+}
+
+.principal-content .results-header {
+  margin-bottom: 1.5rem;
+}
+
+.principal-content .results-count {
+  color: white;
+  font-size: 1.5rem;
+}
+
+.principal-content .song-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.principal-content .song-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.principal-content .song-title,
+.principal-content .song-artist,
+.principal-content .song-album {
+  color: white;
+}
+
+.principal-content .song-artist {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.principal-content .song-album {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.principal-content .action-button {
+  color: white;
+}
+
+.principal-content .action-button:hover {
+  color: white;
+}
+
+.principal-content .results-empty-state {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 3rem;
+}
+
+.principal-content .empty-title,
+.principal-content .empty-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 🆕 Secciones de contenido - MÁS COMPACTAS */
+.content-section {
+  margin-bottom: 2rem; /* 🔧 Reducido de 3rem a 2rem */
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem; /* 🔧 Reducido de 1.5rem a 1rem */
+}
+
+.section-header h2 {
+  font-size: 1.5rem; /* 🔧 Reducido de 1.75rem a 1.5rem */
+  font-weight: 700;
+  margin: 0;
+  color: white; /* ✅ Blanco */
+}
+
+.see-all-btn {
+  background: none;
+  border: none;
+  color: white; /* ✅ Blanco */
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0.8;
+}
+
+.see-all-btn:hover {
+  color: white;
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+/* 🆕 Grid de tarjetas - MÁS COMPACTO */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem; /* 🔧 Reducido de 1.5rem a 1rem */
+}
+
+/* 🔧 Artistas emergentes - MENOS ALTO */
+.cards-grid.discover {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* 🔧 Reducido de 300px a 200px */
+}
+
+/* 🔧 Grid compacto para recientes, creado para ti, tops */
+.cards-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+/* 🆕 Tarjetas placeholder - ALTURA LIMITADA */
+.card-placeholder {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 0.75rem; /* 🔧 Reducido de 1rem a 0.75rem */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-height: 280px; /* 🔧 NUEVO: Limitar altura máxima */
+  display: flex;
+  flex-direction: column;
+}
+
+.card-placeholder:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-5px);
+}
+
+/* 🔧 Artistas emergentes - ALTURA CONTROLADA */
+.card-placeholder.large {
+  max-height: 320px; /* 🔧 NUEVO: Reducido y controlado */
+  min-height: auto; /* 🔧 Removido min-height de 300px */
+}
+
+/* 🔧 Imagen de tarjeta - ALTURA FIJA */
+.card-image {
+  width: 100%;
+  aspect-ratio: 1; /* Mantiene proporción cuadrada */
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+  border-radius: 8px;
+  margin-bottom: 0.5rem; /* 🔧 Reducido de 0.75rem a 0.5rem */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0; /* 🔧 NUEVO: No permite que se encoja */
+}
+
+.card-image::before {
+  content: '🎵';
+  font-size: 3rem;
+  opacity: 0.3;
+}
+
+/* ✅ Textos de tarjetas - TODO BLANCO */
+.card-type,
+.card-artist {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8); /* ✅ Blanco con opacidad */
+  margin: 0.25rem 0 0 0; /* 🔧 Sin margen inferior */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: white; /* ✅ Blanco */
+  margin: 0.5rem 0 0.25rem 0; /* 🔧 Márgenes reducidos */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 🆕 Información adicional en tarjetas - BLANCO */
+.card-placeholder p {
+  color: rgba(255, 255, 255, 0.7); /* ✅ Blanco */
+  margin: 0.25rem 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 🆕 Badges y etiquetas - TEXTO BLANCO */
+.card-image > div {
+  color: white !important; /* ✅ Forzar blanco en badges */
+}
+
+/* Scrollbar */
+.principal-content::-webkit-scrollbar {
+  width: 12px;
+}
+
+.principal-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.principal-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+.principal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 🆕 Loading y mensajes - BLANCO */
+.loading-message {
+  text-align: center;
+  padding: 2rem;
+  color: white; /* ✅ Blanco */
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .principal-navbar {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .navbar-left {
+    justify-content: space-between;
+  }
+
+  .navbar-search {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    max-width: 100%;
+  }
+
+  .navbar-right {
+    position: absolute;
+    top: 0.75rem;
+    right: 2rem;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .cards-grid.discover {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 968px) {
+  .principal-navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar-right {
+    right: 1rem;
+  }
+
+  .principal-content {
+    padding: 1.5rem 1rem;
+    padding-bottom: 220px;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .cards-grid.discover {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .section-header h2 {
+    font-size: 1.35rem;
+  }
+
+  .card-placeholder {
+    max-height: 240px;
+  }
+
+  .card-placeholder.large {
+    max-height: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-name {
+    display: none;
+  }
+
+  .navbar-icon-btn:last-child {
+    display: none;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .cards-grid.discover {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card-placeholder {
+    padding: 0.5rem;
+    max-height: 220px;
+  }
+
+  .card-placeholder.large {
+    max-height: 260px;
+  }
+
+  .card-title {
+    font-size: 13px;
+  }
+
+  .card-artist,
+  .card-type {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 580px) {
+  .principal-content {
+    padding: 1rem 0.5rem;
+    padding-bottom: 240px;
+  }
+
+  .section-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .content-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .cards-grid.discover {
+    grid-template-columns: 1fr;
+  }
+
+  .card-placeholder {
+    max-height: 200px;
+  }
+
+  .card-placeholder.large {
+    max-height: 240px;
+  }
+}
