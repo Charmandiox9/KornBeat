@@ -1,151 +1,126 @@
-# KornBeat - Music Streaming Platform  
-  
-A microservices-based music streaming application with personalized recommendations, built with Node.js, React, and Docker.  
-  
-## Features  
-  
-- User authentication with JWT tokens  
-- Music catalog management and streaming  
-- Playlist and favorites system  
-- Graph-based personalized recommendations  
-- Playback position persistence  
-- Multi-service architecture with Docker orchestration  
-  
-## Architecture  
-  
-KornBeat uses a microservices architecture with the following components:  
-  
-| Service | Port | Technology | Purpose |  
-|---------|------|------------|---------|  
-| Frontend | 3000 | React | User interface |  
-| auth-service | 3001 | Node.js/Express | Authentication & sessions |  
-| music-service | 3002 | Node.js/Express | Music catalog & streaming |  
-| recommendation-service | 3003 | Node.js/Express | Graph-based recommendations |  
-| MongoDB | 27017 | MongoDB | Primary database |  
-| Neo4j | 7474/7687 | Neo4j | Graph database for recommendations |  
-| Redis | 6379 | Redis | Caching & sessions |  
-| MinIO | 9000/9001 | MinIO | Object storage for MP3 files |  
-  
-## Quick Start  
-  
-### Prerequisites  
-  
-- Docker and Docker Compose  
-- Node.js 14.x or higher  
-- npm 6.x or higher  
-  
-### 1. Start Infrastructure Services  
-  
-```bash  
-docker-compose up -d mongodb redis minio neo4j
-```
+# KornBeat
 
-### 2. Run Backend Services
+Plataforma de streaming musical con recomendaciones personalizadas.
+Monorepo de microservicios: 3 APIs **NestJS** + frontend **Next.js**, orquestado con Docker.
+
+## Arquitectura
+
+| Servicio | Puerto | Tecnología | Propósito |
+|---|---|---|---|
+| `web` | 3000 (público: `:80`) | Next.js 15 (App Router) | Frontend (i18n es/en, Tailwind v4, anime.js) |
+| `auth-api` | 3001 | NestJS REST | Auth JWT, sesiones, solicitudes de artista, admin |
+| `music-api` | 3002 | NestJS REST + GraphQL + WS | Catálogo, streaming desde MinIO, playlists, favoritos, workspace de artista |
+| `reco-api` | 3003 | NestJS REST + GraphQL + WS | Recomendaciones Neo4j + sync MongoDB→Neo4j |
+| `mongodb` | 27017 | MongoDB 7 | Base de datos principal (colecciones con `$jsonSchema`) |
+| `neo4j` | 7474/7687 | Neo4j 5 | Grafo de recomendaciones |
+| `redis` | 6379 | Redis 7 | Caché, sesiones, contadores de plays/likes |
+| `minio` | 9000 | MinIO | Almacenamiento de MP3 y portadas |
+| `nginx` | **80** | nginx | Gateway único (HTTP + WebSocket) |
+
+Solo el puerto **80** (nginx) está pensado para exposición externa; los demás quedan expuestos en el host para desarrollo.
+
+## Quick start (Docker)
+
 ```bash
-# Music Service
-cd services/music-service  
-npm install  
-npm run dev  
-
-# Auth Service (in another terminal)
-cd services/auth-service  
-npm install  
-npm run dev
-
-# Recommendation Service (in another terminal)
-cd services/recommendation-service  
-npm install  
-npm run dev
+cp .env.example .env          # y cambia los secretos
+docker compose up -d --build
+docker compose ps             # 9/9 healthy
 ```
 
-### 3. Run Frontend
+- Frontend: <http://localhost>
+- Las APIs no se llaman directas en producción: nginx reescribe
+  `/auth/*` → auth-api, `/api/music/*` → music-api,
+  `/api/recommendations/*` → reco-api, `/uploads/*` → music-api,
+  `/socket.io/{music,reco}/` → gateways WS.
+
+## Desarrollo local (sin Docker para las apps)
+
+Requisitos: Node ≥ 20, pnpm 10 (`corepack enable`), infra levantada
+(`docker compose up -d mongodb neo4j redis minio`).
+
 ```bash
-cd frontend  
-npm install  
-npm start
+cp apps/auth-api/.env.example apps/auth-api/.env     # idem music-api, reco-api
+pnpm install
+pnpm --filter @kornbeat/shared build
+pnpm --filter @kornbeat/auth-api dev     # :3001
+pnpm --filter @kornbeat/music-api dev    # :3002
+pnpm --filter @kornbeat/reco-api dev     # :3003
+pnpm --filter @kornbeat/web dev          # :3000 (rewrites a las APIs locales)
 ```
 
-### 4. Import music
-Place MP3 files in services/music-service/uploads/music/ then run:
-```bash
-cd services/music-service  
-node importMusic.js
+## Credenciales de prueba (stack dev)
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| Admin | `admin.test@kornbeat.dev` | `Password123` |
+| Usuario normal + artista | `artist.test@kornbeat.dev` | `Password123` |
+| Usuario con solicitud pendiente | `reject.test@kornbeat.dev` | `Password123` |
+
+> Primer admin (no hay endpoint público que conceda `isAdmin`):
+> `pnpm --filter @kornbeat/auth-api make-admin <email>`
+
+## Flujo "convertirse en artista"
+
+1. `/profile` → formulario de solicitud (género, descripción, links).
+2. Admin revisa en `/admin`: aprobar o rechazar con motivo.
+3. Aprobado → `/music` (workspace): crear álbumes, subir sencillos o pistas
+   `.mp3` (≤ 50 MB) → MinIO + Mongo; streaming vía `GET /api/music/songs/:id/stream`.
+
+## APIs
+
+- **Swagger/OpenAPI**: `GET /auth/api-docs`, `GET /api/music/api-docs`,
+  `GET /api/recommendations/api-docs` (JSON en `-json`, YAML en `-yaml`).
+- **GraphQL** (code-first, playground en el mismo path):
+  `POST /api/music/graphql`, `POST /api/recommendations/graphql`.
+- **WebSocket** (socket.io): `/socket.io/music` (namespace `counters`,
+  deltas en vivo de plays/likes) y `/socket.io/reco` (namespace `sync`,
+  `sync:completed` tras cada sincronización).
+- **Contadores**: `POST /api/music/songs/:id/play` y `/like` alimentan Redis
+  y se persisten por lotes (cada 10) en Mongo.
+
+## Frontend
+
+16 rutas (estandarizadas a inglés, con redirects de las legacy en español):
+
+`/` · `/home` · `/song/[id]` · `/search` · `/search-results` · `/library` ·
+`/favorites` · `/playlist` · `/music` · `/profile` · `/edit-profile` ·
+`/login` · `/register` · `/forgot-password` · `/information` · `/admin`
+
+- Estructura: `src/app` = shells delgados (route groups `(admin)/(normal)/(auth)`);
+  la lógica vive en `src/components/{admin,common,normal/<vista>/<página>}/`.
+- i18n es/en sin dependencias (`I18nProvider`), tema claro/oscuro,
+  animaciones anime.js v4 (respeta `prefers-reduced-motion`).
+- El reproductor vive en el layout raíz: el audio no se corta al navegar.
+
+## Estructura del monorepo
+
+```
+kornbeat/
+├── apps/
+│   ├── web/           # Next.js 15 (JS, App Router, output standalone)
+│   ├── auth-api/      # NestJS REST — :3001
+│   ├── music-api/     # NestJS REST + GraphQL + WS — :3002
+│   └── reco-api/      # NestJS REST + GraphQL + WS + sync — :3003
+├── packages/
+│   └── shared/        # Tipos + constantes compartidas (PORTS, MONGO_COLLECTIONS, REDIS_*)
+├── nginx/             # Gateway (resolver 127.0.0.11, headers de upgrade WS)
+├── databases/         # mongodb/init.js ($jsonSchema + seed) · neo4j (config/seed)
+├── docs/              # ADRs
+├── services/ frontend/  # LEGACY (Express/React) intacto — tag v1-legacy
+├── docker-compose.yml · .env.example
+├── pnpm-workspace.yaml · turbo.json · tsconfig.base.json
+└── MIGRATION_PLAN.md
 ```
 
-## Access Points
-- Frontend: http://localhost:3000
-- Auth API: http://localhost:3001
-- Music API: http://localhost:3002/api/music/songs
-- Recommendation API: http://localhost:3003
-- Neo4j Browser: http://localhost:7474 (neo4j/neo4j_password)
-- MinIO Console: http://localhost:9001 (minioadmin/minioadmin)
+## Documentación
 
-## Development
-### Local Development Setup
-For local development, run infrastructure services in Docker while application services run natively with hot-reload:
-```bash
-# Start only infrastructure
-docker-compose up -d mongodb redis minio neo4j  
-  
-# Run services with hot-reload
-npm run dev  # in each service directory
-```
+- [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md) — plan y estado de la migración
+  del legacy a NestJS/Next.js (fases 0–6 + Rondas 1–4, bugs corregidos, E2E).
+- [`docs/adr-001-prisma-vs-mongoose.md`](docs/adr-001-prisma-vs-mongoose.md) —
+  por qué se mantiene Mongoose y se descarta Prisma.
 
-### Testing
-Run frontend tests with Jest
-```bash
-cd frontend  
-npm test
-```
+## Seguridad
 
-### Environment Variables
-Create `.env` files in each service directory. Key variables:
-- `JWT_SECRET` - JWT signing key
-- `MONGODB_URI` - Database connection
-- `REDIS_HOST` - Redis connection
-- `MINIO_ENDPOINT` - Object storage connection
-
-## Production Deployment
-For production deployment using Docker Compose:
-```bash
-docker-compose up -d
-```
-This builds and starts all services with health checks and proper dependencies.
-
-## Data Flow
-1. User authenticates via auth-service
-2. Frontend requests music from music-service
-3. Music metadata stored in MongoDB, files in MinIO
-4. Recommendations generated by recommendation-service using Neo4j
-5. Sessions and cache managed by Redis
-
-## Stopping Services
-```bash
-# Stop all services
-docker-compose down  
-  
-# Stop application services only (keep infrastructure)  [header-8]
-# Use Ctrl+C in each terminal running npm run dev  [header-9]
-```
-
-## Project Structure
-```
-KornBeat/  
-├── services/  
-│   ├── auth-service/  
-│   ├── music-service/  
-│   └── recommendation-service/  
-├── frontend/  
-├── databases/  
-│   ├── mongodb/  
-│   └── redis/  
-├── nginx/  
-└── docker-compose.yml  
-```
-
-## Contributing
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+⚠️ Las credenciales por defecto del stack dev están documentadas en
+`.env.example` y se usaron durante el desarrollo. **Rotar todos los secretos**
+(Mongo, Neo4j, Redis, MinIO, `JWT_SECRET`) antes de exponer la instancia.
